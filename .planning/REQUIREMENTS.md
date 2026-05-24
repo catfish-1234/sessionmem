@@ -87,46 +87,46 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | Unmapped | Pending |
-| PLAT-02 | Unmapped | Pending |
-| PLAT-03 | Unmapped | Pending |
-| PLAT-04 | Unmapped | Pending |
-| PLAT-05 | Unmapped | Pending |
-| PLAT-06 | Unmapped | Pending |
-| PLAT-07 | Unmapped | Pending |
-| PLAT-08 | Unmapped | Pending |
-| CAPT-01 | Unmapped | Pending |
-| CAPT-02 | Unmapped | Pending |
-| CAPT-03 | Unmapped | Pending |
-| CAPT-04 | Unmapped | Pending |
-| RETR-01 | Unmapped | Pending |
-| RETR-02 | Unmapped | Pending |
-| RETR-03 | Unmapped | Pending |
-| RETR-04 | Unmapped | Pending |
-| RETR-05 | Unmapped | Pending |
-| CLI-01 | Unmapped | Pending |
-| CLI-02 | Unmapped | Pending |
-| CLI-03 | Unmapped | Pending |
-| CLI-04 | Unmapped | Pending |
-| CLI-05 | Unmapped | Pending |
-| CLI-06 | Unmapped | Pending |
-| TEAM-01 | Unmapped | Pending |
-| TEAM-02 | Unmapped | Pending |
-| TEAM-03 | Unmapped | Pending |
-| SECU-01 | Unmapped | Pending |
-| SECU-02 | Unmapped | Pending |
-| SECU-03 | Unmapped | Pending |
-| SECU-04 | Unmapped | Pending |
-| QLTY-01 | Unmapped | Pending |
-| QLTY-02 | Unmapped | Pending |
-| QLTY-03 | Unmapped | Pending |
-| QLTY-04 | Unmapped | Pending |
-| QLTY-05 | Unmapped | Pending |
+| PLAT-01 | Phase 4 | Pending |
+| PLAT-02 | Phase 4 | Pending |
+| PLAT-03 | Phase 4 | Pending |
+| PLAT-04 | Phase 4 | Pending |
+| PLAT-05 | Phase 4 | Pending |
+| PLAT-06 | Phase 4 | Pending |
+| PLAT-07 | Phase 4 | Pending |
+| PLAT-08 | Phase 4 | Pending |
+| CAPT-01 | Phase 1 | Pending |
+| CAPT-02 | Phase 2 | Pending |
+| CAPT-03 | Phase 1 | Pending |
+| CAPT-04 | Phase 2 | Pending |
+| RETR-01 | Phase 1 | Pending |
+| RETR-02 | Phase 1 | Pending |
+| RETR-03 | Phase 3 | Pending |
+| RETR-04 | Phase 3 | Pending |
+| RETR-05 | Phase 3 | Pending |
+| CLI-01 | Phase 5 | Pending |
+| CLI-02 | Phase 5 | Pending |
+| CLI-03 | Phase 5 | Pending |
+| CLI-04 | Phase 5 | Pending |
+| CLI-05 | Phase 5 | Pending |
+| CLI-06 | Phase 5 | Pending |
+| TEAM-01 | Phase 7 | Pending |
+| TEAM-02 | Phase 7 | Pending |
+| TEAM-03 | Phase 7 | Pending |
+| SECU-01 | Phase 6 | Pending |
+| SECU-02 | Phase 6 | Pending |
+| SECU-03 | Phase 1 | Pending |
+| SECU-04 | Phase 2 | Pending |
+| QLTY-01 | Phase 8 | Pending |
+| QLTY-02 | Phase 8 | Pending |
+| QLTY-03 | Phase 8 | Pending |
+| QLTY-04 | Phase 8 | Pending |
+| QLTY-05 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 ?
+- Mapped to phases: 35
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-24*
