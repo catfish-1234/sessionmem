@@ -15,8 +15,10 @@ const DEFAULT_EMBEDDING_DIMENSION = 32;
 export interface RetrieveMemoriesInput {
   db: Database;
   projectId: string;
-  queryText: string;
-  topK: number;
+  queryText?: string;
+  query?: string;
+  topK?: number;
+  limit?: number;
   now?: Date;
 }
 
@@ -29,6 +31,7 @@ export interface RetrievedMemoryCandidate {
   content: string;
   normalized_content: string;
   importance: number;
+  created_at: string;
   updated_at: string;
   embedding_dim: number | null;
   embedding_version: string | null;
@@ -78,10 +81,16 @@ function cosineSimilarity(query: number[], candidate: number[] | null): number {
 export function retrieveMemories(
   input: RetrieveMemoriesInput,
 ): RetrievedMemoryCandidate[] {
+  const queryText = input.queryText ?? input.query;
+  if (!queryText) {
+    throw new Error("queryText is required");
+  }
+
+  const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
   const candidates = searchMemoryCandidates(input.db, input.projectId);
   const dimension = resolveEmbeddingDimension(candidates);
-  const queryVector = deterministicEmbed(input.queryText, dimension).vector;
+  const queryVector = deterministicEmbed(queryText, dimension).vector;
 
   const ranked = candidates
     .map((candidate) => {
@@ -104,6 +113,7 @@ export function retrieveMemories(
         content: candidate.content,
         normalized_content: candidate.normalized_content,
         importance: candidate.importance,
+        created_at: candidate.created_at,
         updated_at: candidate.updated_at,
         embedding_dim: candidate.embedding_dim,
         embedding_version: candidate.embedding_version,
@@ -123,5 +133,5 @@ export function retrieveMemories(
       return left.id.localeCompare(right.id);
     });
 
-  return ranked.slice(0, input.topK);
+  return ranked.slice(0, topK);
 }

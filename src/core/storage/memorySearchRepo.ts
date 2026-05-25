@@ -9,6 +9,7 @@ export interface MemorySearchCandidate {
   content: string;
   normalized_content: string;
   importance: number;
+  created_at: string;
   updated_at: string;
   embedding: number[] | null;
   embedding_dim: number | null;
@@ -24,6 +25,7 @@ interface MemorySearchRow {
   content: string;
   normalized_content: string;
   importance: number;
+  created_at: string;
   updated_at: string;
   embedding: string | null;
   embedding_dim: number | null;
@@ -55,7 +57,7 @@ export function searchMemoryCandidates(
   const stmt = db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, updated_at, embedding, embedding_dim, embedding_version
+      importance, created_at, updated_at, embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = ?
   `);
