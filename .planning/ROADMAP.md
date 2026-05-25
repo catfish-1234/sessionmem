@@ -26,6 +26,8 @@
 
 **Requirements:** CAPT-01, CAPT-03, RETR-01, RETR-02, SECU-03
 
+**Plan Progress:** 3 / 4 complete (`01-01`, `01-02`, `01-03` done; `01-04` remaining)
+
 **Success Criteria:**
 1. SQLite schema for memories and session events exists with migrations and indexes.
 2. Local embedding module generates deterministic embeddings from text inputs.

@@ -25,8 +25,8 @@
 
 ### Retrieval and Injection
 
-- [ ] **RETR-01**: User can retrieve semantically relevant memories for current task query.
-- [ ] **RETR-02**: User retrieval score combines semantic similarity, recency, and importance.
+- [x] **RETR-01**: User can retrieve semantically relevant memories for current task query.
+- [x] **RETR-02**: User retrieval score combines semantic similarity, recency, and importance.
 - [ ] **RETR-03**: User startup memory injection is capped by configurable token budget.
 - [ ] **RETR-04**: User can request additional memories on demand beyond auto-injection.
 - [ ] **RETR-05**: User memory importance is boosted after successful retrieval (bounded).
@@ -99,8 +99,8 @@
 | CAPT-02 | Phase 2 | Pending |
 | CAPT-03 | Phase 1 | Complete |
 | CAPT-04 | Phase 2 | Pending |
-| RETR-01 | Phase 1 | Pending |
-| RETR-02 | Phase 1 | Pending |
+| RETR-01 | Phase 1 | Complete |
+| RETR-02 | Phase 1 | Complete |
 | RETR-03 | Phase 3 | Pending |
 | RETR-04 | Phase 3 | Pending |
 | RETR-05 | Phase 3 | Pending |
