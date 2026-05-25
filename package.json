@@ -1,0 +1,18 @@
+{
+  "name": "sessionmem",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --reporter=dot",
+    "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.8"
+  }
+}
