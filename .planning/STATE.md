@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-05-25T21:50:41.571Z"
+progress:
+  total_phases: 8
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+---
+
 # Project State
 
 **Project:** sessionmem
@@ -7,9 +20,9 @@
 
 - Milestone: v1.0 launch-ready foundation
 - Current phase: Phase 1 - Core Memory Engine Foundation
-- Progress: 0 / 8 phases complete
-- Current plan position: 3 / 4 complete in Phase 1 (next: 01-04)
-- Last completed plan: 01-03-PLAN.md
+- Progress: 1 / 8 phases complete
+- Current plan position: 4 / 4 complete in Phase 1 (next: 02-01)
+- Last completed plan: 01-04-PLAN.md
 
 ## Project Reference
 
@@ -43,21 +56,25 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 1. 2026-05-25 (01-03): Locked retrieval scoring weights at semantic `0.60`, recency `0.25`, importance `0.15`.
 2. 2026-05-25 (01-03): Kept retrieval API backward compatible with `query`/`limit` aliases while implementing `queryText`/`topK`.
+3. 2026-05-25 (01-04): Validated lifecycle requests with zod schemas at the service boundary.
+4. 2026-05-25 (01-04): Used DomainError + error envelopes for host-agnostic adapter responses.
+5. 2026-05-25 (01-04): Enforced local-only defaults and explicit opt-in for external providers.
 
 ## Performance Metrics
 
 | Date | Phase | Plan | Duration | Tasks | Files |
 |---|---|---|---|---:|---:|
 | 2026-05-25 | 01-core-memory-engine-foundation | 03 | 4min | 2 | 7 |
+| 2026-05-25 | 01-core-memory-engine-foundation | 04 | 6min | 2 | 7 |
 
 ## Session
 
-- Last session: 2026-05-25T21:48:40Z
-- Stopped at: Completed 01-core-memory-engine-foundation-03-PLAN.md
+- Last session: 2026-05-25T21:50:41Z
+- Stopped at: Completed 01-core-memory-engine-foundation-04-PLAN.md
 
 ## Next Action
 
-Run: `$gsd:execute-phase 01-core-memory-engine-foundation` (continue with `01-04-PLAN.md`)
+Run: `$gsd-discuss-phase 2`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*
