@@ -207,7 +207,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const ranked = retrieveMemories({
         db,
         projectId: parsed.projectId,
-        query: parsed.query,
+        queryText: parsed.query,
         limit: parsed.limit,
       });
 
