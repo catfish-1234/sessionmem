@@ -41,6 +41,13 @@
 
 **Requirements:** CAPT-02, CAPT-04, SECU-04
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md - Define lifecycle contracts, failure persistence, and Wave 0 tests
+- [ ] 02-02-PLAN.md - Implement session-end orchestration with local/cloud retry-fallback flow
+- [ ] 02-03-PLAN.md - Add cloud-warning visibility, opt-in verification, and security docs
+
 **Success Criteria:**
 1. Session end pipeline summarizes event stream into bounded summary format.
 2. Summarization mode supports cloud model path and local fallback path.
