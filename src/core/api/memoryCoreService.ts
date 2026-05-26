@@ -7,10 +7,7 @@ import {
   listMemoriesByProject,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
-import {
-  insertSessionEvent,
-  listSessionEventsBySession,
-} from "../storage/sessionEventsRepo.js";
+import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
   exportMemoriesRequestSchema,
@@ -35,6 +32,7 @@ import {
   assertLocalOnlyPolicy,
   type LocalOnlyPolicyConfig,
 } from "./localOnlyPolicy.js";
+import { createSessionLifecycleService } from "./sessionLifecycleService.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
 
@@ -126,6 +124,10 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
   const dimension = deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const { db } = deps;
+  const lifecycleService = createSessionLifecycleService({
+    db,
+    embeddingDimension: dimension,
+  });
 
   const methods: {
     [M in MemoryCoreMethod]: (
@@ -179,55 +181,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async handleSessionEnd(request) {
       const parsed = parseRequest(handleSessionEndRequestSchema, request);
-      const eventCount = listSessionEventsBySession(
-        db,
-        parsed.projectId,
-        parsed.sessionId,
-      ).length;
-
-      if (!parsed.config.autoSummarize) {
-        return {
-          ok: true,
-          status: "skipped_disabled",
-          usedMode: "local",
-          warningCodes: [],
-        };
-      }
-
-      if (eventCount < parsed.config.minimumEventThreshold) {
-        return {
-          ok: true,
-          status: "skipped_threshold",
-          usedMode: "local",
-          warningCodes: [],
-        };
-      }
-
-      const memoryId = parsed.memoryId ?? `${parsed.sessionId}-summary`;
-      const summary = `Session ${parsed.sessionId} ended with ${eventCount} events.`;
-      const embedding = deterministicEmbed(summary, dimension);
-
-      upsertSessionSummaryMemory(db, {
-        id: memoryId,
-        project_id: parsed.projectId,
-        session_id: parsed.sessionId,
-        source_adapter: parsed.sourceAdapter,
-        kind: "summary",
-        content: summary,
-        normalized_content: embedding.normalizedText,
-        importance: 7,
-        embedding: JSON.stringify(embedding.vector),
-        embedding_dim: embedding.dimension,
-        embedding_version: embedding.embeddingVersion,
-      });
-
-      return {
-        ok: true,
-        status: "stored",
-        usedMode: "local",
-        warningCodes: [],
-        memoryId,
-      };
+      return lifecycleService.handleSessionEnd(parsed);
     },
 
     async storeMemory(request) {
