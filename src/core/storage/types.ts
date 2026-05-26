@@ -49,3 +49,27 @@ export interface InsertMemoryInput {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface SummarizationFailureRecord {
+  id: string;
+  project_id: string;
+  session_id: string;
+  source_adapter: string;
+  reason: string;
+  attempt_count: number;
+  last_error_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InsertSummarizationFailureInput {
+  id: string;
+  project_id: string;
+  session_id: string;
+  source_adapter: string;
+  reason: string;
+  attempt_count: number;
+  last_error_json: string;
+  created_at?: string;
+  updated_at?: string;
+}
