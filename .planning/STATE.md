@@ -14,28 +14,28 @@ progress:
 # Project State
 
 **Project:** sessionmem
-**State Updated:** 2026-05-25
+**State Updated:** 2026-05-26
 
 ## Current Status
 
 - Milestone: v1.0 launch-ready foundation
-- Current phase: Phase 2 - Session Lifecycle + Summarization Pipeline
-- Progress: 1 / 8 phases complete
-- Current plan position: Context captured for Phase 2 (planning next)
-- Last completed plan: 01-04-PLAN.md
+- Current phase: Phase 3 - Injection Quality + Token Control
+- Progress: 2 / 8 phases complete
+- Current plan position: Phase 2 complete and verified
+- Last completed plan: 02-03-PLAN.md
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** Agent should remember right past decisions at right time, across sessions and platforms, without user re-explaining context.
-**Current focus:** Phase 1 - Core Memory Engine Foundation
+**Current focus:** Phase 3 - Injection Quality + Token Control
 
 ## Requirements Status
 
 - v1 requirements: 35
 - Mapped in roadmap: 35
-- Completed: 5
+- Completed: 8
 - In progress: 0
 
 ## Execution Preferences
@@ -59,6 +59,9 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 3. 2026-05-25 (01-04): Validated lifecycle requests with zod schemas at the service boundary.
 4. 2026-05-25 (01-04): Used DomainError + error envelopes for host-agnostic adapter responses.
 5. 2026-05-25 (01-04): Enforced local-only defaults and explicit opt-in for external providers.
+6. 2026-05-25 (02-02): Session-end lifecycle orchestration now runs threshold-gated summarize flow with retry/fallback.
+7. 2026-05-25 (02-03): Cloud summarization visibility standardized via warning code `cloud_summarization_enabled`.
+8. 2026-05-25 (02-03): Cloud path remains explicit opt-in (`allowCloudSummarization=true` + API key).
 
 ## Performance Metrics
 
@@ -66,15 +69,18 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 |---|---|---|---|---:|---:|
 | 2026-05-25 | 01-core-memory-engine-foundation | 03 | 4min | 2 | 7 |
 | 2026-05-25 | 01-core-memory-engine-foundation | 04 | 6min | 2 | 7 |
+| 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 01 | 14min | 3 | 9 |
+| 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 02 | 16min | 3 | 9 |
+| 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 03 | 10min | 3 | 5 |
 
 ## Session
 
-- Last session: 2026-05-25T22:04:00Z
-- Stopped at: Phase 2 context gathered
+- Last session: 2026-05-26T04:47:47Z
+- Stopped at: Phase 2 execution complete
 
 ## Next Action
 
-Run: `$gsd-plan-phase 2`
+Run: `$gsd-discuss-phase 3`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*

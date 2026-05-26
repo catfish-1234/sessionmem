@@ -10,7 +10,7 @@
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
 | 1 | Core Memory Engine Foundation | Build host-agnostic core storage, schema, embedding, retrieval primitives, and adapter contract baseline | CAPT-01, CAPT-03, RETR-01, RETR-02, SECU-03 | 5 |
-| 2 | 3/3 | Complete    | 2026-05-26 | 4 |
+| 2 | Session Lifecycle + Summarization Pipeline | Implement session event ingestion and end-of-session summarization pipeline with local/cloud strategy | CAPT-02, CAPT-04, SECU-04 | 4 |
 | 3 | Injection Quality + Token Control | Implement startup injection formatter and ranking controls with bounded token budget and importance feedback | RETR-03, RETR-04, RETR-05 | 5 |
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
 | 5 | CLI Lifecycle and Data Operations | Ship complete CLI for install/uninstall/search/list/show/forget/stats/export/import | CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06 | 6 |
@@ -41,12 +41,12 @@
 
 **Requirements:** CAPT-02, CAPT-04, SECU-04
 
-**Plans:** 3/3 plans complete
+**Plans:** 3/3 plans complete (completed 2026-05-26)
 
 Plans:
-- [ ] 02-01-PLAN.md - Define lifecycle contracts, failure persistence, and Wave 0 tests
-- [ ] 02-02-PLAN.md - Implement session-end orchestration with local/cloud retry-fallback flow
-- [ ] 02-03-PLAN.md - Add cloud-warning visibility, opt-in verification, and security docs
+- [x] 02-01-PLAN.md - Define lifecycle contracts, failure persistence, and Wave 0 tests
+- [x] 02-02-PLAN.md - Implement session-end orchestration with local/cloud retry-fallback flow
+- [x] 02-03-PLAN.md - Add cloud-warning visibility, opt-in verification, and security docs
 
 **Success Criteria:**
 1. Session end pipeline summarizes event stream into bounded summary format.
