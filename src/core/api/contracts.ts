@@ -160,6 +160,7 @@ export const handleSessionEndResponseSchema = z.object({
   status: z.enum(["stored", "skipped_threshold", "skipped_disabled", "failed"]),
   usedMode: z.enum(["local", "cloud"]),
   warningCodes: z.array(z.string()),
+  warningMessages: z.array(z.string()),
   failureRecordId: z.string().min(1).optional(),
   memoryId: z.string().min(1).optional(),
 });

@@ -24,6 +24,8 @@ interface LifecycleRetryConfig {
 const CLOUD_RETRY_CONFIG: LifecycleRetryConfig = {
   retries: 2,
 };
+const CLOUD_ENABLED_MESSAGE =
+  "Cloud summarization active: allowCloudSummarization=true and ANTHROPIC_API_KEY present";
 
 export interface SessionLifecycleServiceDeps {
   db: Database;
@@ -120,6 +122,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         status: "skipped_disabled",
         usedMode: "local",
         warningCodes: [],
+        warningMessages: [],
       };
     }
 
@@ -129,6 +132,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         status: "skipped_threshold",
         usedMode: "local",
         warningCodes: [],
+        warningMessages: [],
       };
     }
 
@@ -161,7 +165,11 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           ok: true,
           status: "stored",
           usedMode: "cloud",
-          warningCodes: cloudResult.warningCodes,
+          warningCodes: [
+            "cloud_summarization_enabled",
+            ...cloudResult.warningCodes,
+          ],
+          warningMessages: [CLOUD_ENABLED_MESSAGE],
           memoryId,
         };
       } catch {
@@ -183,8 +191,13 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           status: "stored",
           usedMode: "local",
           warningCodes: [
+            "cloud_summarization_enabled",
             "cloud_fallback_to_local",
             ...fallbackResult.warningCodes,
+          ],
+          warningMessages: [
+            CLOUD_ENABLED_MESSAGE,
+            "Cloud summarization failed; fallback to local summarizer succeeded.",
           ],
           memoryId,
         };
@@ -204,7 +217,14 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           ok: true,
           status: "failed",
           usedMode: "local",
-          warningCodes: ["cloud_fallback_to_local_failed"],
+          warningCodes: [
+            "cloud_summarization_enabled",
+            "cloud_fallback_to_local_failed",
+          ],
+          warningMessages: [
+            CLOUD_ENABLED_MESSAGE,
+            "Cloud summarization failed; local fallback also failed.",
+          ],
           failureRecordId,
         };
       }
@@ -225,6 +245,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         status: "stored",
         usedMode: "local",
         warningCodes: localResult.warningCodes,
+        warningMessages: [],
         memoryId,
       };
     } catch (error) {
@@ -244,6 +265,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         status: "failed",
         usedMode: "local",
         warningCodes: ["local_summarization_failed"],
+        warningMessages: [],
         failureRecordId,
       };
     }
