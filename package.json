@@ -8,7 +8,8 @@
     "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot"
   },
   "dependencies": {
-    "better-sqlite3": "^12.4.1"
+    "better-sqlite3": "^12.4.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

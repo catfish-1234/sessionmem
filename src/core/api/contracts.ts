@@ -40,6 +40,30 @@ export const summarizeSessionToMemoryRequestSchema = z.object({
   importance: z.number().int().min(1).max(10),
 });
 
+export const factModeSchema = z.enum([
+  "summary-only",
+  "facts-only",
+  "summary+facts",
+]);
+
+export const handleSessionEndConfigSchema = z.object({
+  autoSummarize: z.boolean().default(true),
+  minimumEventThreshold: z.number().int().min(1).max(100).default(3),
+  summaryTokenCap: z.number().int().min(1).default(300),
+  redactionEnabled: z.boolean().default(true),
+  factMode: factModeSchema.default("summary+facts"),
+  allowCloudSummarization: z.boolean().default(false),
+  anthropicApiKey: z.string().min(1).optional(),
+});
+
+export const handleSessionEndRequestSchema = z.object({
+  projectId: z.string().min(1),
+  sessionId: z.string().min(1),
+  sourceAdapter: z.string().min(1),
+  memoryId: z.string().min(1).optional(),
+  config: handleSessionEndConfigSchema.default({}),
+});
+
 export const storeMemoryRequestSchema = z.object({
   memoryId: z.string().min(1),
   projectId: z.string().min(1),
@@ -131,6 +155,15 @@ export const summarizeSessionToMemoryResponseSchema = z.object({
   memoryId: z.string().min(1),
 });
 
+export const handleSessionEndResponseSchema = z.object({
+  ok: z.literal(true),
+  status: z.enum(["stored", "skipped_threshold", "skipped_disabled", "failed"]),
+  usedMode: z.enum(["local", "cloud"]),
+  warningCodes: z.array(z.string()),
+  failureRecordId: z.string().min(1).optional(),
+  memoryId: z.string().min(1).optional(),
+});
+
 export const importMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   imported: z.number().int().nonnegative(),
@@ -151,6 +184,9 @@ export type IngestSessionEventsRequest = z.infer<
 export type SummarizeSessionToMemoryRequest = z.infer<
   typeof summarizeSessionToMemoryRequestSchema
 >;
+export type HandleSessionEndRequest = z.infer<
+  typeof handleSessionEndRequestSchema
+>;
 export type StoreMemoryRequest = z.infer<typeof storeMemoryRequestSchema>;
 export type RetrieveMemoriesRequest = z.infer<typeof retrieveMemoriesRequestSchema>;
 export type ListMemoriesRequest = z.infer<typeof listMemoriesRequestSchema>;
@@ -166,6 +202,9 @@ export type IngestSessionEventsResponse = z.infer<
 export type SummarizeSessionToMemoryResponse = z.infer<
   typeof summarizeSessionToMemoryResponseSchema
 >;
+export type HandleSessionEndResponse = z.infer<
+  typeof handleSessionEndResponseSchema
+>;
 export type StoreMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
 export type RetrieveMemoriesResponse = z.infer<typeof memoryListResponseSchema>;
 export type ListMemoriesResponse = z.infer<typeof memoryListResponseSchema>;
@@ -178,6 +217,7 @@ export type StatsResponse = z.infer<typeof statsResponseSchema>;
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
   summarizeSessionToMemory: SummarizeSessionToMemoryRequest;
+  handleSessionEnd: HandleSessionEndRequest;
   storeMemory: StoreMemoryRequest;
   retrieveMemories: RetrieveMemoriesRequest;
   listMemories: ListMemoriesRequest;
@@ -191,6 +231,7 @@ export interface MemoryCoreRequestMap {
 export interface MemoryCoreResponseMap {
   ingestSessionEvents: IngestSessionEventsResponse;
   summarizeSessionToMemory: SummarizeSessionToMemoryResponse;
+  handleSessionEnd: HandleSessionEndResponse;
   storeMemory: StoreMemoryResponse;
   retrieveMemories: RetrieveMemoriesResponse;
   listMemories: ListMemoriesResponse;
