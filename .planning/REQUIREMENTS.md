@@ -19,9 +19,9 @@
 ### Session Capture
 
 - [x] **CAPT-01**: User session events are captured locally with project and session IDs.
-- [ ] **CAPT-02**: User session end triggers summary generation with configurable local/cloud summarizer.
+- [x] **CAPT-02**: User session end triggers summary generation with configurable local/cloud summarizer.
 - [x] **CAPT-03**: User summary is embedded locally and stored durably in SQLite.
-- [ ] **CAPT-04**: User can disable auto-summarize and still store manual memories.
+- [x] **CAPT-04**: User can disable auto-summarize and still store manual memories.
 
 ### Retrieval and Injection
 
@@ -51,7 +51,7 @@
 - [ ] **SECU-01**: User can set retention policy for automatic pruning of old memories.
 - [ ] **SECU-02**: User can redact common secret patterns before summary persistence.
 - [x] **SECU-03**: User can keep memory layer fully local (no external storage/retrieval dependency).
-- [ ] **SECU-04**: User is warned/documented when cloud summarization path is enabled.
+- [x] **SECU-04**: User is warned/documented when cloud summarization path is enabled.
 
 ### Quality and Launch
 
@@ -96,9 +96,9 @@
 | PLAT-07 | Phase 4 | Pending |
 | PLAT-08 | Phase 4 | Pending |
 | CAPT-01 | Phase 1 | Complete |
-| CAPT-02 | Phase 2 | Pending |
+| CAPT-02 | Phase 2 | Complete |
 | CAPT-03 | Phase 1 | Complete |
-| CAPT-04 | Phase 2 | Pending |
+| CAPT-04 | Phase 2 | Complete |
 | RETR-01 | Phase 1 | Complete |
 | RETR-02 | Phase 1 | Complete |
 | RETR-03 | Phase 3 | Pending |
@@ -116,7 +116,7 @@
 | SECU-01 | Phase 6 | Pending |
 | SECU-02 | Phase 6 | Pending |
 | SECU-03 | Phase 1 | Complete |
-| SECU-04 | Phase 2 | Pending |
+| SECU-04 | Phase 2 | Complete |
 | QLTY-01 | Phase 8 | Pending |
 | QLTY-02 | Phase 8 | Pending |
 | QLTY-03 | Phase 8 | Pending |
