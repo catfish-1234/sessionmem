@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
+    "js-tiktoken": "^1.0.21",
     "zod": "^4.4.3"
   },
   "devDependencies": {

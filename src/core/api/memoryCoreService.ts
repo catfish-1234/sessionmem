@@ -2,9 +2,11 @@ import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
+import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
   insertMemory,
   listMemoriesByProject,
+  recordUse,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
@@ -17,6 +19,7 @@ import {
   importMemoriesRequestSchema,
   ingestSessionEventsRequestSchema,
   listMemoriesRequestSchema,
+  recordMemoryUsedRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
@@ -52,6 +55,11 @@ interface MemoryDto {
   updatedAt: string;
 }
 
+interface RetrievedMemoryDto extends MemoryDto {
+  semantic: number;
+  score: RetrievedMemoryCandidate["score"];
+}
+
 export interface CreateMemoryCoreServiceDeps {
   db: Database;
   embeddingDimension?: number;
@@ -77,6 +85,26 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
     embeddingVersion: record.embedding_version,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
+  };
+}
+
+function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemoryDto {
+  return {
+    id: record.id,
+    projectId: record.project_id,
+    sessionId: record.session_id,
+    sourceAdapter: record.source_adapter,
+    kind: record.kind,
+    content: record.content,
+    normalizedContent: record.normalized_content,
+    importance: record.importance,
+    embedding: null,
+    embeddingDim: record.embedding_dim,
+    embeddingVersion: record.embedding_version,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+    semantic: record.semantic,
+    score: record.score,
   };
 }
 
@@ -215,17 +243,36 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async retrieveMemories(request) {
       const parsed = parseRequest(retrieveMemoriesRequestSchema, request);
+      const limit =
+        parsed.depth === "deep" ? Math.min(parsed.limit * 2, 100) : parsed.limit;
       const ranked = retrieveMemories({
         db,
         projectId: parsed.projectId,
         queryText: parsed.query,
-        limit: parsed.limit,
+        limit,
       });
 
       return {
         ok: true,
-        memories: ranked.map(toMemoryDto),
+        memories: ranked.map(toRetrievedMemoryDto),
         total: ranked.length,
+      };
+    },
+
+    async recordMemoryUsed(request) {
+      const parsed = parseRequest(recordMemoryUsedRequestSchema, request);
+      const result = recordUse(db, {
+        project_id: parsed.projectId,
+        memory_id: parsed.memoryId,
+        feedback_type: parsed.feedbackType,
+        used_at: parsed.usedAt,
+      });
+
+      return {
+        ok: true,
+        memoryId: result.memory_id,
+        previousImportance: result.previous_importance,
+        newImportance: result.new_importance,
       };
     },
 

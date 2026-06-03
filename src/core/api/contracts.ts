@@ -78,6 +78,15 @@ export const retrieveMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
   query: z.string().min(1),
   limit: z.number().int().min(1).max(100).default(20),
+  mode: z.enum(["auto", "on-demand"]).default("auto"),
+  depth: z.enum(["default", "deep"]).default("default"),
+});
+
+export const recordMemoryUsedRequestSchema = z.object({
+  projectId: z.string().min(1),
+  memoryId: z.string().min(1),
+  feedbackType: z.enum(["auto_use", "manual"]).default("auto_use"),
+  usedAt: z.string().min(1).optional(),
 });
 
 export const listMemoriesRequestSchema = z.object({
@@ -134,6 +143,31 @@ export const memoryListResponseSchema = z.object({
   total: z.number().int().nonnegative(),
 });
 
+export const scoreBreakdownSchema = z.object({
+  raw: z.object({
+    semantic: z.number(),
+    recency: z.number(),
+    importance: z.number(),
+  }),
+  weighted: z.object({
+    semantic: z.number(),
+    recency: z.number(),
+    importance: z.number(),
+  }),
+  total: z.number(),
+});
+
+export const retrievedMemorySchema = memorySchema.extend({
+  semantic: z.number(),
+  score: scoreBreakdownSchema,
+});
+
+export const retrieveMemoriesResponseSchema = z.object({
+  ok: z.literal(true),
+  memories: z.array(retrievedMemorySchema),
+  total: z.number().int().nonnegative(),
+});
+
 export const exportMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   memories: z.array(memorySchema),
@@ -170,6 +204,13 @@ export const importMemoriesResponseSchema = z.object({
   imported: z.number().int().nonnegative(),
 });
 
+export const recordMemoryUsedResponseSchema = z.object({
+  ok: z.literal(true),
+  memoryId: z.string().min(1),
+  previousImportance: z.number().int().min(1).max(10),
+  newImportance: z.number().int().min(1).max(10),
+});
+
 export interface ErrorResponseEnvelope {
   ok: false;
   error: {
@@ -190,6 +231,9 @@ export type HandleSessionEndRequest = z.infer<
 >;
 export type StoreMemoryRequest = z.infer<typeof storeMemoryRequestSchema>;
 export type RetrieveMemoriesRequest = z.infer<typeof retrieveMemoriesRequestSchema>;
+export type RecordMemoryUsedRequest = z.infer<
+  typeof recordMemoryUsedRequestSchema
+>;
 export type ListMemoriesRequest = z.infer<typeof listMemoriesRequestSchema>;
 export type GetMemoryRequest = z.infer<typeof getMemoryRequestSchema>;
 export type ForgetMemoryRequest = z.infer<typeof forgetMemoryRequestSchema>;
@@ -207,7 +251,12 @@ export type HandleSessionEndResponse = z.infer<
   typeof handleSessionEndResponseSchema
 >;
 export type StoreMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
-export type RetrieveMemoriesResponse = z.infer<typeof memoryListResponseSchema>;
+export type RetrieveMemoriesResponse = z.infer<
+  typeof retrieveMemoriesResponseSchema
+>;
+export type RecordMemoryUsedResponse = z.infer<
+  typeof recordMemoryUsedResponseSchema
+>;
 export type ListMemoriesResponse = z.infer<typeof memoryListResponseSchema>;
 export type GetMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
 export type ForgetMemoryResponse = z.infer<typeof operationResultSchema>;
@@ -221,6 +270,7 @@ export interface MemoryCoreRequestMap {
   handleSessionEnd: HandleSessionEndRequest;
   storeMemory: StoreMemoryRequest;
   retrieveMemories: RetrieveMemoriesRequest;
+  recordMemoryUsed: RecordMemoryUsedRequest;
   listMemories: ListMemoriesRequest;
   getMemory: GetMemoryRequest;
   forgetMemory: ForgetMemoryRequest;
@@ -235,6 +285,7 @@ export interface MemoryCoreResponseMap {
   handleSessionEnd: HandleSessionEndResponse;
   storeMemory: StoreMemoryResponse;
   retrieveMemories: RetrieveMemoriesResponse;
+  recordMemoryUsed: RecordMemoryUsedResponse;
   listMemories: ListMemoriesResponse;
   getMemory: GetMemoryResponse;
   forgetMemory: ForgetMemoryResponse;

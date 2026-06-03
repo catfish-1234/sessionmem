@@ -48,6 +48,7 @@ describe("schema migrations", () => {
     expect(tableExists(db, "session_events")).toBe(true);
     expect(tableExists(db, "memories")).toBe(true);
     expect(tableExists(db, "summarization_failures")).toBe(true);
+    expect(tableExists(db, "memory_feedback")).toBe(true);
 
     expect(indexExists(db, "idx_memories_project_updated")).toBe(true);
     expect(indexExists(db, "idx_memories_project_session")).toBe(true);
@@ -57,6 +58,7 @@ describe("schema migrations", () => {
       indexExists(db, "idx_session_events_project_session_event_index"),
     ).toBe(true);
     expect(indexExists(db, "idx_sum_fail_project_session")).toBe(true);
+    expect(indexExists(db, "idx_memory_feedback_memory_created")).toBe(true);
 
     db.close();
   });
@@ -70,7 +72,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(3);
+    expect(countRow.count).toBe(4);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -79,6 +81,7 @@ describe("schema migrations", () => {
       "001_initial.sql",
       "002_indexes.sql",
       "003_summarization_failures.sql",
+      "004_memory_feedback.sql",
     ]);
 
     db.close();
