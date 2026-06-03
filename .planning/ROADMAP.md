@@ -60,6 +60,8 @@ Plans:
 
 **Requirements:** RETR-03, RETR-04, RETR-05
 
+**Plan Progress:** 1 / 3 complete (`03-01` done)
+
 **Success Criteria:**
 1. Startup injection formatter enforces configurable token cap.
 2. Retrieval pipeline supports on-demand deeper fetch beyond default auto-injection.

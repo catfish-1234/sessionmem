@@ -2,27 +2,27 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-06-03T00:00:00.000Z"
+status: in_progress
+last_updated: "2026-06-03T23:56:59.338Z"
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
 ---
 
 # Project State
 
 **Project:** sessionmem
-**State Updated:** 2026-05-26
+**State Updated:** 2026-06-03
 
 ## Current Status
 
 - Milestone: v1.0 launch-ready foundation
 - Current phase: Phase 3 - Injection Quality + Token Control
 - Progress: 2 / 8 phases complete
-- Current plan position: Phase 3 context gathered, ready for planning
-- Last completed plan: 02-03-PLAN.md
+- Current plan position: Phase 3 plan 01 complete; plans 02-03 remain
+- Last completed plan: 03-01-PLAN.md
 
 ## Project Reference
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 - v1 requirements: 35
 - Mapped in roadmap: 35
-- Completed: 8
+- Completed: 10
 - In progress: 0
 
 ## Execution Preferences
@@ -62,6 +62,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 6. 2026-05-25 (02-02): Session-end lifecycle orchestration now runs threshold-gated summarize flow with retry/fallback.
 7. 2026-05-25 (02-03): Cloud summarization visibility standardized via warning code `cloud_summarization_enabled`.
 8. 2026-05-25 (02-03): Cloud path remains explicit opt-in (`allowCloudSummarization=true` + API key).
+9. 2026-06-03 (03-01): Auto-use memory feedback increments importance by 1 and caps at 9 to keep successful retrieval boosts bounded.
+10. 2026-06-03 (03-01): Retrieval score metadata uses a dedicated retrieved-memory DTO so list/export memory responses remain backward compatible.
 
 ## Performance Metrics
 
@@ -72,16 +74,17 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 01 | 14min | 3 | 9 |
 | 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 02 | 16min | 3 | 9 |
 | 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 03 | 10min | 3 | 5 |
+| 2026-06-03 | 03-injection-quality-token-control | 01 | 4min | 1 | 13 |
 
 ## Session
 
-- Last session: 2026-06-03T00:00:00Z
-- Stopped at: Phase 3 context gathered
+- Last session: 2026-06-03T23:56:59Z
+- Stopped at: Completed 03-01-PLAN.md
 - Resume file: .planning/phases/03-injection-quality-token-control/03-CONTEXT.md
 
 ## Next Action
 
-Run: `$gsd-plan-phase 3`
+Run: `$gsd-execute-phase 3`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*
