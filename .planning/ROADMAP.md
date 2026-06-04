@@ -60,7 +60,7 @@ Plans:
 
 **Requirements:** RETR-03, RETR-04, RETR-05
 
-**Plan Progress:** 1 / 3 complete (`03-01` done)
+**Plan Progress:** 3 / 3 complete (`03-01`, `03-02`, `03-03` done, completed 2026-06-04)
 
 **Success Criteria:**
 1. Startup injection formatter enforces configurable token cap.

@@ -3,26 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-06-03T23:56:59.338Z"
+last_updated: "2026-06-04T00:20:17.140Z"
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 10
 ---
 
 # Project State
 
 **Project:** sessionmem
-**State Updated:** 2026-06-03
+**State Updated:** 2026-06-04
 
 ## Current Status
 
 - Milestone: v1.0 launch-ready foundation
 - Current phase: Phase 3 - Injection Quality + Token Control
-- Progress: 2 / 8 phases complete
-- Current plan position: Phase 3 plan 01 complete; plans 02-03 remain
-- Last completed plan: 03-01-PLAN.md
+- Progress: 3 / 8 phases complete
+- Current plan position: Phase 3 complete; ready for Phase 4 planning/execution
+- Last completed plan: 03-03-PLAN.md
 
 ## Project Reference
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 - v1 requirements: 35
 - Mapped in roadmap: 35
-- Completed: 10
+- Completed: 11
 - In progress: 0
 
 ## Execution Preferences
@@ -64,6 +64,9 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 8. 2026-05-25 (02-03): Cloud path remains explicit opt-in (`allowCloudSummarization=true` + API key).
 9. 2026-06-03 (03-01): Auto-use memory feedback increments importance by 1 and caps at 9 to keep successful retrieval boosts bounded.
 10. 2026-06-03 (03-01): Retrieval score metadata uses a dedicated retrieved-memory DTO so list/export memory responses remain backward compatible.
+11. 2026-06-03 (03-02): Warnings with importance `>= 9` are treated as critical and preserved even when startup injection exceeds the token cap.
+12. 2026-06-03 (03-02): Startup injection trims lower-priority content before dropping non-critical entries, using deterministic kind ordering for stable output.
+13. 2026-06-04 (03-03): Quality harness codifies startup injection relevance as warning-first ordering, decision/fact preservation, critical-warning retention, and deterministic snapshot output.
 
 ## Performance Metrics
 
@@ -75,16 +78,18 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 02 | 16min | 3 | 9 |
 | 2026-05-25 | 02-session-lifecycle-summarization-pipeline | 03 | 10min | 3 | 5 |
 | 2026-06-03 | 03-injection-quality-token-control | 01 | 4min | 1 | 13 |
+| 2026-06-03 | 03-injection-quality-token-control | 02 | 3min | 1 | 4 |
+| 2026-06-04 | 03-injection-quality-token-control | 03 | 3min | 1 | 1 |
 
 ## Session
 
-- Last session: 2026-06-03T23:56:59Z
-- Stopped at: Completed 03-01-PLAN.md
-- Resume file: .planning/phases/03-injection-quality-token-control/03-CONTEXT.md
+- Last session: 2026-06-04T00:19:08Z
+- Stopped at: Completed 03-03-PLAN.md
+- Resume file: None
 
 ## Next Action
 
-Run: `$gsd-execute-phase 3`
+Run: `$gsd-verify-work 3` or `$gsd-discuss-phase 4`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*
