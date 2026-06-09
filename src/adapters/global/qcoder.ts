@@ -1,4 +1,7 @@
+import { join } from "path";
+import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import { IDEInstaller } from "../ide/installer.js";
 
 export class QCoderAdapter extends GenericMCPAdapter {
   name = "QCoder";
@@ -10,12 +13,14 @@ export class QCoderAdapter extends GenericMCPAdapter {
   };
 
   async install(): Promise<boolean> {
-    console.log("Installing for QCoder...");
-    return true;
+    const configPath = join(homedir(), ".qcoder", "config.json");
+    return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
+      "run",
+    ]);
   }
 
   async uninstall(): Promise<boolean> {
-    console.log("Uninstalling for QCoder...");
-    return true;
+    const configPath = join(homedir(), ".qcoder", "config.json");
+    return IDEInstaller.removeMcpConfig(configPath, "sessionmem");
   }
 }

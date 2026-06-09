@@ -1,9 +1,11 @@
+import { join } from "path";
+import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import { IDEInstaller } from "../ide/installer.js";
 
 export class ClaudeCodeAdapter extends GenericMCPAdapter {
   name = "Claude Code";
 
-  // Claude Code supports full MCP capability set
   capabilities = {
     supportsPrompts: true,
     supportsResources: true,
@@ -11,14 +13,14 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
   };
 
   async install(): Promise<boolean> {
-    console.log("Installing to ~/.claude.json...");
-    // Inject json config logic
-    return true;
+    const configPath = join(homedir(), ".claude.json");
+    return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
+      "run",
+    ]);
   }
 
   async uninstall(): Promise<boolean> {
-    console.log("Uninstalling from ~/.claude.json...");
-    // Cleanup json config logic
-    return true;
+    const configPath = join(homedir(), ".claude.json");
+    return IDEInstaller.removeMcpConfig(configPath, "sessionmem");
   }
 }
