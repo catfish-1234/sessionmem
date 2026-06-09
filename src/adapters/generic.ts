@@ -11,11 +11,16 @@ export class GenericMCPAdapter implements HostAdapterContract {
   };
 
   async call<M extends MemoryCoreMethod>(
-    method: M,
-    request: MemoryCoreRequest<M>,
+    _method: M,
+    _request: MemoryCoreRequest<M>,
   ): Promise<HostAdapterResult<M>> {
-    // Stub for now. Real implementation maps to MemoryCore.
-    throw new Error("Method not implemented.");
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL",
+        message: "MCP server not initialized. Start with: sessionmem run",
+      },
+    } as HostAdapterResult<M>;
   }
 
   async startMcpServer(): Promise<void> {

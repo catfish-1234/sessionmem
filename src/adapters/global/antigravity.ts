@@ -1,21 +1,26 @@
+import { join } from "path";
+import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import { IDEInstaller } from "../ide/installer.js";
 
 export class AntigravityAdapter extends GenericMCPAdapter {
   name = "Antigravity";
 
   capabilities = {
-    supportsPrompts: true, // Assuming full MCP capabilities
+    supportsPrompts: true,
     supportsResources: true,
     supportsTools: true,
   };
 
   async install(): Promise<boolean> {
-    console.log("Installing for Antigravity...");
-    return true;
+    const configPath = join(homedir(), ".antigravity", "config.json");
+    return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
+      "run",
+    ]);
   }
 
   async uninstall(): Promise<boolean> {
-    console.log("Uninstalling for Antigravity...");
-    return true;
+    const configPath = join(homedir(), ".antigravity", "config.json");
+    return IDEInstaller.removeMcpConfig(configPath, "sessionmem");
   }
 }
