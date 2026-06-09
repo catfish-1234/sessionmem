@@ -33,12 +33,12 @@
 
 ### CLI and Lifecycle
 
-- [ ] **CLI-01**: User can run `sessionmem install` to configure required local components.
-- [ ] **CLI-02**: User can run `sessionmem uninstall` to remove config/hooks without deleting memory DB by default.
-- [ ] **CLI-03**: User can run `sessionmem search "<query>"` and get ranked results.
-- [ ] **CLI-04**: User can run `sessionmem list`, `show <id>`, and `forget` operations.
-- [ ] **CLI-05**: User can export all memories and import them back losslessly.
-- [ ] **CLI-06**: User can run `sessionmem stats` to see memory count, DB size, and token usage metrics.
+- [x] **CLI-01**: User can run `sessionmem install` to configure required local components.
+- [x] **CLI-02**: User can run `sessionmem uninstall` to remove config/hooks without deleting memory DB by default.
+- [x] **CLI-03**: User can run `sessionmem search "<query>"` and get ranked results.
+- [x] **CLI-04**: User can run `sessionmem list`, `show <id>`, and `forget` operations.
+- [x] **CLI-05**: User can export all memories and import them back losslessly.
+- [x] **CLI-06**: User can run `sessionmem stats` to see memory count, DB size, and token usage metrics.
 
 ### Team Mode
 
@@ -104,12 +104,12 @@
 | RETR-03 | Phase 3 | Complete |
 | RETR-04 | Phase 3 | Complete |
 | RETR-05 | Phase 3 | Complete |
-| CLI-01 | Phase 5 | Pending |
-| CLI-02 | Phase 5 | Pending |
-| CLI-03 | Phase 5 | Pending |
-| CLI-04 | Phase 5 | Pending |
-| CLI-05 | Phase 5 | Pending |
-| CLI-06 | Phase 5 | Pending |
+| CLI-01 | Phase 5 | Complete |
+| CLI-02 | Phase 5 | Complete |
+| CLI-03 | Phase 5 | Complete |
+| CLI-04 | Phase 5 | Complete |
+| CLI-05 | Phase 5 | Complete |
+| CLI-06 | Phase 5 | Complete |
 | TEAM-01 | Phase 7 | Pending |
 | TEAM-02 | Phase 7 | Pending |
 | TEAM-03 | Phase 7 | Pending |

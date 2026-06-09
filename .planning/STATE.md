@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-06-09T18:37:37.605Z"
+last_updated: "2026-06-09T18:51:02.903Z"
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 38
 ---
 
@@ -20,17 +20,17 @@ progress:
 ## Current Status
 
 - Milestone: v1.0 launch-ready foundation
-- Current phase: Phase 4 - Multi-Platform Adapter Rollout (complete)
+- Current phase: Phase 5 - CLI Lifecycle and Data Operations (in progress)
 - Progress: 4 / 8 phases complete
-- Current plan position: Phase 4 complete; ready for Phase 5 planning/execution
-- Last completed plan: 04-05-PLAN.md
+- Current plan position: Phase 5 Plan 1 complete; ready for Phase 5 Plan 2
+- Last completed plan: 05-01-PLAN.md
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-24)
 
 **Core value:** Agent should remember right past decisions at right time, across sessions and platforms, without user re-explaining context.
-**Current focus:** Phase 5 - CLI Lifecycle and Data Operations (next)
+**Current focus:** Phase 05 — cli-lifecycle-and-data-operations
 
 ## Requirements Status
 
@@ -68,6 +68,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 11. 2026-06-03 (03-02): Warnings with importance `>= 9` are treated as critical and preserved even when startup injection exceeds the token cap.
 12. 2026-06-03 (03-02): Startup injection trims lower-priority content before dropping non-critical entries, using deterministic kind ordering for stable output.
 13. 2026-06-04 (03-03): Quality harness codifies startup injection relevance as warning-first ordering, decision/fact preservation, critical-warning retention, and deterministic snapshot output.
+14. 2026-06-09 (05-01): Resolved deriveProjectId() as basename of process.cwd() — aligns with Phase 1/2 session capture project_id convention (Open Q1).
+15. 2026-06-09 (05-01): Used import.meta.url + dirname to resolve migrationsDir package-relative — avoids loading attacker-controlled migrations from invocation directory (T-05-01).
 
 ## Performance Metrics
 
@@ -86,16 +88,17 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 | 2026-06-08 | 04-multi-platform-adapter-rollout | 03 | - | - | 4 |
 | 2026-06-08 | 04-multi-platform-adapter-rollout | 04 | - | - | 2 |
 | 2026-06-08 | 04-multi-platform-adapter-rollout | 05 | - | - | 3 |
+| 2026-06-09 | 05-cli-lifecycle-and-data-operations | 01 | 15min | 3 | 28 |
 
 ## Session
 
-- Last session: 2026-06-08T00:00:00Z
-- Stopped at: Completed 04-05-PLAN.md and 04-VERIFICATION.md
+- Last session: 2026-06-09T00:00:00Z
+- Stopped at: Completed 05-01-PLAN.md
 - Resume file: None
 
 ## Next Action
 
-Run: `$gsd-discuss-phase 5` or `$gsd-plan-phase 5`
+Execute Phase 5 Plan 2: `$gsd:execute-phase 5`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*

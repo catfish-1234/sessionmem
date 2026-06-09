@@ -13,7 +13,7 @@
 | 2 | Session Lifecycle + Summarization Pipeline | Implement session event ingestion and end-of-session summarization pipeline with local/cloud strategy | CAPT-02, CAPT-04, SECU-04 | 4 |
 | 3 | Injection Quality + Token Control | Implement startup injection formatter and ranking controls with bounded token budget and importance feedback | RETR-03, RETR-04, RETR-05 | 5 |
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
-| 5 | CLI Lifecycle and Data Operations | Ship complete CLI for install/uninstall/search/list/show/forget/stats/export/import | CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06 | 6 |
+| 5 | CLI Lifecycle and Data Operations | 1/4 | In Progress|  |
 | 6 | Security, Privacy, and Retention Hardening | Add redaction, retention controls, and local-first policy safeguards | SECU-01, SECU-02 | 5 |
 | 7 | Team Mode Shared Memory | Implement shared-path sync, provenance metadata, and safe local-only fallback | TEAM-01, TEAM-02, TEAM-03 | 5 |
 | 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
@@ -104,12 +104,12 @@ Plans:
 
 **Requirements:** CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Build/bin pipeline, shared CLI context, output formatters, commander shell, Wave 0 tests
+- [x] 05-01-PLAN.md — Build/bin pipeline, shared CLI context, output formatters, commander shell, Wave 0 tests
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
