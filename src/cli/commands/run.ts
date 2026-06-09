@@ -25,10 +25,3 @@ export async function runMcpServer() {
   }
 }
 
-// Simple execution block for the CLI entry point
-if (process.argv[2] === "run") {
-  runMcpServer().catch((err) => {
-    console.error("Fatal error running MCP server:", err);
-    process.exit(1);
-  });
-}
