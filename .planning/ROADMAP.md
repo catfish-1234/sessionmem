@@ -98,6 +98,14 @@ Plans:
 
 **Requirements:** CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Build/bin pipeline, shared CLI context, output formatters, commander shell, Wave 0 tests
+- [ ] 05-02-PLAN.md — Install lifecycle (D-04/D-05), run refactor, uninstall (--purge), ping
+- [ ] 05-03-PLAN.md — search, list, show, stats commands (CLI-03/04/06)
+- [ ] 05-04-PLAN.md — forget (dry-run), export, import (skip/--merge) (CLI-04/05)
+
 **Success Criteria:**
 1. `install` configures required local components and validates health.
 2. `uninstall` removes integration artifacts but preserves DB unless explicit purge.
