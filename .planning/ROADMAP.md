@@ -75,13 +75,22 @@ Plans:
 
 **Requirements:** PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08
 
+**Plans:** 5/5 plans complete (verified 2026-06-08)
+
+Plans:
+- [x] 04-01-PLAN.md - Core adapter factory and auto-detect logic
+- [x] 04-02-PLAN.md - Claude Code, Codex, Antigravity, QCoder, and Generic MCP adapters
+- [x] 04-03-PLAN.md - Cursor, Cline, and Windsurf adapters with IDEInstaller
+- [x] 04-04-PLAN.md - Missing capability fallbacks (fetch_memories, startup_inject_memories)
+- [x] 04-05-PLAN.md - Manual config fallback, run command, ping tool
+
 **Success Criteria:**
-1. Claude Code adapter install/run path verified end-to-end.
-2. Codex adapter install/run path verified end-to-end.
-3. Cursor/Cline/Windsurf adapters verified with host-specific config workflows.
-4. Antigravity and QCoder adapters implemented with documented setup and caveats.
-5. Generic MCP adapter path documented and tested for additional hosts.
-6. Adapter parity test matrix passes for core memory behaviors.
+1. Claude Code adapter install/run path verified end-to-end. ✓
+2. Codex adapter install/run path verified end-to-end. ✓
+3. Cursor/Cline/Windsurf adapters verified with host-specific config workflows. ✓
+4. Antigravity and QCoder adapters implemented with documented setup and caveats. ✓
+5. Generic MCP adapter path documented and tested for additional hosts. ✓
+6. Adapter parity test matrix passes for core memory behaviors. ✓
 
 ### Phase 5: CLI Lifecycle and Data Operations
 

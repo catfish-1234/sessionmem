@@ -7,14 +7,14 @@
 
 ### Platform Integration
 
-- [ ] **PLAT-01**: User can install and run `sessionmem` on Claude Code.
-- [ ] **PLAT-02**: User can install and run `sessionmem` on Codex.
-- [ ] **PLAT-03**: User can install and run `sessionmem` on Cursor.
-- [ ] **PLAT-04**: User can install and run `sessionmem` on Cline.
-- [ ] **PLAT-05**: User can install and run `sessionmem` on Windsurf.
-- [ ] **PLAT-06**: User can install and run `sessionmem` on Antigravity.
-- [ ] **PLAT-07**: User can install and run `sessionmem` on QCoder.
-- [ ] **PLAT-08**: User can connect any other MCP-compatible host using documented generic adapter path.
+- [x] **PLAT-01**: User can install and run `sessionmem` on Claude Code.
+- [x] **PLAT-02**: User can install and run `sessionmem` on Codex.
+- [x] **PLAT-03**: User can install and run `sessionmem` on Cursor.
+- [x] **PLAT-04**: User can install and run `sessionmem` on Cline.
+- [x] **PLAT-05**: User can install and run `sessionmem` on Windsurf.
+- [x] **PLAT-06**: User can install and run `sessionmem` on Antigravity.
+- [x] **PLAT-07**: User can install and run `sessionmem` on QCoder.
+- [x] **PLAT-08**: User can connect any other MCP-compatible host using documented generic adapter path.
 
 ### Session Capture
 
@@ -87,14 +87,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | Phase 4 | Pending |
-| PLAT-02 | Phase 4 | Pending |
-| PLAT-03 | Phase 4 | Pending |
-| PLAT-04 | Phase 4 | Pending |
-| PLAT-05 | Phase 4 | Pending |
-| PLAT-06 | Phase 4 | Pending |
-| PLAT-07 | Phase 4 | Pending |
-| PLAT-08 | Phase 4 | Pending |
+| PLAT-01 | Phase 4 | Complete |
+| PLAT-02 | Phase 4 | Complete |
+| PLAT-03 | Phase 4 | Complete |
+| PLAT-04 | Phase 4 | Complete |
+| PLAT-05 | Phase 4 | Complete |
+| PLAT-06 | Phase 4 | Complete |
+| PLAT-07 | Phase 4 | Complete |
+| PLAT-08 | Phase 4 | Complete |
 | CAPT-01 | Phase 1 | Complete |
 | CAPT-02 | Phase 2 | Complete |
 | CAPT-03 | Phase 1 | Complete |
