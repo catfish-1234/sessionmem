@@ -18,7 +18,7 @@ interface IncludedMemory {
 }
 
 function kindRank(kind: string): number {
-  return KIND_RANK.get(kind) ?? KIND_ORDER.length;
+  return KIND_RANK.get(kind as (typeof KIND_ORDER)[number]) ?? KIND_ORDER.length;
 }
 
 function isCriticalWarning(memory: RetrievedMemoryCandidate): boolean {

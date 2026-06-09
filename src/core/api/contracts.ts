@@ -61,7 +61,7 @@ export const handleSessionEndRequestSchema = z.object({
   sessionId: z.string().min(1),
   sourceAdapter: z.string().min(1),
   memoryId: z.string().min(1).optional(),
-  config: handleSessionEndConfigSchema.default({}),
+  config: handleSessionEndConfigSchema.default(() => handleSessionEndConfigSchema.parse({})),
 });
 
 export const storeMemoryRequestSchema = z.object({

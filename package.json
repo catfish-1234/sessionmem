@@ -3,12 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "bin": {
+    "sessionmem": "./dist/cli/index.js"
+  },
   "scripts": {
+    "build": "tsc && node scripts/copy-migrations.mjs",
     "test": "vitest run --reporter=dot",
     "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
+    "commander": "^15.0.0",
     "js-tiktoken": "^1.0.21",
     "zod": "^4.4.3"
   },
