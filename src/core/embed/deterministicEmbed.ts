@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { EMBEDDING_VERSION } from "./embeddingVersion";
-import { normalizeEmbeddingText } from "./textNormalize";
+import { EMBEDDING_VERSION } from "./embeddingVersion.js";
+import { normalizeEmbeddingText } from "./textNormalize.js";
 
 export interface DeterministicEmbedding {
   vector: number[];
