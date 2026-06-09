@@ -1,3 +1,28 @@
-export async function statsCommand(): Promise<void> {
-  throw new Error("not implemented");
+import { statSync } from "fs";
+import { createCliContext, type CliContext } from "../context.js";
+import { countTokens } from "../../core/injection/tokenBudget.js";
+import { listMemoriesByProject } from "../../core/storage/memoryRepo.js";
+
+export async function statsCommand(ctx?: CliContext): Promise<void> {
+  const context = ctx ?? createCliContext();
+  const result = await context.service.call("stats", {
+    projectId: context.projectId,
+  });
+
+  if (!result.ok) {
+    console.error(result.error.message);
+    process.exit(1);
+  }
+
+  const sizeBytes = statSync(context.dbPath).size;
+  const totalTokens = listMemoriesByProject(context.db, context.projectId).reduce(
+    (sum, m) => sum + countTokens(m.content),
+    0,
+  );
+
+  process.stdout.write(
+    `memories: ${result.totalMemories}\n` +
+      `db_size_bytes: ${sizeBytes}\n` +
+      `total_content_tokens: ${totalTokens}\n`,
+  );
 }
