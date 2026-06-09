@@ -29,6 +29,7 @@
 **Plan Progress:** 4 / 4 complete (`01-01`, `01-02`, `01-03`, `01-04` done)
 
 **Success Criteria:**
+
 1. SQLite schema for memories and session events exists with migrations and indexes.
 2. Local embedding module generates deterministic embeddings from text inputs.
 3. Retrieval service returns ranked memories using semantic + recency + importance weighting.
@@ -44,11 +45,13 @@
 **Plans:** 3/3 plans complete (completed 2026-05-26)
 
 Plans:
+
 - [x] 02-01-PLAN.md - Define lifecycle contracts, failure persistence, and Wave 0 tests
 - [x] 02-02-PLAN.md - Implement session-end orchestration with local/cloud retry-fallback flow
 - [x] 02-03-PLAN.md - Add cloud-warning visibility, opt-in verification, and security docs
 
 **Success Criteria:**
+
 1. Session end pipeline summarizes event stream into bounded summary format.
 2. Summarization mode supports cloud model path and local fallback path.
 3. Auto-summarize can be disabled while manual memory storage remains available.
@@ -63,6 +66,7 @@ Plans:
 **Plan Progress:** 3 / 3 complete (`03-01`, `03-02`, `03-03` done, completed 2026-06-04)
 
 **Success Criteria:**
+
 1. Startup injection formatter enforces configurable token cap.
 2. Retrieval pipeline supports on-demand deeper fetch beyond default auto-injection.
 3. Importance boost updates memory relevance score safely with upper bound.
@@ -78,6 +82,7 @@ Plans:
 **Plans:** 5/5 plans complete (verified 2026-06-08)
 
 Plans:
+
 - [x] 04-01-PLAN.md - Core adapter factory and auto-detect logic
 - [x] 04-02-PLAN.md - Claude Code, Codex, Antigravity, QCoder, and Generic MCP adapters
 - [x] 04-03-PLAN.md - Cursor, Cline, and Windsurf adapters with IDEInstaller
@@ -85,6 +90,7 @@ Plans:
 - [x] 04-05-PLAN.md - Manual config fallback, run command, ping tool
 
 **Success Criteria:**
+
 1. Claude Code adapter install/run path verified end-to-end. ✓
 2. Codex adapter install/run path verified end-to-end. ✓
 3. Cursor/Cline/Windsurf adapters verified with host-specific config workflows. ✓
@@ -101,12 +107,18 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 05-01-PLAN.md — Build/bin pipeline, shared CLI context, output formatters, commander shell, Wave 0 tests
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02-PLAN.md — Install lifecycle (D-04/D-05), run refactor, uninstall (--purge), ping
 - [ ] 05-03-PLAN.md — search, list, show, stats commands (CLI-03/04/06)
 - [ ] 05-04-PLAN.md — forget (dry-run), export, import (skip/--merge) (CLI-04/05)
 
 **Success Criteria:**
+
 1. `install` configures required local components and validates health.
 2. `uninstall` removes integration artifacts but preserves DB unless explicit purge.
 3. `search`, `list`, `show`, and `forget` commands operate correctly on stored memories.
@@ -121,6 +133,7 @@ Plans:
 **Requirements:** SECU-01, SECU-02
 
 **Success Criteria:**
+
 1. Retention policy prunes old memories by configurable age.
 2. Secret redaction pass runs before summary persistence.
 3. Security tests cover common secret-pattern leakage scenarios.
@@ -134,6 +147,7 @@ Plans:
 **Requirements:** TEAM-01, TEAM-02, TEAM-03
 
 **Success Criteria:**
+
 1. Shared-path sync reads/writes team memory artifacts reliably.
 2. Team memories include author and timestamp provenance metadata.
 3. Merge behavior handles duplicates/conflicts predictably.
@@ -147,6 +161,7 @@ Plans:
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
 **Success Criteria:**
+
 1. Unit and integration test coverage includes core flows and adapters.
 2. CI pipeline passes lint, typecheck, tests, and install smoke checks on major OSes.
 3. Docs set includes install, architecture, privacy/security, troubleshooting, migration.
