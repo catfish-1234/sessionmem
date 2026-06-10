@@ -128,6 +128,18 @@ export const statsRequestSchema = z.object({
   projectId: z.string().min(1),
 });
 
+export const pruneMemoriesRequestSchema = z.object({
+  projectId: z.string().min(1),
+  retentionDays: z.number().int(),
+  dryRun: z.boolean().default(true),
+});
+
+export const pruneMemoriesResponseSchema = z.object({
+  ok: z.literal(true),
+  deleted: z.number().int().nonnegative(),
+  eligible: z.number().int().nonnegative(),
+});
+
 export const operationResultSchema = z.object({
   ok: z.literal(true),
 });
@@ -240,6 +252,7 @@ export type ForgetMemoryRequest = z.infer<typeof forgetMemoryRequestSchema>;
 export type ExportMemoriesRequest = z.infer<typeof exportMemoriesRequestSchema>;
 export type ImportMemoriesRequest = z.infer<typeof importMemoriesRequestSchema>;
 export type StatsRequest = z.infer<typeof statsRequestSchema>;
+export type PruneMemoriesRequest = z.infer<typeof pruneMemoriesRequestSchema>;
 
 export type IngestSessionEventsResponse = z.infer<
   typeof ingestSessionEventsResponseSchema
@@ -263,6 +276,9 @@ export type ForgetMemoryResponse = z.infer<typeof operationResultSchema>;
 export type ExportMemoriesResponse = z.infer<typeof exportMemoriesResponseSchema>;
 export type ImportMemoriesResponse = z.infer<typeof importMemoriesResponseSchema>;
 export type StatsResponse = z.infer<typeof statsResponseSchema>;
+export type PruneMemoriesResponse = z.infer<
+  typeof pruneMemoriesResponseSchema
+>;
 
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
@@ -277,6 +293,7 @@ export interface MemoryCoreRequestMap {
   exportMemories: ExportMemoriesRequest;
   importMemories: ImportMemoriesRequest;
   stats: StatsRequest;
+  pruneMemories: PruneMemoriesRequest;
 }
 
 export interface MemoryCoreResponseMap {
@@ -292,6 +309,7 @@ export interface MemoryCoreResponseMap {
   exportMemories: ExportMemoriesResponse;
   importMemories: ImportMemoriesResponse;
   stats: StatsResponse;
+  pruneMemories: PruneMemoriesResponse;
 }
 
 export type MemoryCoreMethod = keyof MemoryCoreRequestMap;
