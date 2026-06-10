@@ -88,6 +88,46 @@ export function listMemoriesByProject(
   return stmt.all(projectId) as MemoryRecord[];
 }
 
+export function countMemoriesOlderThan(
+  db: Database,
+  projectId: string,
+  cutoffIso: string,
+): number {
+  // created_at is stored as strftime('%Y-%m-%dT%H:%M:%fZ') text; lexicographic
+  // comparison against an ISO-8601 UTC cutoff is correct for this fixed format.
+  const row = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM memories
+      WHERE project_id = ? AND created_at < ?
+    `,
+    )
+    .get(projectId, cutoffIso) as { count: number };
+
+  return row.count;
+}
+
+export function deleteMemoriesOlderThan(
+  db: Database,
+  projectId: string,
+  cutoffIso: string,
+): number {
+  // Hard-delete (D-04) scoped to the memories table only (D-01); never touches
+  // session_events or memory_feedback. project_id and cutoff are bound, never
+  // string-concatenated, to prevent SQL injection (T-06-05).
+  const result = db
+    .prepare(
+      `
+      DELETE FROM memories
+      WHERE project_id = ? AND created_at < ?
+    `,
+    )
+    .run(projectId, cutoffIso);
+
+  return result.changes;
+}
+
 export function updateMemoryImportance(
   db: Database,
   projectId: string,
