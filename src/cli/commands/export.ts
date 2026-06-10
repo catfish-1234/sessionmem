@@ -19,7 +19,11 @@ export async function exportCommand(
     process.exit(1);
   }
 
-  // D-11: default ISO-dated path; V12: resolve user-supplied path
+  // D-11: default ISO-dated path; V12: resolve user-supplied path.
+  // Path comes from the local CLI invoker's own argv (same trust level as
+  // the process itself), not from a remote/network-facing input, so
+  // resolving it to an absolute path is not a path-traversal vector.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const outPath = pathArg
     ? resolve(pathArg)
     : join(homedir(), ".sessionmem", `export-${new Date().toISOString().slice(0, 10)}.json`);
