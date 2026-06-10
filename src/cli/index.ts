@@ -11,6 +11,7 @@ import { forgetCommand } from "./commands/forget.js";
 import { exportCommand } from "./commands/export.js";
 import { importCommand } from "./commands/import.js";
 import { statsCommand } from "./commands/stats.js";
+import { redactScanCommand } from "./commands/redactScan.js";
 import { retentionPruneCommand } from "./commands/retention.js";
 import { configGetCommand, configSetCommand } from "./commands/config.js";
 
@@ -84,6 +85,14 @@ program
   .command("stats")
   .description("Show memory statistics for the current project")
   .action(() => statsCommand());
+
+// redact-scan (D-07/D-14) — one-time scrub over existing memories. Scan is the
+// non-destructive default; --apply redacts matching rows in place.
+program
+  .command("redact-scan")
+  .description("Scan existing memories for secrets (dry-run by default)")
+  .option("--apply", "Redact matching memories in place")
+  .action((options) => redactScanCommand(options));
 
 // retention command group (D-12) — room for future subcommands. The "prune"
 // subcommand is dry-run by default; --force confirms the hard delete.
