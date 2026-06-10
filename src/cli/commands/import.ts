@@ -11,7 +11,11 @@ export async function importCommand(
 ): Promise<void> {
   const context = ctx ?? createCliContext();
 
-  // V12: resolve user-supplied path
+  // V12: resolve user-supplied path.
+  // Path comes from the local CLI invoker's own argv (same trust level as
+  // the process itself), not from a remote/network-facing input, so
+  // resolving it to an absolute path is not a path-traversal vector.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const inPath = resolve(pathArg);
 
   // Read and parse the JSON file
