@@ -1,6 +1,14 @@
 import type { Database } from "better-sqlite3";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
-import { upsertSessionSummaryMemory } from "../storage/memoryRepo.js";
+import {
+  deleteMemoriesOlderThan as deleteMemoriesOlderThanDefault,
+  upsertSessionSummaryMemory,
+} from "../storage/memoryRepo.js";
+import {
+  configFilePath,
+  DEFAULT_POLICY_CONFIG,
+  readPolicyConfig,
+} from "../config/policyConfig.js";
 import { listSessionEventsBySession } from "../storage/sessionEventsRepo.js";
 import { insertSummarizationFailure } from "../storage/summarizationFailuresRepo.js";
 import type {
@@ -33,7 +41,32 @@ export interface SessionLifecycleServiceDeps {
   summarizeLocal?: (input: LocalSummarizeInput) => Promise<SummarizerResult>;
   summarizeCloud?: (input: CloudSummarizeInput) => Promise<SummarizerResult>;
   createFailureId?: () => string;
+  /**
+   * Path to the policy config used to resolve the effective retentionDays for
+   * the session-end light prune. Defaults to {@link configFilePath}. Test seam.
+   */
+  policyConfigPath?: string;
+  /**
+   * Explicit retentionDays override. When provided it takes precedence over the
+   * policy config (test seam so integration tests can drive the prune
+   * deterministically without writing to the real `~/.sessionmem` config).
+   */
+  retentionDaysOverride?: number;
+  /** Clock seam for computing the prune cutoff. Defaults to {@link Date}. */
+  now?: () => Date;
+  /**
+   * Injection seam for the hard-delete. Defaults to the real
+   * {@link deleteMemoriesOlderThanDefault}; tests force a throw to prove the
+   * prune failure is swallowed (D-02 / T-06-14).
+   */
+  deleteOldMemories?: (
+    db: Database,
+    projectId: string,
+    cutoffIso: string,
+  ) => number;
 }
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function defaultFailureId(): string {
   return `sumfail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -106,6 +139,48 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   const embeddingDimension =
     deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const createFailureId = deps.createFailureId ?? defaultFailureId;
+  const policyConfigPath = deps.policyConfigPath ?? configFilePath();
+  const now = deps.now ?? (() => new Date());
+  const deleteOldMemories =
+    deps.deleteOldMemories ?? deleteMemoriesOlderThanDefault;
+
+  /**
+   * Resolve the effective retentionDays for a session-end prune. An explicit
+   * override wins (test seam); otherwise read the validated policy config, which
+   * itself falls back to the 90-day default on any failure (T-06-15).
+   */
+  function resolveRetentionDays(): number {
+    if (deps.retentionDaysOverride !== undefined) {
+      return deps.retentionDaysOverride;
+    }
+    try {
+      return readPolicyConfig(policyConfigPath).retentionDays;
+    } catch {
+      return DEFAULT_POLICY_CONFIG.retentionDays;
+    }
+  }
+
+  /**
+   * D-02: light, non-blocking retention prune executed once at session-end.
+   * Hard-deletes memories older than the effective retentionDays for this
+   * project. retentionDays<=0 disables pruning (D-03). Any failure is swallowed
+   * so it can never block or fail summarization (T-06-14).
+   */
+  function runLightPrune(projectId: string): void {
+    try {
+      const retentionDays = resolveRetentionDays();
+      if (retentionDays <= 0) {
+        return;
+      }
+      const cutoffMs = now().getTime() - retentionDays * MS_PER_DAY;
+      // ISO-8601 UTC with millisecond precision matches the stored created_at
+      // format (strftime('%Y-%m-%dT%H:%M:%fZ')) for lexicographic comparison.
+      const cutoffIso = new Date(cutoffMs).toISOString();
+      deleteOldMemories(deps.db, projectId, cutoffIso);
+    } catch {
+      // Light prune is best-effort: never block or fail summarization (D-02).
+    }
+  }
 
   async function handleSessionEnd(
     request: HandleSessionEndRequest,
@@ -117,6 +192,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
     );
 
     if (!request.config.autoSummarize) {
+      runLightPrune(request.projectId);
       return {
         ok: true,
         status: "skipped_disabled",
@@ -127,6 +203,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
     }
 
     if (events.length < request.config.minimumEventThreshold) {
+      runLightPrune(request.projectId);
       return {
         ok: true,
         status: "skipped_threshold",
@@ -161,6 +238,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           summary: cloudResult.summary,
         });
 
+        runLightPrune(request.projectId);
         return {
           ok: true,
           status: "stored",
@@ -186,6 +264,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           summary: fallbackResult.summary,
         });
 
+        runLightPrune(request.projectId);
         return {
           ok: true,
           status: "stored",
@@ -240,6 +319,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         summary: localResult.summary,
       });
 
+      runLightPrune(request.projectId);
       return {
         ok: true,
         status: "stored",

@@ -67,6 +67,18 @@ export interface CreateMemoryCoreServiceDeps {
   db: Database;
   embeddingDimension?: number;
   policyConfig?: LocalOnlyPolicyConfig;
+  /** Path to the policy config driving the session-end light prune. Test seam. */
+  policyConfigPath?: string;
+  /** Explicit retentionDays for the session-end light prune. Test seam. */
+  retentionDaysOverride?: number;
+  /** Clock seam for the session-end prune cutoff. */
+  now?: () => Date;
+  /** Injection seam for the session-end hard-delete (forces a throw in tests). */
+  deleteOldMemories?: (
+    db: Database,
+    projectId: string,
+    cutoffIso: string,
+  ) => number;
 }
 
 type MethodResult<M extends MemoryCoreMethod> =
@@ -158,6 +170,10 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
   const lifecycleService = createSessionLifecycleService({
     db,
     embeddingDimension: dimension,
+    policyConfigPath: deps.policyConfigPath,
+    retentionDaysOverride: deps.retentionDaysOverride,
+    now: deps.now,
+    deleteOldMemories: deps.deleteOldMemories,
   });
 
   const methods: {
