@@ -22,16 +22,30 @@ export interface CliContextOverrides {
 }
 
 function deriveProjectId(): string {
+  // Env override is a test-injection seam (mirrors Plan 01's override pattern):
+  // it lets a spawned binary target a deterministic projectId without touching
+  // the real ~/.sessionmem. No privilege boundary is crossed — the CLI runs as
+  // the invoking user and the env var is operator-controlled (T-05-15).
+  const envProjectId = process.env.SESSIONMEM_PROJECT_ID;
+  if (envProjectId && envProjectId.trim() !== "") return envProjectId;
+
   const cwd = process.cwd();
   const parts = cwd.replace(/\\/g, "/").split("/");
   return parts[parts.length - 1] || "default";
+}
+
+function defaultDbPath(dir: string): string {
+  // Env override seam (see deriveProjectId). Defaults to ~/.sessionmem/memories.db.
+  const envDbPath = process.env.SESSIONMEM_DB_PATH;
+  if (envDbPath && envDbPath.trim() !== "") return envDbPath;
+  return join(dir, "memories.db");
 }
 
 export function createCliContext(overrides: CliContextOverrides = {}): CliContext {
   const dir = join(homedir(), ".sessionmem");
   mkdirSync(dir, { recursive: true });
 
-  const dbPath = overrides.dbPath ?? join(dir, "memories.db");
+  const dbPath = overrides.dbPath ?? defaultDbPath(dir);
   const here = dirname(fileURLToPath(import.meta.url));
   const migrationsDir = overrides.migrationsDir ?? join(here, "..", "core", "schema", "migrations");
 
