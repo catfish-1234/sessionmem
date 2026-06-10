@@ -1,96 +1,69 @@
 ---
 phase: 05-cli-lifecycle-and-data-operations
-reviewed: 2026-06-09T00:00:00Z
+reviewed: 2026-06-09T19:00:00Z
 depth: standard
 files_reviewed: 28
 files_reviewed_list:
   - scripts/copy-migrations.mjs
-  - src/cli/context.ts
-  - src/cli/output.ts
-  - src/cli/index.ts
-  - src/cli/commands/uninstall.ts
-  - src/cli/commands/ping.ts
-  - src/cli/commands/search.ts
-  - src/cli/commands/list.ts
-  - src/cli/commands/show.ts
-  - src/cli/commands/forget.ts
   - src/cli/commands/export.ts
+  - src/cli/commands/forget.ts
   - src/cli/commands/import.ts
+  - src/cli/commands/list.ts
+  - src/cli/commands/ping.ts
+  - src/cli/commands/run.ts
+  - src/cli/commands/search.ts
+  - src/cli/commands/show.ts
   - src/cli/commands/stats.ts
+  - src/cli/commands/uninstall.ts
+  - src/cli/context.ts
+  - src/cli/index.ts
+  - src/cli/output.ts
+  - src/core/api/contracts.ts
+  - src/core/embed/deterministicEmbed.ts
+  - src/core/injection/formatStartupInjection.ts
   - tests/helpers/cliTestContext.ts
+  - tests/integration/cli/data-commands.spec.ts
+  - tests/integration/cli/export-import.spec.ts
+  - tests/integration/cli/forget.spec.ts
+  - tests/integration/cli/install.spec.ts
+  - tests/integration/cli/search.spec.ts
+  - tests/integration/cli/uninstall.spec.ts
   - tests/unit/cli/context.spec.ts
+  - tests/unit/cli/error-contract.spec.ts
   - tests/unit/cli/output.spec.ts
   - tests/unit/cli/stats.spec.ts
-  - tests/unit/cli/error-contract.spec.ts
-  - tests/integration/cli/install.spec.ts
-  - tests/integration/cli/uninstall.spec.ts
-  - tests/integration/cli/search.spec.ts
-  - tests/integration/cli/data-commands.spec.ts
-  - tests/integration/cli/forget.spec.ts
-  - tests/integration/cli/export-import.spec.ts
-  - src/cli/commands/run.ts
-  - src/core/embed/deterministicEmbed.ts
-  - src/core/api/contracts.ts
-  - src/core/injection/formatStartupInjection.ts
 findings:
-  critical: 2
+  critical: 1
   warning: 4
   info: 2
-  total: 8
+  total: 7
 status: issues_found
 ---
 
 # Phase 05: Code Review Report
 
-**Reviewed:** 2026-06-09T00:00:00Z
+**Reviewed:** 2026-06-09T19:00:00Z
 **Depth:** standard
 **Files Reviewed:** 28
 **Status:** issues_found
 
 ## Summary
 
-This phase implements the CLI lifecycle commands (`install`, `uninstall`, `run`, `ping`) and data-operation commands (`search`, `list`, `show`, `forget`, `export`, `import`, `stats`), plus supporting context and output formatters. The architecture is sound: every command routes through a `CliContext` injection seam, error envelopes are propagated cleanly, and the test coverage covers the major happy and sad paths.
+This re-review focuses on (1) verifying the gap-closure plan 05-05 (commits e5bbd2b, 3759cac) correctly fixed the commander ctx-collision BLOCKER from the prior VERIFICATION.md, and (2) confirming whether issues from the prior 05-REVIEW.md (status: issues_found, 2026-06-09T00:00:00Z) remain unresolved.
 
-Two blockers were found. The most critical is a type mismatch between Commander's string option values and the Zod number validator in `searchCommand`, which causes every real CLI invocation of `search --limit` (including the implicit default) to fail with a validation error. The second blocker is that `stats` performs a `statSync` call on `context.dbPath` without guarding against in-memory databases or non-existent paths, crashing unceremoniously instead of surfacing a structured error.
+**Gap-closure verification: PASS.** `src/cli/index.ts` now arrow-wraps all seven previously-affected `.action()` registrations (`search`, `list`, `show`, `forget`, `export`, `import`, `stats`), forwarding only the real positional args/options and dropping commander's injected trailing `Command` object. Each command's `ctx?: CliContext` parameter is therefore left `undefined` in production and correctly falls through to `createCliContext()`. `searchCommand`'s `coerceLimit()` helper now correctly handles commander's string `--limit` value (CR-01 from the prior review is resolved). The `SESSIONMEM_DB_PATH` / `SESSIONMEM_PROJECT_ID` env-override seam added to `context.ts` is scoped correctly (operator-controlled, defaults preserved).
 
-Four additional warnings cover: a silently masked log-directory creation failure in `run.ts`; inaccurate `--merge` output messaging in `import.ts`; a type-unsafe cast chain in `import.ts` that bypasses Zod validation for individual record fields; and `cliTestContext.ts` having no cleanup path for its temporary DB files.
-
----
+**However, four of the five non-CR-01 items from the prior review (CR-02, WR-01, WR-02, WR-03, WR-04, IN-01, IN-02) were NOT addressed by 05-05** — `git log` confirms `stats.ts`, `run.ts`, `import.ts`, `export.ts`, `ping.ts`, and `tests/helpers/cliTestContext.ts` have not been modified since their original Wave 3/4 commits. These findings are restated below (renumbered) since they remain valid defects in the current codebase. CR-02 (stats.ts crashes on non-file dbPath) is restated as a Critical finding because it is a real, reproducible crash path still present in shipped code.
 
 ## Critical Issues
 
-### CR-01: `search --limit` always fails — Commander passes string, Zod expects number
-
-**File:** `src/cli/index.ts:42` / `src/cli/commands/search.ts:14`
-
-**Issue:** Commander's `.option("--limit <n>", "Maximum number of results", "10")` always delivers `options.limit` as a string (e.g., `"10"` or `"5"`) regardless of what the user types — no integer parser is registered. In `searchCommand`, that string reaches `service.call("retrieveMemories", { limit: options.limit ?? 20 })`. The `retrieveMemoriesRequestSchema` validates `limit` as `z.number().int()`, which rejects strings (Zod does not coerce by default). The result is a `VALIDATION` error envelope on every real CLI invocation of `sessionmem search <query>` or `sessionmem search <query> --limit 5`.
-
-The TypeScript type annotation `SearchOptions.limit?: number` creates a false sense of safety here; Commander's `.action()` binding is untyped at runtime and the type mismatch is invisible to the compiler.
-
-**Fix:** Add the `parseInt` coercion parser in `index.ts`:
-```typescript
-// src/cli/index.ts
-program
-  .command("search <query>")
-  .description("Search memories by semantic query")
-  .option("--limit <n>", "Maximum number of results", (v) => parseInt(v, 10), 10)
-  .action(searchCommand);
-```
-Change the default from the string `"10"` to the number `10` (no quotes) so the `?? 20` fallback in `searchCommand` also remains consistent. Alternatively, parse inside `searchCommand`:
-```typescript
-// src/cli/commands/search.ts
-limit: typeof options.limit === "string" ? parseInt(options.limit, 10) : (options.limit ?? 20),
-```
-
----
-
-### CR-02: `statsCommand` crashes with `ENOENT` when `dbPath` is `:memory:`
+### CR-01: `statsCommand` crashes with `ENOENT`/`EISDIR` for non-regular-file `dbPath` (carried over from prior review CR-02 — NOT FIXED)
 
 **File:** `src/cli/commands/stats.ts:17`
 
-**Issue:** `statSync(context.dbPath)` throws `ENOENT` when `context.dbPath` is `":memory:"` (or any non-file path). This is precisely the value used in the export/import round-trip integration test (`freshCtx = { ..., dbPath: ":memory:" }`) and would also occur if a caller constructs a `CliContext` with an in-memory database for any other reason. When it throws, the error propagates out of `statsCommand` without the clean `console.error` + `process.exit(1)` contract every other command honors, producing an uncaught stack trace instead.
+**Issue:** `statSync(context.dbPath)` is called unguarded. If `context.dbPath` is `":memory:"` (used directly in `export-import.spec.ts:72` for the round-trip fresh context, and a legitimate value any caller could pass via `CliContextOverrides`), `statSync` throws `ENOENT`. The error propagates out of `statsCommand` uncaught — it bypasses the `console.error` + `process.exit(1)` contract that every other command in this phase honors (D-03), producing an unhandled rejection / raw stack trace instead of a clean error message.
 
-Even in production, `statSync` can legitimately throw if the file has been deleted between `openDb` and `statsCommand` (e.g., `--purge` in one terminal, `stats` in another). No error handling wraps the call.
+This is also reachable in production: if the DB file is deleted between `openDb()` and `statsCommand` (e.g., a concurrent `sessionmem uninstall --purge` in another terminal), `stats` crashes uncleanly.
 
 **Fix:**
 ```typescript
@@ -99,14 +72,7 @@ let sizeBytes = 0;
 try {
   sizeBytes = statSync(context.dbPath).size;
 } catch {
-  // dbPath is :memory: or file was removed; report 0
-}
-```
-If strict accuracy is required, surface it as a structured warning:
-```typescript
-} catch (err) {
-  const msg = err instanceof Error ? err.message : String(err);
-  console.error(`Warning: could not stat DB file: ${msg}`);
+  // dbPath may be ":memory:" or the file may have been removed; report 0
 }
 ```
 
@@ -114,64 +80,56 @@ If strict accuracy is required, surface it as a structured warning:
 
 ## Warnings
 
-### WR-01: `run.ts` silently swallows all log-write errors, including structural ones
+### WR-01: `run.ts` silently swallows all log-write errors, including structural ones (carried over — NOT FIXED)
 
 **File:** `src/cli/commands/run.ts:13-17`
 
-**Issue:** The log path is `~/.sessionmem/logs/mcp.log` but the `logs/` subdirectory is never created (only `~/.sessionmem/` is created in `createCliContext`). On first run the `writeFileSync` call will throw `ENOENT`. The bare `catch (err) { // Ignore }` block swallows every error — including unrelated ones like `EMFILE` (too many open files) or permission errors — making the failure completely invisible.
+**Issue:** The log path is `~/.sessionmem/logs/mcp.log`, but `~/.sessionmem/logs/` is never created (only `~/.sessionmem/` is created by `createCliContext`, and `runMcpServer` doesn't call `createCliContext` at all). The first `writeFileSync(logPath, logMessage, { flag: "a" })` throws `ENOENT`. The bare `catch (err) { /* Ignore */ }` swallows every error type — including `EACCES`, `EMFILE`, etc. — with no logging of what happened, and the unused `err` binding is dead.
 
-More importantly, the comment `// Ignore if log dir doesn't exist yet` documents intent to ignore one specific case but the implementation ignores all cases. If this is extended later to write meaningful data, silent failure will be very hard to debug.
-
-**Fix:** Either create the directory before writing, or tighten the catch:
+**Fix:**
 ```typescript
-// Option A: create the directory
-import { mkdirSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 const logDir = join(homedir(), ".sessionmem", "logs");
 mkdirSync(logDir, { recursive: true });
-writeFileSync(logPath, logMessage, { flag: "a" });
-
-// Option B: narrow the swallowed error
-} catch (err) {
-  if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-    // Re-throw unexpected errors
-    throw err;
-  }
+try {
+  writeFileSync(logPath, logMessage, { flag: "a" });
+} catch {
+  // best-effort logging; ignore failures
 }
 ```
 
 ---
 
-### WR-02: `importCommand` with `--merge` reports misleading `skipped 0 duplicates`
+### WR-02: `importCommand` with `--merge` always reports `skipped 0 duplicates` (carried over — NOT FIXED)
 
-**File:** `src/cli/commands/import.ts:74-75`
+**File:** `src/cli/commands/import.ts:38-46, 74-75`
 
-**Issue:** When `--merge` is passed, the pre-filter step is skipped entirely and `skippedCount` stays at `0`. The final log line always reads `Imported N, skipped 0 duplicates.` even when all N records already existed and were overwritten. The word "skipped" is semantically wrong for a merge operation; the user has no way to distinguish "nothing existed" from "everything was overwritten."
+**Issue:** When `--merge` is passed, the `if (!options.merge)` block (lines 38-46) is skipped entirely, so `skippedCount` stays `0` for the whole run. The final message at line 75 unconditionally reads `Imported N, skipped 0 duplicates.` even when every record in the file already existed and was overwritten via upsert. "Skipped 0 duplicates" is misleading for a merge — nothing was "skipped," but framing it as a duplicate count of zero implies no overlap occurred when in fact N records were overwritten.
 
-The integration test at `export-import.spec.ts:142` asserts `msg.includes("skipped 0 duplicates")` — it passes, but it is testing incorrect behavior.
+The integration test `export-import.spec.ts:142` (`expect(logCalls.some((msg) => msg.includes("skipped 0 duplicates")))`) locks in this misleading message as expected behavior.
 
 **Fix:**
 ```typescript
-// src/cli/commands/import.ts
 if (options.merge) {
   console.log(`Imported (merged) ${importedCount} memories.`);
 } else {
   console.log(`Imported ${importedCount}, skipped ${skippedCount} duplicates.`);
 }
 ```
+(Updating the fix requires updating the integration test assertion at `export-import.spec.ts:142` accordingly.)
 
 ---
 
-### WR-03: `importCommand` casts raw JSON fields with `as` rather than validating them
+### WR-03: `importCommand` casts raw JSON fields with `as` instead of validating per-record (carried over — NOT FIXED)
 
-**File:** `src/cli/commands/import.ts:56-66`
+**File:** `src/cli/commands/import.ts:43, 56-66`
 
-**Issue:** All fields from the raw `Record<string, unknown>` records are cast to their expected types with `as string`, `as number`, etc., before being passed to `service.call("importMemories", ...)`. This means validation by `importMemoryRecordSchema` in the service only runs after the cast — if the JSON file contains, for example, `{ "importance": "high" }`, the cast `r.importance as number` produces the string `"high"` typed as `number`, which then reaches the Zod schema. Zod will reject it and return an error envelope, which is handled, so no crash occurs.
+**Issue:** Raw `Record<string, unknown>` entries are cast directly to their expected types (`r.id as string`, `r.importance as number`, etc.) before being sent to `service.call("importMemories", ...)`. Two concrete problems:
 
-However, `r.id as string` will be `undefined` if `id` is missing, producing `undefined as string` = `undefined`, which Zod rejects with `z.string().min(1)`. The error message will be the internal Zod path (`memories[0].id`) rather than a user-friendly "record at index 0 is missing required field 'id'". This is a poor user experience but not a data-loss risk because the validation does fire.
+1. Line 43: `existingIds.has(r.id as string)` — if a record in the import file is missing `id` entirely, `r.id` is `undefined`, and `(undefined as string)` is still `undefined` at runtime. `Set.has(undefined)` returns `false` (assuming no existing memory has `id === undefined`), so the record is never filtered as a duplicate and is passed through to `importMemories`, where `importMemoryRecordSchema`'s `id: z.string().min(1)` will reject it — but only after the misleading `skippedCount` accounting has already run, and the resulting Zod error message (`memories[N].id: Required`) is not user-friendly (no indication of which JSON record/index failed).
+2. Lines 56-66: every field is force-cast (`r.kind as string`, `r.content as string`, `r.importance as number`, etc.) with no pre-validation, so type errors in the source JSON surface as raw Zod path errors rather than actionable per-record messages.
 
-The deeper concern: the cast `(r.projectId as string) ?? context.projectId` evaluates `r.projectId as string` first — if `r.projectId` is `null` (valid JSON), `null as string` is `null`, and `?? context.projectId` correctly substitutes. But if a future refactor changes the order of operations or the cast, silent wrong-projectId assignment becomes possible.
-
-**Fix:** Validate the raw records with `importMemoryRecordSchema` per-record before mapping, and report index-level errors to the user:
+**Fix:** Validate each raw record with `importMemoryRecordSchema.safeParse()` before mapping, and report index-level errors:
 ```typescript
 import { importMemoryRecordSchema } from "../../core/api/contracts.js";
 
@@ -183,85 +141,67 @@ for (let i = 0; i < records.length; i++) {
   }
 }
 ```
-This removes the need for all the `as` casts downstream.
 
 ---
 
-### WR-04: `cliTestContext.ts` leaks temporary DB files — no cleanup mechanism
+### WR-04: `cliTestContext.ts` leaks temp DB files and open handles — no cleanup (carried over — NOT FIXED)
 
-**File:** `tests/helpers/cliTestContext.ts:16-55`
+**File:** `tests/helpers/cliTestContext.ts:8-55`
 
-**Issue:** `createTestCliContext` creates a temp file at `tmpdir()/sessionmem-test-<uuid>.db` on every call. The returned `TestCliContext` defines a `cleanup?` optional field on the interface but never populates it — the field is always `undefined`. Tests that call `createTestCliContext` do not close `db` or delete the temp file.
+**Issue:** `createTestCliContext()` is called by nearly every test file in this phase (search, list/show, forget, export-import, stats, error-contract, context — at least 8 spec files, each with multiple `it()` blocks). Each call opens a new temp-file SQLite DB at `tmpdir()/sessionmem-test-<uuid>.db` via `better-sqlite3` (synchronous, holds an OS handle for process lifetime) and never closes it or deletes the file. The `TestCliContext.cleanup?` field is declared but never populated — it is always `undefined`.
 
-On a CI machine running the full test suite, this will accumulate hundreds of open SQLite file handles and orphaned temp files per run. `better-sqlite3` databases are synchronous and hold an OS file lock for the process lifetime. If the test runner spawns workers, the handles multiply.
+Running the full suite leaves dozens of orphaned `.db` (and `.db-wal`/`.db-shm` if WAL mode is used) files in the OS temp directory and dozens of unclosed file descriptors per test run.
 
-**Fix:** Populate the cleanup function and call it in `afterEach`:
+**Fix:**
 ```typescript
-// In cliTestContext.ts
+// cliTestContext.ts
+import { unlinkSync } from "fs";
+// ...
 return {
-  db,
-  service,
-  projectId,
-  dbPath,
+  db, service, projectId, dbPath,
   cleanup: () => {
     db.close();
-    try { unlinkSync(dbPath); } catch { /* ignore */ }
+    for (const suffix of ["", "-wal", "-shm"]) {
+      try { unlinkSync(dbPath + suffix); } catch { /* ignore */ }
+    }
   },
 };
-
-// In test files
-afterEach(() => {
-  ctx?.cleanup?.();
-});
 ```
+And add `afterEach(() => ctx?.cleanup?.())` to each consuming spec file (or a global `afterEach` in the test setup).
 
 ---
 
 ## Info
 
-### IN-01: `export.ts` has a duplicate `import { resolve } from "path"` import
+### IN-01: `export.ts` has a duplicate import from `"path"` (carried over — NOT FIXED)
 
 **File:** `src/cli/commands/export.ts:2-3`
 
-**Issue:** Both `join` and `resolve` are imported from `"path"` on separate lines. They should be combined into one destructured import.
-
+**Issue:**
 ```typescript
-// Current (lines 2-3):
+import { homedir } from "os";
 import { join } from "path";
 import { resolve } from "path";
+```
+`join` and `resolve` are imported from `"path"` in two separate statements.
 
-// Fix:
+**Fix:**
+```typescript
 import { join, resolve } from "path";
 ```
 
 ---
 
-### IN-02: `ping.ts` outputs success fields before checking status — creates inconsistent exit behavior
+### IN-02: `searchCommand`'s internal `DEFAULT_LIMIT = 20` is now effectively dead code for the CLI entry path
 
-**File:** `src/cli/commands/ping.ts:6-10`
+**File:** `src/cli/commands/search.ts:10, 12-16` and `src/cli/index.ts:51`
 
-**Issue:** The `status`, `version`, and `message` fields are printed unconditionally to `stdout` before the `if (result.status !== "ok")` check. If the ping fails, both the `console.log` output on stdout and the `console.error` message on stderr are emitted, which is confusing for consumers parsing the output. The success fields should not be printed if the command is about to exit with code 1.
+**Issue:** `index.ts` registers `--limit <n>` with a string default of `"10"`, so commander always supplies `options.limit = "10"` (or the user's value) — `options.limit` is never `undefined` when invoked via the real CLI. `coerceLimit`'s `if (value === undefined) return DEFAULT_LIMIT;` branch (returning 20) is therefore unreachable except for direct test-injection callers that pass `{}` (e.g. `searchCommand("query", {}, ctx)` in `search.spec.ts`). This produces a discrepancy: CLI users get a default of 10 results, while programmatic/test callers passing no `limit` get 20. This is not a crash, but it is a confusing inconsistency between two "defaults" for the same option that could mislead future maintainers.
 
-This is a minor UX issue; the current `pingTool` always returns `"ok"` so it does not surface in tests.
-
-**Fix:**
-```typescript
-export async function pingCommand(): Promise<void> {
-  const result = await pingTool.execute();
-
-  if (result.status !== "ok") {
-    console.error(`sessionmem ping failed: ${result.message}`);
-    process.exit(1);
-  }
-
-  console.log(`status: ${result.status}`);
-  console.log(`version: ${result.version}`);
-  console.log(`message: ${result.message}`);
-}
-```
+**Fix:** Pick one canonical default and apply it consistently — either change `index.ts`'s default to `"20"` to match `DEFAULT_LIMIT`, or remove `DEFAULT_LIMIT`/the `undefined` branch from `coerceLimit` and document that the CLI default lives solely in `index.ts`.
 
 ---
 
-_Reviewed: 2026-06-09T00:00:00Z_
+_Reviewed: 2026-06-09T19:00:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
