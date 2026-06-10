@@ -14,7 +14,12 @@ export async function statsCommand(ctx?: CliContext): Promise<void> {
     process.exit(1);
   }
 
-  const sizeBytes = statSync(context.dbPath).size;
+  let sizeBytes = 0;
+  try {
+    sizeBytes = statSync(context.dbPath).size;
+  } catch {
+    // dbPath may be ":memory:" or the file may have been removed; report 0
+  }
   const totalTokens = listMemoriesByProject(context.db, context.projectId).reduce(
     (sum, m) => sum + countTokens(m.content),
     0,
