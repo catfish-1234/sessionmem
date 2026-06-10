@@ -36,43 +36,52 @@ program
   .description("Check sessionmem server connectivity")
   .action(pingCommand);
 
+// NOTE: commander always appends its own Command instance as the final
+// argument to .action() callbacks. The search/list/show/forget/export/import/
+// stats commands all declare a trailing `ctx?: CliContext` parameter (the
+// test-injection seam). Passing a bare function reference would let commander's
+// Command object land in the ctx slot, so `ctx ?? createCliContext()` resolves
+// to a Command (which has no `.service`) and every command crashes at runtime.
+// Arrow-wrap each handler to forward ONLY the real positional args/options and
+// drop commander's trailing Command argument, leaving ctx undefined in
+// production so each command falls through to createCliContext().
 program
   .command("search <query>")
   .description("Search memories by semantic query")
   .option("--limit <n>", "Maximum number of results", "10")
-  .action(searchCommand);
+  .action((query, options) => searchCommand(query, options));
 
 program
   .command("list")
   .description("List all memories for the current project")
-  .action(listCommand);
+  .action(() => listCommand());
 
 program
   .command("show <id>")
   .description("Show full details of a memory by ID")
-  .action(showCommand);
+  .action((id) => showCommand(id));
 
 program
   .command("forget <id>")
   .description("Delete a memory by ID")
   .option("--force", "Confirm deletion without dry-run prompt")
-  .action(forgetCommand);
+  .action((id, options) => forgetCommand(id, options));
 
 program
   .command("export [path]")
   .description("Export memories to a JSON file")
-  .action(exportCommand);
+  .action((path) => exportCommand(path));
 
 program
   .command("import <path>")
   .description("Import memories from a JSON file")
   .option("--merge", "Overwrite existing memories with imported data")
-  .action(importCommand);
+  .action((path, options) => importCommand(path, options));
 
 program
   .command("stats")
   .description("Show memory statistics for the current project")
-  .action(statsCommand);
+  .action(() => statsCommand());
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
