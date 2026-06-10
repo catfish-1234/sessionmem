@@ -1,0 +1,16 @@
+# Gitleaks configuration for sessionmem.
+#
+# Extends the built-in default ruleset and adds an allowlist for intentional
+# test fixtures. Secret-redaction unit tests must construct concrete sample
+# secrets (AWS keys, GitHub tokens, JWTs, PEM blocks, etc.) to verify that the
+# redaction rules actually scrub them. These are canonical/docs-style example
+# values, NOT real credentials, so the secret scanner must not block them.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional sample secrets in secret-redaction test fixtures"
+paths = [
+  '''tests/unit/core/redaction-rules\.spec\.ts''',
+  '''tests/unit/core/policy-config\.spec\.ts''',
+]
