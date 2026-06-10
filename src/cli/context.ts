@@ -19,6 +19,12 @@ export interface CliContextOverrides {
   projectId?: string;
   db?: Database;
   service?: ReturnType<typeof createMemoryCoreService>;
+  /**
+   * Test seam for the install config-defaults step (D-10): target a temp
+   * config.json instead of ~/.sessionmem/config.json. Not consumed by
+   * createCliContext itself — install.ts reads it directly.
+   */
+  configPath?: string;
 }
 
 function deriveProjectId(): string {
