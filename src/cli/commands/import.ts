@@ -72,5 +72,9 @@ export async function importCommand(
   }
 
   const importedCount = result.imported;
-  console.log(`Imported ${importedCount}, skipped ${skippedCount} duplicates.`);
+  if (options.merge) {
+    console.log(`Imported (merged) ${importedCount} memories.`);
+  } else {
+    console.log(`Imported ${importedCount}, skipped ${skippedCount} duplicates.`);
+  }
 }
