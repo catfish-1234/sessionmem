@@ -1,11 +1,11 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-06-05
+**Analysis Date:** 2026-06-10
 
 ## Test Framework
 
 **Runner:**
-- Vitest 4.0.8
+- Vitest 4.1.8 (devDependency, per `package-lock.json` - note: README/template may reference 4.0.8, lockfile shows `^4.1.8`)
 - Config: None explicitly found (vitest defaults)
 - Run command: `npm test` or `vitest run`
 
@@ -19,6 +19,27 @@ npm test                   # Run all tests (vitest run --reporter=dot)
 npm run test:schema        # Run schema integration tests
 vitest run                 # Direct vitest call
 ```
+
+## CI / Continuous Integration
+
+**No dedicated test workflow found in `.github/workflows/`.** Only `.github/workflows/security.yml` exists - it does not run `npm test`, build, or typecheck. This means:
+- Test execution is NOT currently enforced by CI on push/PR to `main`
+- `npm test` and `npm run build` (tsc) must be run locally/manually before merging
+- Consider this a gap when planning new work that depends on CI feedback (see CONCERNS.md if present)
+
+**`.github/workflows/security.yml`** (`C:\Users\kavis\sessionmem\.github\workflows\security.yml`):
+- Triggers: `push` to `main`, and all `pull_request` events
+- Runs on `ubuntu-latest`
+- Steps:
+  - `actions/checkout@v6` with `fetch-depth: 0` (full history, needed for gitleaks history scan)
+  - **Semgrep** (`semgrep/semgrep-action@v1`, config: `auto`) - static analysis security scanning
+  - **Gitleaks** (`gitleaks/gitleaks-action@v3`) - secret scanning, uses `GITHUB_TOKEN`
+  - **Trivy** (`aquasecurity/trivy-action@master`, `scan-type: fs`, `severity: HIGH,CRITICAL`, `exit-code: 1`) - filesystem vulnerability scan; fails the build on HIGH/CRITICAL findings
+- Implication for new dependencies: adding a package with a known HIGH/CRITICAL CVE will fail this workflow - check Trivy compatibility before adding new deps
+
+**`.github/dependabot.yml`** (`C:\Users\kavis\sessionmem\.github\dependabot.yml`):
+- Weekly dependency update checks for both `npm` (root directory) and `github-actions` ecosystems
+- Expect periodic automated PRs bumping `package-lock.json` and workflow action versions
 
 ## Test File Organization
 
@@ -125,7 +146,7 @@ const events = [
 
 ## Coverage
 
-**Requirements:** None enforced
+**Requirements:** None enforced (no coverage step in CI; `.github/workflows/security.yml` covers security scanning only, not test coverage)
 
 **View Coverage:**
 ```bash
@@ -146,6 +167,10 @@ const events = [
 
 **E2E Tests:**
 - Not present
+
+**Security/Static Analysis (CI-enforced, not test-suite based):**
+- Semgrep, Gitleaks, Trivy run via `.github/workflows/security.yml` on every push to `main` and every PR
+- These are not unit/integration tests but act as a quality gate - new code/dependencies should be checked against these scanners locally if possible before pushing
 
 ## Common Patterns
 
@@ -176,4 +201,4 @@ it("persists and retrieves data", async () => {
 
 ---
 
-*Testing analysis: 2026-06-05*
+*Testing analysis: 2026-06-10*

@@ -1,6 +1,6 @@
 # Architecture
 
-**Analysis Date:** 2026-06-05
+**Analysis Date:** 2026-06-10
 
 ## System Overview
 
@@ -189,6 +189,42 @@
 - **Global state:** Database connection passed as dependency; no module-level singletons
 - **Circular imports:** None detected. Clear layer boundaries enforced.
 - **Type system:** Full TypeScript with Zod for runtime validation
+- **Build target:** `tsconfig.json` compiles `src/**/*.ts` to `dist/` via `tsc` (NodeNext module/moduleResolution, ES2022 target, `strict: true`, `esModuleInterop`, `skipLibCheck`, `resolveJsonModule`, no declarations/source maps); `tests/`, `dist/`, and `node_modules/` are excluded from the compile
+- **CI/security gates:** `.github/workflows/security.yml` ("Security Scan") runs on push to `main` and on pull requests, checking out full history (`fetch-depth: 0`) then running Semgrep (SAST, `config: auto`), Gitleaks (secret scanning), and Trivy (filesystem vulnerability scan; `severity: HIGH,CRITICAL`, `exit-code: 1` fails the build on findings)
+- **Local pre-commit:** `.pre-commit-config.yaml` runs the Gitleaks hook (`gitleaks/gitleaks` v8.18.4) before each commit, providing an earlier secret-leak gate than CI
+- **Dependency updates:** `.github/dependabot.yml` schedules weekly automated update PRs for the `npm` ecosystem (root directory) and for `github-actions` workflow dependencies
+- **Build artifacts ignored:** `.gitignore` excludes `node_modules/` and `*.log`; note `dist/` is currently untracked-but-present (build output) and is not yet listed in `.gitignore` — see CONCERNS.md if tracked accidentally
+
+## Build & CI Pipeline
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│  Local commit (pre-commit hook)                             │
+│  `.pre-commit-config.yaml` → gitleaks v8.18.4                │
+└───────────────────────┬───────────────────────────────────┘
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────────┐
+│  TypeScript build                                            │
+│  `tsconfig.json`: src/**/*.ts → dist/ (tsc, NodeNext, ES2022)│
+│  strict mode, excludes tests/dist/node_modules               │
+└───────────────────────┬───────────────────────────────────┘
+                         │
+                         ▼
+┌────────────────────────────────────────────────────────────┐
+│  GitHub Actions: Security Scan                               │
+│  `.github/workflows/security.yml` (push to main, PRs)        │
+│  - Semgrep (SAST, config: auto)                              │
+│  - Gitleaks (secret scan)                                    │
+│  - Trivy (fs scan, HIGH/CRITICAL severities, fails build)    │
+└────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────┐
+│  Dependabot (weekly, `.github/dependabot.yml`)               │
+│  - npm ecosystem (root)                                       │
+│  - github-actions ecosystem (root)                            │
+└────────────────────────────────────────────────────────────┘
+```
 
 ## Anti-Patterns
 
@@ -212,11 +248,11 @@ async call<M extends MemoryCoreMethod>(
 **Why it's wrong:** Cloud summarization fallback will fail when enabled
 **Do this instead:** Complete cloudSummarizer.ts with Anthropic API integration
 
-### No Build Configuration
+### Generic Adapter Stub Persists Despite CI Hardening
 
-**What happens:** No tsconfig.json or bundler configuration present
-**Why it's wrong:** No clear build process for production deployment
-**Do this instead:** Add tsconfig.json and potentially vite/rolldown config for bundling
+**What happens:** Security/dependency tooling (Semgrep, Gitleaks, Trivy via `.github/workflows/security.yml`; Dependabot via `.github/dependabot.yml`; pre-commit Gitleaks via `.pre-commit-config.yaml`) is now in place, but `src/adapters/generic.ts` remains an unimplemented stub
+**Why it's wrong:** CI rigor around supply chain security and secrets does not compensate for missing functional implementation in the generic MCP adapter
+**Do this instead:** Implement stdio-based MCP protocol using `@modelcontextprotocol/sdk` (unchanged recommendation, now tracked alongside hardened CI)
 
 ## Error Handling
 
@@ -237,4 +273,4 @@ async call<M extends MemoryCoreMethod>(
 
 ---
 
-*Architecture analysis: 2026-06-05*
+*Architecture analysis: 2026-06-10*

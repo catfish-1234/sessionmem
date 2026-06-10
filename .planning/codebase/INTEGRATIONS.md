@@ -1,6 +1,6 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-05
+**Analysis Date:** 2026-06-10
 
 ## APIs & External Services
 
@@ -52,7 +52,18 @@
 - Self-hosted (runs within IDE/global tool context)
 
 **CI Pipeline:**
-- None detected (no GitHub Actions, etc.)
+- `.github/workflows/security.yml` - "Security Scan" GitHub Actions workflow
+  - Triggers: push to `main`, all pull requests
+  - Runs on `ubuntu-latest`
+  - Checks out full history (`fetch-depth: 0`)
+  - Tools: Semgrep (SAST, `config: auto`), Gitleaks (secret scanning), Trivy (filesystem vulnerability scan, HIGH/CRITICAL severity, fails build via `exit-code: 1`)
+  - No build/test/lint job present in CI - only security scanning
+
+**Dependency Updates:**
+- `.github/dependabot.yml` - automated weekly dependency PRs for `npm` packages and `github-actions` versions
+
+**Local Pre-Commit Hooks:**
+- `.pre-commit-config.yaml` - `gitleaks` (v8.18.4) runs locally before commits to catch secrets pre-push
 
 ## Environment Configuration
 
@@ -68,8 +79,12 @@
 - `CODEX_SESSION_ID` - Codex
 - `QCODER_SESSION` - QCoder
 
+**CI/CD secrets:**
+- `GITHUB_TOKEN` - used by Gitleaks Action in `.github/workflows/security.yml` (auto-provided by GitHub Actions)
+
 **Secrets location:**
 - In-code or config-passed (no .env file processing)
+- `.gitignore` does not exclude any `.env*` files - none present in repo as of this scan
 
 ## Webhooks & Callbacks
 
@@ -86,6 +101,13 @@
 - No actual @modelcontextprotocol/sdk integration
 - MCP client integrations (Cursor, Windsurf, etc.) cannot actually communicate with sessionmem
 
+## Skill/Agent Tooling Integrations
+
+**Caveman skills (JuliusBrussee/caveman):**
+- `skills-lock.json` pins 7 skills fetched from the `JuliusBrussee/caveman` GitHub repo: `cavecrew`, `caveman`, `caveman-commit`, `caveman-compress`, `caveman-help`, `caveman-review`, `caveman-stats`
+- Each entry has a `computedHash` for integrity verification
+- `sourceType: "github"` - skills pulled directly from GitHub source paths (`skills/<name>/SKILL.md`)
+
 ---
 
-*Integration audit: 2026-06-05*
+*Integration audit: 2026-06-10*
