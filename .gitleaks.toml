@@ -13,4 +13,6 @@ description = "Intentional sample secrets in secret-redaction test fixtures"
 paths = [
   '''tests/unit/core/redaction-rules\.spec\.ts''',
   '''tests/unit/core/policy-config\.spec\.ts''',
+  '''tests/integration/core/secret-leakage\.spec\.ts''',
+  '''tests/integration/cli/redact-scan\.spec\.ts''',
 ]
