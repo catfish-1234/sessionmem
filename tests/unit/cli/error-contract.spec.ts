@@ -3,12 +3,16 @@ import { showCommand } from "../../../src/cli/commands/show.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 
 describe("CLI error contract (D-03)", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("top-level error handler prints error.message to stderr and calls process.exit(1)", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });
@@ -29,7 +33,7 @@ describe("CLI error contract (D-03)", () => {
   });
 
   it("command action that throws DomainError surfaces error.message (not JSON envelope) to stderr", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });
@@ -50,7 +54,7 @@ describe("CLI error contract (D-03)", () => {
   });
 
   it("command action that throws unknown error surfaces String(err) to stderr", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });

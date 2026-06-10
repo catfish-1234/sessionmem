@@ -1,6 +1,7 @@
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { unlinkSync } from "fs";
 import { openDb } from "../../src/core/storage/db.js";
 import { createMemoryCoreService } from "../../src/core/api/memoryCoreService.js";
 import type { CliContext } from "../../src/cli/context.js";
@@ -51,5 +52,20 @@ export async function createTestCliContext(): Promise<TestCliContext> {
     importance: 9,
   });
 
-  return { db, service, projectId, dbPath };
+  return {
+    db,
+    service,
+    projectId,
+    dbPath,
+    cleanup: () => {
+      db.close();
+      for (const suffix of ["", "-wal", "-shm"]) {
+        try {
+          unlinkSync(dbPath + suffix);
+        } catch {
+          // ignore
+        }
+      }
+    },
+  };
 }

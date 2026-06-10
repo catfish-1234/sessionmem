@@ -3,12 +3,16 @@ import { statsCommand } from "../../../src/cli/commands/stats.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 
 describe("statsCommand", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("statsCommand prints memories count, db_size_bytes, and total_content_tokens for the project", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await statsCommand(ctx);
@@ -33,7 +37,7 @@ describe("statsCommand", () => {
   });
 
   it("statsCommand exits non-zero and prints error message on service failure", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });

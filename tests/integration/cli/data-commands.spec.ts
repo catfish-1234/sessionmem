@@ -4,12 +4,16 @@ import { showCommand } from "../../../src/cli/commands/show.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 
 describe("listCommand", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("listCommand prints a table with ID, importance, date, and preview columns for all project memories", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await listCommand(ctx);
@@ -25,7 +29,7 @@ describe("listCommand", () => {
   });
 
   it("listCommand prints empty table when no memories exist for the project", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     // Use a different projectId with no memories
@@ -42,12 +46,16 @@ describe("listCommand", () => {
 });
 
 describe("showCommand", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("showCommand prints key:value block with all MemoryDto fields for a valid memory ID", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await showCommand("test-mem-001", ctx);
@@ -64,7 +72,7 @@ describe("showCommand", () => {
   });
 
   it("showCommand maps camelCase DTO fields to snake_case labels (source_adapter, created_at, etc.)", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
     await showCommand("test-mem-003", ctx);
@@ -76,7 +84,7 @@ describe("showCommand", () => {
   });
 
   it("showCommand exits non-zero and prints error when memory ID is not found", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });
