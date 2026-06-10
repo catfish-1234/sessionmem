@@ -142,6 +142,19 @@ export const pruneMemoriesResponseSchema = z.object({
   eligible: z.number().int().nonnegative(),
 });
 
+export const redactExistingRequestSchema = z.object({
+  projectId: z.string().min(1),
+  apply: z.boolean().default(false),
+});
+
+export const redactExistingResponseSchema = z.object({
+  ok: z.literal(true),
+  scanned: z.number().int().nonnegative(),
+  matched: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  previews: z.array(z.string()),
+});
+
 export const operationResultSchema = z.object({
   ok: z.literal(true),
 });
@@ -265,6 +278,7 @@ export type ExportMemoriesRequest = z.infer<typeof exportMemoriesRequestSchema>;
 export type ImportMemoriesRequest = z.infer<typeof importMemoriesRequestSchema>;
 export type StatsRequest = z.infer<typeof statsRequestSchema>;
 export type PruneMemoriesRequest = z.infer<typeof pruneMemoriesRequestSchema>;
+export type RedactExistingRequest = z.infer<typeof redactExistingRequestSchema>;
 
 export type IngestSessionEventsResponse = z.infer<
   typeof ingestSessionEventsResponseSchema
@@ -291,6 +305,9 @@ export type StatsResponse = z.infer<typeof statsResponseSchema>;
 export type PruneMemoriesResponse = z.infer<
   typeof pruneMemoriesResponseSchema
 >;
+export type RedactExistingResponse = z.infer<
+  typeof redactExistingResponseSchema
+>;
 
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
@@ -306,6 +323,7 @@ export interface MemoryCoreRequestMap {
   importMemories: ImportMemoriesRequest;
   stats: StatsRequest;
   pruneMemories: PruneMemoriesRequest;
+  redactExisting: RedactExistingRequest;
 }
 
 export interface MemoryCoreResponseMap {
@@ -322,6 +340,7 @@ export interface MemoryCoreResponseMap {
   importMemories: ImportMemoriesResponse;
   stats: StatsResponse;
   pruneMemories: PruneMemoriesResponse;
+  redactExisting: RedactExistingResponse;
 }
 
 export type MemoryCoreMethod = keyof MemoryCoreRequestMap;

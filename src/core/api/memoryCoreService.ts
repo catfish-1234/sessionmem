@@ -10,6 +10,7 @@ import {
   insertMemory,
   listMemoriesByProject,
   recordUse,
+  updateMemoryContent,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
@@ -24,6 +25,7 @@ import {
   listMemoriesRequestSchema,
   pruneMemoriesRequestSchema,
   recordMemoryUsedRequestSchema,
+  redactExistingRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
@@ -42,6 +44,11 @@ import {
 import { createSessionLifecycleService } from "./sessionLifecycleService.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
+
+// Maximum length of a redactExisting preview entry. Previews are built from the
+// REDACTED text (never the raw secret per D-07/D-14) and truncated so a long
+// memory body cannot leak surrounding context in bulk.
+const REDACT_PREVIEW_MAX_LENGTH = 120;
 
 interface MemoryDto {
   id: string;
@@ -430,6 +437,56 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       const deleted = deleteMemoriesOlderThan(db, parsed.projectId, cutoffIso);
       return { ok: true, deleted, eligible };
+    },
+
+    async redactExisting(request) {
+      const parsed = parseRequest(redactExistingRequestSchema, request);
+
+      // One-time scrub of pre-existing rows (D-07). Dry-run by default (D-14):
+      // apply=false reports matches and previews but writes nothing.
+      const memories = listMemoriesByProject(db, parsed.projectId);
+
+      let matched = 0;
+      let updated = 0;
+      const previews: string[] = [];
+
+      for (const memory of memories) {
+        const redaction = applyRedaction(memory.content, {
+          redactionEnabled: true,
+        });
+
+        // A "match" is a row whose content changes under the rule set.
+        if (redaction.text === memory.content) {
+          continue;
+        }
+        matched += 1;
+
+        // Preview is built from the REDACTED text and length-bounded so no raw
+        // secret is echoed and no large body leaks in bulk (T-06-10, D-07/D-14).
+        previews.push(redaction.text.slice(0, REDACT_PREVIEW_MAX_LENGTH));
+
+        if (parsed.apply) {
+          // Recompute the embedding-normalized text on the redacted content so
+          // the stored normalized_content stays consistent with the scrub.
+          const embedding = deterministicEmbed(redaction.text, dimension);
+          updateMemoryContent(
+            db,
+            parsed.projectId,
+            memory.id,
+            redaction.text,
+            embedding.normalizedText,
+          );
+          updated += 1;
+        }
+      }
+
+      return {
+        ok: true,
+        scanned: memories.length,
+        matched,
+        updated,
+        previews,
+      };
     },
 
     async stats(request) {
