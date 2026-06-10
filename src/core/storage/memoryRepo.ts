@@ -154,6 +154,36 @@ export function updateMemoryImportance(
   }
 }
 
+export function updateMemoryContent(
+  db: Database,
+  projectId: string,
+  memoryId: string,
+  newContent: string,
+  newNormalizedContent?: string,
+): void {
+  // In-place content rewrite for the one-time redaction scrub (D-07). All
+  // values are bound parameters — projectId, memoryId, and content are never
+  // string-concatenated — mirroring updateMemoryImportance to prevent SQL
+  // injection (T-06-11). normalized_content is only overwritten when a new
+  // value is supplied so embeddings stay consistent with the redacted text.
+  const result = db
+    .prepare(
+      `
+      UPDATE memories
+      SET
+        content = ?,
+        normalized_content = COALESCE(?, normalized_content),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE project_id = ? AND id = ?
+    `,
+    )
+    .run(newContent, newNormalizedContent ?? null, projectId, memoryId);
+
+  if (result.changes === 0) {
+    throw new Error(`Memory not found: ${memoryId}`);
+  }
+}
+
 export interface RecordMemoryUseInput {
   project_id: string;
   memory_id: string;
