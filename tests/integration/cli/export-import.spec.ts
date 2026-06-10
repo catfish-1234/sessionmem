@@ -139,7 +139,7 @@ describe("export/import round-trip", () => {
       await importCommand(modifiedPath, { merge: true }, ctx);
 
       const logCalls = logSpy.mock.calls.map((c) => c.join(" "));
-      expect(logCalls.some((msg) => msg.includes("skipped 0 duplicates"))).toBe(true);
+      expect(logCalls.some((msg) => msg.includes("Imported (merged)"))).toBe(true);
 
       // Verify the record was overwritten with importance 3
       const getResult = await ctx.service.call("getMemory", {
