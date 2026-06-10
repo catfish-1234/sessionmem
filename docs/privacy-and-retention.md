@@ -21,7 +21,7 @@ The same `redactionEnabled` flag governs every path. It defaults to **on** (`tru
 | AWS access keys | `AKIA...` |
 | GitHub tokens | `ghp_...`, `gho_...`, and related prefixes |
 | Bearer tokens | `Authorization: Bearer ...` |
-| Private key blocks | `-----BEGIN ... PRIVATE KEY-----` blocks |
+| Private key blocks | `-----BEGIN ... PRIVATE KEY-----` private key blocks |
 | Connection-string assignments | `password=...`, `secret=...` |
 | JWTs | three-part `xxxxx.yyyyy.zzzzz` tokens |
 
