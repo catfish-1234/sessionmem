@@ -14,7 +14,7 @@
 | 3 | Injection Quality + Token Control | Implement startup injection formatter and ranking controls with bounded token budget and importance feedback | RETR-03, RETR-04, RETR-05 | 5 |
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
-| 6 | Security, Privacy, and Retention Hardening | 2/7 | In Progress|  |
+| 6 | Security, Privacy, and Retention Hardening | 5/7 | In Progress|  |
 | 7 | Team Mode Shared Memory | Implement shared-path sync, provenance metadata, and safe local-only fallback | TEAM-01, TEAM-02, TEAM-03 | 5 |
 | 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
 
@@ -136,7 +136,7 @@ Plans:
 
 **Requirements:** SECU-01, SECU-02
 
-**Plans:** 2/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 **Wave 1**
@@ -146,12 +146,12 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 06-03-PLAN.md — Redaction on all write paths (store/import) + redactExisting scrub op (SECU-02, D-06/D-07/D-08)
-- [ ] 06-04-PLAN.md — Session-end light auto-prune wiring (D-02), non-blocking
+- [x] 06-03-PLAN.md — Redaction on all write paths (store/import) + redactExisting scrub op (SECU-02, D-06/D-07/D-08)
+- [x] 06-04-PLAN.md — Session-end light auto-prune wiring (D-02), non-blocking
 
 **Wave 3** *(blocked on 06-01/06-02)*
 
-- [ ] 06-05-PLAN.md — CLI retention prune (--force) + config get/set + install config.json defaults (D-10/D-12/D-13)
+- [x] 06-05-PLAN.md — CLI retention prune (--force) + config get/set + install config.json defaults (D-10/D-12/D-13)
 
 **Wave 4** *(blocked on 06-03/06-05)*
 
