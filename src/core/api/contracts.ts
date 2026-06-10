@@ -72,6 +72,7 @@ export const storeMemoryRequestSchema = z.object({
   kind: z.string().min(1),
   content: z.string().min(1),
   importance: z.number().int().min(1).max(10),
+  redactionEnabled: z.boolean().default(true),
 });
 
 export const retrieveMemoriesRequestSchema = z.object({
@@ -121,6 +122,7 @@ export const importMemoryRecordSchema = z.object({
 
 export const importMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
+  redactionEnabled: z.boolean().default(true),
   memories: z.array(importMemoryRecordSchema),
 });
 
@@ -147,6 +149,15 @@ export const operationResultSchema = z.object({
 export const singleMemoryResponseSchema = z.object({
   ok: z.literal(true),
   memory: memorySchema,
+});
+
+// Dedicated store response: extends the single-memory shape with the
+// warningCodes envelope (D-08). getMemory continues to use
+// singleMemoryResponseSchema so its shape is unchanged.
+export const storeMemoryResponseSchema = z.object({
+  ok: z.literal(true),
+  memory: memorySchema,
+  warningCodes: z.array(z.string()),
 });
 
 export const memoryListResponseSchema = z.object({
@@ -214,6 +225,7 @@ export const handleSessionEndResponseSchema = z.object({
 export const importMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   imported: z.number().int().nonnegative(),
+  warningCodes: z.array(z.string()),
 });
 
 export const recordMemoryUsedResponseSchema = z.object({
@@ -263,7 +275,7 @@ export type SummarizeSessionToMemoryResponse = z.infer<
 export type HandleSessionEndResponse = z.infer<
   typeof handleSessionEndResponseSchema
 >;
-export type StoreMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
+export type StoreMemoryResponse = z.infer<typeof storeMemoryResponseSchema>;
 export type RetrieveMemoriesResponse = z.infer<
   typeof retrieveMemoriesResponseSchema
 >;
