@@ -2,6 +2,7 @@ import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
+import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
   countMemoriesOlderThan,
@@ -9,6 +10,7 @@ import {
   insertMemory,
   listMemoriesByProject,
   recordUse,
+  updateMemoryContent,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
@@ -23,6 +25,7 @@ import {
   listMemoriesRequestSchema,
   pruneMemoriesRequestSchema,
   recordMemoryUsedRequestSchema,
+  redactExistingRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
@@ -41,6 +44,11 @@ import {
 import { createSessionLifecycleService } from "./sessionLifecycleService.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
+
+// Maximum length of a redactExisting preview entry. Previews are built from the
+// REDACTED text (never the raw secret per D-07/D-14) and truncated so a long
+// memory body cannot leak surrounding context in bulk.
+const REDACT_PREVIEW_MAX_LENGTH = 120;
 
 interface MemoryDto {
   id: string;
@@ -217,7 +225,14 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async storeMemory(request) {
       const parsed = parseRequest(storeMemoryRequestSchema, request);
-      const embedding = deterministicEmbed(parsed.content, dimension);
+
+      // Redact before embedding/persisting so secrets never reach storage and
+      // the embedding is computed on the redacted text (D-06). warningCodes
+      // reuse the existing redaction_partial_failure mechanism (D-08).
+      const redaction = applyRedaction(parsed.content, {
+        redactionEnabled: parsed.redactionEnabled,
+      });
+      const embedding = deterministicEmbed(redaction.text, dimension);
 
       insertMemory(db, {
         id: parsed.memoryId,
@@ -225,7 +240,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         session_id: parsed.sessionId,
         source_adapter: parsed.sourceAdapter,
         kind: parsed.kind,
-        content: parsed.content,
+        content: redaction.text,
         normalized_content: embedding.normalizedText,
         importance: parsed.importance,
         embedding: JSON.stringify(embedding.vector),
@@ -241,6 +256,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         memory: toMemoryDto(inserted),
+        warningCodes: redaction.warningCodes,
       };
     },
 
@@ -357,15 +373,29 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           updated_at = excluded.updated_at
       `);
 
+      // Aggregate redaction warnings across all imported records (D-08). A
+      // Set de-duplicates the redaction_partial_failure code so the envelope
+      // stays compact regardless of how many records tripped the same rule.
+      const warningCodeSet = new Set<string>();
+
       for (const memory of parsed.memories) {
-        const embedding = deterministicEmbed(memory.content, dimension);
+        // Redact each record before embedding/upsert so secrets never persist
+        // and the embedding reflects the redacted text (D-06).
+        const redaction = applyRedaction(memory.content, {
+          redactionEnabled: parsed.redactionEnabled,
+        });
+        for (const code of redaction.warningCodes) {
+          warningCodeSet.add(code);
+        }
+
+        const embedding = deterministicEmbed(redaction.text, dimension);
         stmt.run({
           id: memory.id,
           project_id: parsed.projectId,
           session_id: memory.sessionId,
           source_adapter: memory.sourceAdapter,
           kind: memory.kind,
-          content: memory.content,
+          content: redaction.text,
           normalized_content: embedding.normalizedText,
           importance: memory.importance,
           embedding: JSON.stringify(embedding.vector),
@@ -379,6 +409,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         imported: parsed.memories.length,
+        warningCodes: [...warningCodeSet],
       };
     },
 
@@ -406,6 +437,56 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       const deleted = deleteMemoriesOlderThan(db, parsed.projectId, cutoffIso);
       return { ok: true, deleted, eligible };
+    },
+
+    async redactExisting(request) {
+      const parsed = parseRequest(redactExistingRequestSchema, request);
+
+      // One-time scrub of pre-existing rows (D-07). Dry-run by default (D-14):
+      // apply=false reports matches and previews but writes nothing.
+      const memories = listMemoriesByProject(db, parsed.projectId);
+
+      let matched = 0;
+      let updated = 0;
+      const previews: string[] = [];
+
+      for (const memory of memories) {
+        const redaction = applyRedaction(memory.content, {
+          redactionEnabled: true,
+        });
+
+        // A "match" is a row whose content changes under the rule set.
+        if (redaction.text === memory.content) {
+          continue;
+        }
+        matched += 1;
+
+        // Preview is built from the REDACTED text and length-bounded so no raw
+        // secret is echoed and no large body leaks in bulk (T-06-10, D-07/D-14).
+        previews.push(redaction.text.slice(0, REDACT_PREVIEW_MAX_LENGTH));
+
+        if (parsed.apply) {
+          // Recompute the embedding-normalized text on the redacted content so
+          // the stored normalized_content stays consistent with the scrub.
+          const embedding = deterministicEmbed(redaction.text, dimension);
+          updateMemoryContent(
+            db,
+            parsed.projectId,
+            memory.id,
+            redaction.text,
+            embedding.normalizedText,
+          );
+          updated += 1;
+        }
+      }
+
+      return {
+        ok: true,
+        scanned: memories.length,
+        matched,
+        updated,
+        previews,
+      };
     },
 
     async stats(request) {
