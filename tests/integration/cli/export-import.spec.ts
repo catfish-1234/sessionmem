@@ -14,12 +14,16 @@ function makeTempFile(suffix = ".json"): string {
 }
 
 describe("export/import round-trip", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("exportCommand writes a valid JSON array with the seeded memory count", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const outPath = makeTempFile();
 
@@ -41,7 +45,7 @@ describe("export/import round-trip", () => {
   });
 
   it("exportCommand uses an ISO-dated default path when no path argument is given", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await exportCommand(undefined, ctx);
@@ -58,16 +62,17 @@ describe("export/import round-trip", () => {
   });
 
   it("lossless round-trip: export then import into fresh context returns same records", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     vi.spyOn(console, "log").mockImplementation(() => {});
     const outPath = makeTempFile();
+    let freshDb: ReturnType<typeof openDb> | undefined;
 
     try {
       // Export from source context
       await exportCommand(outPath, ctx);
 
       // Create a second fresh context (separate in-memory DB)
-      const freshDb = openDb();
+      freshDb = openDb();
       const freshService = createMemoryCoreService({ db: freshDb });
       const freshCtx = { db: freshDb, service: freshService, projectId: "test-project", dbPath: ":memory:" };
 
@@ -86,11 +91,12 @@ describe("export/import round-trip", () => {
       }
     } finally {
       if (existsSync(outPath)) unlinkSync(outPath);
+      freshDb?.close();
     }
   });
 
   it("importCommand without --merge skips duplicate IDs and prints correct counts", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const outPath = makeTempFile();
 
@@ -117,7 +123,7 @@ describe("export/import round-trip", () => {
   });
 
   it("importCommand with --merge overwrites existing memories via upsert", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const outPath = makeTempFile();
 
@@ -158,7 +164,7 @@ describe("export/import round-trip", () => {
   });
 
   it("importCommand exits non-zero when JSON file is missing or invalid", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
@@ -175,7 +181,7 @@ describe("export/import round-trip", () => {
 
   it("importCommand exits non-zero when file contains malformed JSON", async () => {
     const { writeFileSync } = await import("fs");
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
@@ -198,7 +204,7 @@ describe("export/import round-trip", () => {
 
   it("importCommand exits non-zero when import JSON is not an array", async () => {
     const { writeFileSync } = await import("fs");
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");

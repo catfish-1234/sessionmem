@@ -3,12 +3,16 @@ import { forgetCommand } from "../../../src/cli/commands/forget.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 
 describe("forgetCommand", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("without --force performs dry-run: prints preview and does NOT delete the memory", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await forgetCommand("test-mem-001", {}, ctx);
@@ -28,7 +32,7 @@ describe("forgetCommand", () => {
   });
 
   it("with --force deletes the memory and prints confirmation", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await forgetCommand("test-mem-001", { force: true }, ctx);
@@ -47,7 +51,7 @@ describe("forgetCommand", () => {
   });
 
   it("exits non-zero when memory ID is not found", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
@@ -62,7 +66,7 @@ describe("forgetCommand", () => {
   });
 
   it("dry-run does not call forgetMemory (service-level assertion)", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     vi.spyOn(console, "log").mockImplementation(() => {});
 
     // Wrap the original call to track which methods are invoked

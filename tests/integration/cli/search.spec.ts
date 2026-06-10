@@ -3,12 +3,16 @@ import { searchCommand } from "../../../src/cli/commands/search.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 
 describe("searchCommand", () => {
+  let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+
   afterEach(() => {
     vi.restoreAllMocks();
+    ctx?.cleanup?.();
+    ctx = undefined;
   });
 
   it("searchCommand prints a table of matching memories ranked by relevance", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await searchCommand("TypeScript", {}, ctx);
@@ -21,7 +25,7 @@ describe("searchCommand", () => {
   });
 
   it("searchCommand respects --limit flag to constrain result count", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await searchCommand("memory", { limit: 1 }, ctx);
@@ -34,7 +38,7 @@ describe("searchCommand", () => {
   });
 
   it("searchCommand prints empty table when no memories match the query", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await searchCommand("xyzzy-nonexistent-query-12345", {}, ctx);
@@ -48,7 +52,7 @@ describe("searchCommand", () => {
   });
 
   it("searchCommand exits non-zero on service error", async () => {
-    const ctx = await createTestCliContext();
+    ctx = await createTestCliContext();
     const exitSpy = vi.spyOn(process, "exit").mockImplementation((_code) => {
       throw new Error("process.exit called");
     });
