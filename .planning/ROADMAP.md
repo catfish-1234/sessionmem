@@ -136,6 +136,28 @@ Plans:
 
 **Requirements:** SECU-01, SECU-02
 
+**Plans:** 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Expand redaction rule set (D-05) + policyConfig.json read/write/resolve module (D-09/D-11)
+- [ ] 06-02-PLAN.md — Retention prune core: count/delete-older-than repo + pruneMemories contract/service (SECU-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 06-03-PLAN.md — Redaction on all write paths (store/import) + redactExisting scrub op (SECU-02, D-06/D-07/D-08)
+- [ ] 06-04-PLAN.md — Session-end light auto-prune wiring (D-02), non-blocking
+
+**Wave 3** *(blocked on 06-01/06-02)*
+
+- [ ] 06-05-PLAN.md — CLI retention prune (--force) + config get/set + install config.json defaults (D-10/D-12/D-13)
+
+**Wave 4** *(blocked on 06-03/06-05)*
+
+- [ ] 06-06-PLAN.md — CLI redact-scan (--apply) + stats retention/redaction lines + secret-leakage test suite (D-14/D-15)
+- [ ] 06-07-PLAN.md — Privacy/retention user documentation + doc-coverage test (success criterion 4)
+
 **Success Criteria:**
 
 1. Retention policy prunes old memories by configurable age.
