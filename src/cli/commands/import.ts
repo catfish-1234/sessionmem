@@ -81,6 +81,9 @@ export async function importCommand(
 
   const result = await context.service.call("importMemories", {
     projectId: context.projectId,
+    // Redaction defaults on for the import write path (D-06): secrets in an
+    // imported file are scrubbed before persistence unless explicitly disabled.
+    redactionEnabled: true,
     memories: mapped,
   });
 

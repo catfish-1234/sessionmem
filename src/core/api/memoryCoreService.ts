@@ -2,6 +2,7 @@ import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
+import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
   countMemoriesOlderThan,
@@ -217,7 +218,14 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async storeMemory(request) {
       const parsed = parseRequest(storeMemoryRequestSchema, request);
-      const embedding = deterministicEmbed(parsed.content, dimension);
+
+      // Redact before embedding/persisting so secrets never reach storage and
+      // the embedding is computed on the redacted text (D-06). warningCodes
+      // reuse the existing redaction_partial_failure mechanism (D-08).
+      const redaction = applyRedaction(parsed.content, {
+        redactionEnabled: parsed.redactionEnabled,
+      });
+      const embedding = deterministicEmbed(redaction.text, dimension);
 
       insertMemory(db, {
         id: parsed.memoryId,
@@ -225,7 +233,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         session_id: parsed.sessionId,
         source_adapter: parsed.sourceAdapter,
         kind: parsed.kind,
-        content: parsed.content,
+        content: redaction.text,
         normalized_content: embedding.normalizedText,
         importance: parsed.importance,
         embedding: JSON.stringify(embedding.vector),
@@ -241,6 +249,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         memory: toMemoryDto(inserted),
+        warningCodes: redaction.warningCodes,
       };
     },
 
@@ -357,15 +366,29 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           updated_at = excluded.updated_at
       `);
 
+      // Aggregate redaction warnings across all imported records (D-08). A
+      // Set de-duplicates the redaction_partial_failure code so the envelope
+      // stays compact regardless of how many records tripped the same rule.
+      const warningCodeSet = new Set<string>();
+
       for (const memory of parsed.memories) {
-        const embedding = deterministicEmbed(memory.content, dimension);
+        // Redact each record before embedding/upsert so secrets never persist
+        // and the embedding reflects the redacted text (D-06).
+        const redaction = applyRedaction(memory.content, {
+          redactionEnabled: parsed.redactionEnabled,
+        });
+        for (const code of redaction.warningCodes) {
+          warningCodeSet.add(code);
+        }
+
+        const embedding = deterministicEmbed(redaction.text, dimension);
         stmt.run({
           id: memory.id,
           project_id: parsed.projectId,
           session_id: memory.sessionId,
           source_adapter: memory.sourceAdapter,
           kind: memory.kind,
-          content: memory.content,
+          content: redaction.text,
           normalized_content: embedding.normalizedText,
           importance: memory.importance,
           embedding: JSON.stringify(embedding.vector),
@@ -379,6 +402,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         imported: parsed.memories.length,
+        warningCodes: [...warningCodeSet],
       };
     },
 
