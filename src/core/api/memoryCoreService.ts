@@ -4,6 +4,8 @@ import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
+  countMemoriesOlderThan,
+  deleteMemoriesOlderThan,
   insertMemory,
   listMemoriesByProject,
   recordUse,
@@ -19,6 +21,7 @@ import {
   importMemoriesRequestSchema,
   ingestSessionEventsRequestSchema,
   listMemoriesRequestSchema,
+  pruneMemoriesRequestSchema,
   recordMemoryUsedRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
@@ -377,6 +380,32 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         ok: true,
         imported: parsed.memories.length,
       };
+    },
+
+    async pruneMemories(request) {
+      const parsed = parseRequest(pruneMemoriesRequestSchema, request);
+
+      // retentionDays <= 0 disables pruning entirely (D-03). A non-positive
+      // window must never translate into a future cutoff that could delete
+      // everything (T-06-07).
+      if (parsed.retentionDays <= 0) {
+        return { ok: true, deleted: 0, eligible: 0 };
+      }
+
+      const cutoffMs =
+        Date.now() - parsed.retentionDays * 24 * 60 * 60 * 1000;
+      // ISO-8601 UTC with millisecond precision matches the stored created_at
+      // format (strftime('%Y-%m-%dT%H:%M:%fZ')), enabling lexicographic compare.
+      const cutoffIso = new Date(cutoffMs).toISOString();
+
+      const eligible = countMemoriesOlderThan(db, parsed.projectId, cutoffIso);
+
+      if (parsed.dryRun) {
+        return { ok: true, deleted: 0, eligible };
+      }
+
+      const deleted = deleteMemoriesOlderThan(db, parsed.projectId, cutoffIso);
+      return { ok: true, deleted, eligible };
     },
 
     async stats(request) {
