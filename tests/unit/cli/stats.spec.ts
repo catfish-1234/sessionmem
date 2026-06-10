@@ -1,6 +1,29 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { tmpdir } from "os";
+import { join } from "path";
+import { randomUUID } from "crypto";
+import { writeFileSync, unlinkSync } from "fs";
 import { statsCommand } from "../../../src/cli/commands/stats.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
+
+/** Write a temp policy config file and return its path (cleaned up per-test). */
+function writeTempConfig(partial: Record<string, unknown>): {
+  path: string;
+  cleanup: () => void;
+} {
+  const path = join(tmpdir(), `sessionmem-stats-config-${randomUUID()}.json`);
+  writeFileSync(path, JSON.stringify(partial), "utf8");
+  return {
+    path,
+    cleanup: () => {
+      try {
+        unlinkSync(path);
+      } catch {
+        /* ignore */
+      }
+    },
+  };
+}
 
 describe("statsCommand", () => {
   let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
@@ -53,5 +76,58 @@ describe("statsCommand", () => {
 
     expect(errorSpy).toHaveBeenCalledWith("stats service down");
     expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("appends D-15 retention and redaction summary lines (defaults)", async () => {
+    ctx = await createTestCliContext();
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    await statsCommand(ctx);
+
+    const output = writeSpy.mock.calls.map((c) => c[0] as string).join("");
+    // Original three lines preserved.
+    expect(output).toContain("memories:");
+    expect(output).toContain("db_size_bytes:");
+    expect(output).toContain("total_content_tokens:");
+    // New retention line with default 90-day window and an eligible count.
+    expect(output).toMatch(
+      /Retention: \d+ days \(\d+ memories eligible for pruning\)/,
+    );
+    // Redaction defaults on.
+    expect(output).toContain("Redaction: enabled");
+  });
+
+  it("shows Redaction: disabled when config sets redactionEnabled=false", async () => {
+    ctx = await createTestCliContext();
+    const cfg = writeTempConfig({ redactionEnabled: false });
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    try {
+      await statsCommand(ctx, { configPath: cfg.path });
+      const output = writeSpy.mock.calls.map((c) => c[0] as string).join("");
+      expect(output).toContain("Redaction: disabled");
+    } finally {
+      cfg.cleanup();
+    }
+  });
+
+  it("conveys pruning disabled when retentionDays<=0", async () => {
+    ctx = await createTestCliContext();
+    const cfg = writeTempConfig({ retentionDays: 0 });
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    try {
+      await statsCommand(ctx, { configPath: cfg.path });
+      const output = writeSpy.mock.calls.map((c) => c[0] as string).join("");
+      expect(output).toMatch(/Retention:.*disabled/i);
+    } finally {
+      cfg.cleanup();
+    }
   });
 });
