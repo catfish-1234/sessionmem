@@ -1,6 +1,12 @@
+import { existsSync } from "fs";
 import { AdapterFactory } from "../../adapters/factory.js";
 import { createCliContext } from "../context.js";
 import type { CliContextOverrides } from "../context.js";
+import {
+  configFilePath,
+  writePolicyConfig,
+  DEFAULT_POLICY_CONFIG,
+} from "../../core/config/policyConfig.js";
 
 export const MANUAL_CONFIG_BLOCK = JSON.stringify(
   {
@@ -42,6 +48,17 @@ export async function installCommand(
   }
 
   console.log(`✓ DB initialized (${dbPath!})`);
+
+  // Step 1b: Config defaults — write config.json with defaults only when absent
+  // (D-10). An existing config is preserved byte-for-byte so user settings are
+  // never clobbered (T-06-18).
+  const configPath = contextOverrides?.configPath ?? configFilePath();
+  if (existsSync(configPath)) {
+    console.log(`✓ config.json preserved (${configPath})`);
+  } else {
+    writePolicyConfig(configPath, { ...DEFAULT_POLICY_CONFIG });
+    console.log(`✓ config.json initialized (${configPath})`);
+  }
 
   // Step 2: Adapter config — detect adapter and install (D-04 item 2)
   const adapter = AdapterFactory.detectAdapter();
