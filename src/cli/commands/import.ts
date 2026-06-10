@@ -2,6 +2,7 @@ import { resolve } from "path";
 import { readFileSync } from "fs";
 import { listMemoriesByProject } from "../../core/storage/memoryRepo.js";
 import { createCliContext, type CliContext } from "../context.js";
+import { importMemoryRecordSchema } from "../../core/api/contracts.js";
 
 export async function importCommand(
   pathArg: string,
@@ -40,7 +41,10 @@ export async function importCommand(
     const existingRows = listMemoriesByProject(context.db, context.projectId);
     const existingIds = new Set(existingRows.map((r) => r.id));
 
-    const filtered = records.filter((r) => !existingIds.has(r.id as string));
+    const filtered = records.filter((r) => {
+      const id = typeof r.id === "string" ? r.id : undefined;
+      return id === undefined || !existingIds.has(id);
+    });
     skippedCount = records.length - filtered.length;
     toImport = filtered;
   }
@@ -50,20 +54,30 @@ export async function importCommand(
     return;
   }
 
-  // Call importMemories — validation via importMemoryRecordSchema happens in the service
+  // Map to the expected shape, then validate each record before sending to the service
+  const mapped = toImport.map((r) => ({
+    id: r.id as string,
+    projectId: (r.projectId as string) ?? context.projectId,
+    sessionId: r.sessionId as string,
+    sourceAdapter: r.sourceAdapter as string,
+    kind: r.kind as string,
+    content: r.content as string,
+    importance: r.importance as number,
+    createdAt: r.createdAt as string | undefined,
+    updatedAt: r.updatedAt as string | undefined,
+  }));
+
+  for (let i = 0; i < mapped.length; i++) {
+    const check = importMemoryRecordSchema.safeParse(mapped[i]);
+    if (!check.success) {
+      console.error(`Record at index ${i} is invalid: ${check.error.message}`);
+      process.exit(1);
+    }
+  }
+
   const result = await context.service.call("importMemories", {
     projectId: context.projectId,
-    memories: toImport.map((r) => ({
-      id: r.id as string,
-      projectId: (r.projectId as string) ?? context.projectId,
-      sessionId: r.sessionId as string,
-      sourceAdapter: r.sourceAdapter as string,
-      kind: r.kind as string,
-      content: r.content as string,
-      importance: r.importance as number,
-      createdAt: r.createdAt as string | undefined,
-      updatedAt: r.updatedAt as string | undefined,
-    })),
+    memories: mapped,
   });
 
   if (!result.ok) {
