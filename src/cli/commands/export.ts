@@ -23,9 +23,8 @@ export async function exportCommand(
   // Path comes from the local CLI invoker's own argv (same trust level as
   // the process itself), not from a remote/network-facing input, so
   // resolving it to an absolute path is not a path-traversal vector.
-  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const outPath = pathArg
-    ? resolve(pathArg)
+    ? resolve(pathArg) // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
     : join(homedir(), ".sessionmem", `export-${new Date().toISOString().slice(0, 10)}.json`);
 
   // D-10: JSON array, pretty-printed
