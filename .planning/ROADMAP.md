@@ -13,7 +13,7 @@
 | 2 | Session Lifecycle + Summarization Pipeline | Implement session event ingestion and end-of-session summarization pipeline with local/cloud strategy | CAPT-02, CAPT-04, SECU-04 | 4 |
 | 3 | Injection Quality + Token Control | Implement startup injection formatter and ranking controls with bounded token budget and importance feedback | RETR-03, RETR-04, RETR-05 | 5 |
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
-| 5 | CLI Lifecycle and Data Operations | 4/4 | Complete   | 2026-06-09 |
+| 5 | CLI Lifecycle and Data Operations | Provide complete operational CLI surface and reliable install lifecycle | CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06 | 6 |
 | 6 | Security, Privacy, and Retention Hardening | Add redaction, retention controls, and local-first policy safeguards | SECU-01, SECU-02 | 5 |
 | 7 | Team Mode Shared Memory | Implement shared-path sync, provenance metadata, and safe local-only fallback | TEAM-01, TEAM-02, TEAM-03 | 5 |
 | 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
@@ -104,7 +104,7 @@ Plans:
 
 **Requirements:** CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06
 
-**Plans:** 4/4 plans complete
+**Plans:** 5 plans (verification gaps_found 2026-06-09 — 05-05 closes the commander/ctx dispatch blocker affecting CLI-03/04/05/06)
 
 Plans:
 **Wave 1**
@@ -116,6 +116,10 @@ Plans:
 - [x] 05-02-PLAN.md — Install lifecycle (D-04/D-05), run refactor, uninstall (--purge), ping
 - [x] 05-03-PLAN.md — search, list, show, stats commands (CLI-03/04/06)
 - [x] 05-04-PLAN.md — forget (dry-run), export, import (skip/--merge) (CLI-04/05)
+
+**Wave 3** *(gap closure — blocked on 05-01/05-03/05-04)*
+
+- [ ] 05-05-PLAN.md — Fix commander .action ctx-collision + --limit coercion; add spawning end-to-end regression spec (CLI-03/04/05/06)
 
 **Success Criteria:**
 
