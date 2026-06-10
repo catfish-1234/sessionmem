@@ -1,6 +1,6 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-06-05
+**Analysis Date:** 2026-06-10
 
 ## Naming Patterns
 
@@ -37,6 +37,22 @@
 **TypeScript:**
 - Explicit return types on exported functions
 - Type imports from zod: `import { z } from "zod"` with schema inference
+- `tsconfig.json` (`C:\Users\kavis\sessionmem\tsconfig.json`):
+  - `"strict": true` - full strict type checking enforced (no implicit any, strict null checks, etc.)
+  - `"module": "NodeNext"` / `"moduleResolution": "NodeNext"` - requires explicit `.js` extensions in relative imports (matches the import pattern observed in `src/`)
+  - `"target": "ES2022"` - modern ES features available (top-level await, etc.)
+  - `"esModuleInterop": true` and `"resolveJsonModule": true`
+  - `"skipLibCheck": true` - dependency `.d.ts` files are not type-checked
+  - `"declaration": false`, `"sourceMap": false` - no `.d.ts` or source maps emitted to `dist/`
+  - `"rootDir": "src"`, `"outDir": "dist"` - only `src/**/*.ts` is compiled; `tests/`, `dist/`, `node_modules` excluded from the build
+  - New source files MUST live under `src/` to be included in the build, and relative imports between `.ts` files MUST use the `.js` extension (e.g., `import { foo } from "./bar.js"`)
+
+## Pre-commit / Security Hooks
+
+**`.pre-commit-config.yaml`** (`C:\Users\kavis\sessionmem\.pre-commit-config.yaml`):
+- `gitleaks` (v8.18.4) runs on every commit to scan for committed secrets
+- New code must not introduce hardcoded API keys, tokens, or credentials - gitleaks will block the commit
+- No formatting/linting hooks configured (no prettier, eslint, or biome pre-commit hooks)
 
 ## Import Organization
 
@@ -128,4 +144,4 @@ import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 
 ---
 
-*Convention analysis: 2026-06-05*
+*Convention analysis: 2026-06-10*

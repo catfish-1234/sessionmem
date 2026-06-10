@@ -1,11 +1,15 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-06-05
+**Analysis Date:** 2026-06-10
 
 ## Directory Layout
 
 ```
 sessionmem/
+├── .github/
+│   ├── dependabot.yml            # Weekly npm + github-actions update PRs
+│   └── workflows/
+│       └── security.yml          # Semgrep, Gitleaks, Trivy on push/PR
 ├── src/
 │   ├── core/                    # Domain layer - business logic
 │   │   ├── api/                 # Service layer and contracts
@@ -26,6 +30,7 @@ sessionmem/
 │   └── cli/                      # CLI entry point
 │       └── commands/
 │           └── run.ts            # Main run command
+├── dist/                          # Build output (tsc compile target, see tsconfig.json)
 ├── tests/
 │   ├── integration/              # Integration tests
 │   │   ├── core/                 # Service integration tests
@@ -40,7 +45,12 @@ sessionmem/
 ├── .claude/                      # Claude configuration
 ├── .agents/                      # Agent definitions
 ├── docs/                         # Documentation
-└── package.json
+├── .gitignore                    # Excludes node_modules/, *.log
+├── .pre-commit-config.yaml       # Gitleaks pre-commit hook (v8.18.4)
+├── tsconfig.json                 # TS build config (src/ -> dist/, strict, NodeNext)
+├── package.json
+├── package-lock.json             # npm lockfile (lockfileVersion 3)
+└── skills-lock.json              # Locked Claude skill sources/hashes (e.g. caveman skill set)
 ```
 
 ## Directory Purposes
@@ -99,6 +109,16 @@ sessionmem/
 - Purpose: Test suite organized by type
 - Contains: Integration tests, unit tests, quality harness
 
+**`.github/`:**
+- Purpose: GitHub-native automation (CI workflows, dependency management)
+- Contains: `workflows/security.yml` (Semgrep + Gitleaks + Trivy scan on push to `main` and PRs), `dependabot.yml` (weekly npm + github-actions update PRs)
+- Key files: `.github/workflows/security.yml`, `.github/dependabot.yml`
+
+**`dist/`:**
+- Purpose: Compiled JavaScript output from `tsconfig.json` (`rootDir: src`, `outDir: dist`)
+- Generated: Yes (via `tsc`)
+- Committed: Currently present in working tree but not listed in `.gitignore` — verify intent before committing build output
+
 ## Key File Locations
 
 **Entry Points:**
@@ -106,6 +126,13 @@ sessionmem/
 
 **Configuration:**
 - `package.json`: Project dependencies and scripts
+- `package-lock.json`: npm lockfile (lockfileVersion 3) — pins exact dependency versions for reproducible installs
+- `tsconfig.json`: TypeScript compiler config — compiles `src/**/*.ts` to `dist/`, NodeNext module/resolution, ES2022 target, `strict: true`, excludes `tests`, `dist`, `node_modules`
+- `skills-lock.json`: Locked references (source repo, path, content hash) for Claude Code skills installed under `.claude/`/`.agents/` (e.g., `caveman`, `caveman-commit`, `caveman-compress`, `caveman-help`, `cavecrew` from `JuliusBrussee/caveman`)
+- `.gitignore`: Excludes `node_modules/` and `*.log` from version control
+- `.pre-commit-config.yaml`: Configures the `gitleaks/gitleaks` pre-commit hook (rev `v8.18.4`) to block commits containing secrets
+- `.github/dependabot.yml`: Weekly automated dependency-update PRs for npm and GitHub Actions
+- `.github/workflows/security.yml`: CI security scan job (`security`) running Semgrep, Gitleaks, and Trivy on push to `main` and on pull requests
 
 **Core Logic:**
 - `src/core/api/memoryCoreService.ts`: Central service facade
@@ -133,6 +160,10 @@ sessionmem/
 **Directories:**
 - kebab-case: `session-events-repo.ts`, `format-startup-injection.ts`
 
+**Root-level config files:**
+- Tool-conventional names preserved as-is: `.gitignore`, `.pre-commit-config.yaml`, `tsconfig.json`, `package-lock.json`, `skills-lock.json`
+- GitHub automation lives under `.github/` using GitHub's required filenames (`dependabot.yml`, `workflows/<name>.yml`)
+
 ## Where to Add New Code
 
 **New API Method:**
@@ -157,6 +188,13 @@ sessionmem/
 **Utilities:**
 - Shared helpers: `src/core/` subdirectories based on domain
 
+**New CI checks:**
+- Add steps to `.github/workflows/security.yml` for new scanners, or create a new workflow file under `.github/workflows/`
+- Add new ecosystems to `.github/dependabot.yml` if new package managers are introduced
+
+**New build settings:**
+- Adjust `tsconfig.json` (`compilerOptions`, `include`/`exclude`) — keep `tests/`, `dist/`, `node_modules/` excluded from compilation
+
 ## Special Directories
 
 **`.planning/`:**
@@ -174,6 +212,16 @@ sessionmem/
 - Generated: Yes
 - Committed: Yes
 
+**`.github/`:**
+- Purpose: CI workflows (security scanning) and Dependabot configuration
+- Generated: No (hand-authored YAML)
+- Committed: Yes
+
+**`dist/`:**
+- Purpose: TypeScript build output (`tsc` compiling `src/` per `tsconfig.json`)
+- Generated: Yes
+- Committed: Present in working tree as of this analysis but not yet excluded via `.gitignore` — confirm whether it should be tracked or ignored
+
 ---
 
-*Structure analysis: 2026-06-05*
+*Structure analysis: 2026-06-10*
