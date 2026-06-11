@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { searchCommand } from "../../../src/cli/commands/search.js";
-import { createTestCliContext } from "../../helpers/cliTestContext.js";
+import {
+  createTestCliContext,
+  createTeamUserContext,
+} from "../../helpers/cliTestContext.js";
+import { createMemoryCoreService } from "../../../src/core/api/memoryCoreService.js";
 
 describe("searchCommand", () => {
   let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
@@ -11,14 +15,18 @@ describe("searchCommand", () => {
     ctx = undefined;
   });
 
+  // Combined output across all console.log calls — search.ts now prints the
+  // formatTable block AND the startup-injection block in separate calls.
+  const printed = (logSpy: ReturnType<typeof vi.spyOn>): string =>
+    logSpy.mock.calls.map((c) => c[0] as string).join("\n");
+
   it("searchCommand prints a table of matching memories ranked by relevance", async () => {
     ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await searchCommand("TypeScript", {}, ctx);
 
-    expect(logSpy).toHaveBeenCalledOnce();
-    const output = logSpy.mock.calls[0][0] as string;
+    const output = printed(logSpy);
     expect(output).toContain(" | ");
     // ANSI-free check
     expect(output).not.toMatch(/\x1b\[/);
@@ -30,11 +38,11 @@ describe("searchCommand", () => {
 
     await searchCommand("memory", { limit: 1 }, ctx);
 
-    expect(logSpy).toHaveBeenCalledOnce();
-    const output = logSpy.mock.calls[0][0] as string;
-    // header + at most 1 result line
-    const lines = output.split("\n");
-    expect(lines.length).toBeLessThanOrEqual(2); // header + 1 result
+    const output = printed(logSpy);
+    // The injection block adds lines, so scope the bound to the TABLE portion:
+    // count only the rows that carry column separators (header + result rows).
+    const tableLines = output.split("\n").filter((line) => line.includes(" | "));
+    expect(tableLines.length).toBeLessThanOrEqual(2); // header + 1 result
   });
 
   it("searchCommand prints empty table when no memories match the query", async () => {
@@ -43,12 +51,59 @@ describe("searchCommand", () => {
 
     await searchCommand("xyzzy-nonexistent-query-12345", {}, ctx);
 
-    expect(logSpy).toHaveBeenCalledOnce();
-    const output = logSpy.mock.calls[0][0] as string;
+    const output = printed(logSpy);
     // Should still have header row with column separators
     expect(output).toContain(" | ");
     // No ANSI
     expect(output).not.toMatch(/\x1b\[/);
+  });
+
+  it("searchCommand output annotates a teammate-authored memory with the author prefix", async () => {
+    // Seed a memory authored by "alice".
+    ctx = createTeamUserContext({ username: "alice" });
+    await ctx.service.storeMemory({
+      memoryId: "team-mem-alice-001",
+      projectId: ctx.projectId,
+      sessionId: "session-alice",
+      sourceAdapter: "claude-code",
+      kind: "decision",
+      content: "Adopt pnpm for the monorepo.",
+      importance: 8,
+    });
+
+    // Search the SAME db through a service whose local username is "bob": the
+    // D-10 author prefix should appear because alice !== bob.
+    const bobService = createMemoryCoreService({ db: ctx.db, username: "bob" });
+    const bobCtx = { ...ctx, service: bobService, username: "bob" };
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await searchCommand("pnpm", {}, bobCtx);
+
+    const output = printed(logSpy);
+    expect(output).toContain("alice: ");
+    expect(output).toContain("pnpm");
+  });
+
+  it("searchCommand does NOT prefix a locally-authored memory", async () => {
+    // Seed a memory authored by "bob" and search through the SAME bob service.
+    ctx = createTeamUserContext({ username: "bob" });
+    await ctx.service.storeMemory({
+      memoryId: "team-mem-bob-001",
+      projectId: ctx.projectId,
+      sessionId: "session-bob",
+      sourceAdapter: "claude-code",
+      kind: "decision",
+      content: "Adopt pnpm for the monorepo.",
+      importance: 8,
+    });
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    await searchCommand("pnpm", {}, ctx);
+
+    const output = printed(logSpy);
+    expect(output).not.toContain("bob: ");
   });
 
   it("searchCommand exits non-zero on service error", async () => {
