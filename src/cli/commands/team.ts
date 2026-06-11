@@ -1,4 +1,6 @@
-import { accessSync, constants, existsSync } from "fs";
+import { accessSync, constants, existsSync, unlinkSync, writeFileSync } from "fs";
+import { join } from "path";
+import { randomUUID } from "crypto";
 import {
   configFilePath,
   readPolicyConfig,
@@ -63,12 +65,28 @@ export function teamStatusCommand(options?: TeamCommandOptions): void {
     return;
   }
 
+  // WR-02: accessSync(..., W_OK) is unreliable on Windows for directories
+  // (NTFS ACL semantics differ from POSIX access(), and Node largely ignores
+  // W_OK for directories on Windows). Probe by creating and removing a temp
+  // file, falling back to accessSync only if the probe itself errors
+  // unexpectedly (e.g. sharedPath is not a directory).
   let writable = false;
+  const probePath = join(sharedPath, `.sessionmem-write-test-${randomUUID()}`);
   try {
-    accessSync(sharedPath, constants.W_OK);
+    writeFileSync(probePath, "");
     writable = true;
+    try {
+      unlinkSync(probePath);
+    } catch {
+      /* best-effort cleanup */
+    }
   } catch {
-    writable = false;
+    try {
+      accessSync(sharedPath, constants.W_OK);
+      writable = true;
+    } catch {
+      writable = false;
+    }
   }
   console.log(
     `Shared path status: exists, ${writable ? "writable" : "not writable"}`,
