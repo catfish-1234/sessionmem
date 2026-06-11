@@ -124,9 +124,12 @@ export const importMemoryRecordSchema = z.object({
   importance: z.number().int().min(1).max(10),
   // OPTIONAL for backward-compat with exports predating team provenance (A3):
   // older exports lack author/originProjectId, so the service stamps the local
-  // username when author is absent.
-  author: z.string().optional(),
-  originProjectId: z.string().optional(),
+  // username when author is absent. `.nullable()` because exportMemories emits
+  // `originProjectId: null` (and `author: ""`) for locally-authored rows — a
+  // team sync round-trips those exported snapshots verbatim, so the schema must
+  // accept the null the DTO carries rather than skip-and-warn every local row.
+  author: z.string().nullable().optional(),
+  originProjectId: z.string().nullable().optional(),
   createdAt: z.string().min(1).optional(),
   updatedAt: z.string().min(1).optional(),
 });
@@ -136,6 +139,17 @@ export const importMemoriesRequestSchema = z.object({
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
   // setting (override > config.json > default precedence, D-11).
+  redactionEnabled: z.boolean().optional(),
+  memories: z.array(importMemoryRecordSchema),
+});
+
+// Team pull (Plan 03, TEAM-01). Mirrors importMemoriesRequestSchema — the pull
+// path reuses importMemoryRecordSchema verbatim (carrying author/originProjectId
+// through) but the service applies MAX-importance LWW (D-11), author/origin
+// stamping (D-06), and the cross-project skip (D-09). redactionEnabled is
+// omitted on real pulls so the service resolves config.json (D-12).
+export const pullMemoriesRequestSchema = z.object({
+  projectId: z.string().min(1),
   redactionEnabled: z.boolean().optional(),
   memories: z.array(importMemoryRecordSchema),
 });
@@ -264,6 +278,17 @@ export const importMemoriesResponseSchema = z.object({
   warningCodes: z.array(z.string()),
 });
 
+// Team pull response (D-16): distinguishes brand-new inserts from updates so the
+// `sync` CLI can render "Pushed N memories, pulled M new + updated K from
+// teammates." skippedCrossProject mirrors the import path (D-09).
+export const pullMemoriesResponseSchema = z.object({
+  ok: z.literal(true),
+  pulledNew: z.number().int().nonnegative(),
+  pulledUpdated: z.number().int().nonnegative(),
+  skippedCrossProject: z.number().int().nonnegative().default(0),
+  warningCodes: z.array(z.string()),
+});
+
 export const recordMemoryUsedResponseSchema = z.object({
   ok: z.literal(true),
   memoryId: z.string().min(1),
@@ -299,6 +324,7 @@ export type GetMemoryRequest = z.infer<typeof getMemoryRequestSchema>;
 export type ForgetMemoryRequest = z.infer<typeof forgetMemoryRequestSchema>;
 export type ExportMemoriesRequest = z.infer<typeof exportMemoriesRequestSchema>;
 export type ImportMemoriesRequest = z.infer<typeof importMemoriesRequestSchema>;
+export type PullMemoriesRequest = z.infer<typeof pullMemoriesRequestSchema>;
 export type StatsRequest = z.infer<typeof statsRequestSchema>;
 export type PruneMemoriesRequest = z.infer<typeof pruneMemoriesRequestSchema>;
 export type RedactExistingRequest = z.infer<typeof redactExistingRequestSchema>;
@@ -324,6 +350,7 @@ export type GetMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
 export type ForgetMemoryResponse = z.infer<typeof operationResultSchema>;
 export type ExportMemoriesResponse = z.infer<typeof exportMemoriesResponseSchema>;
 export type ImportMemoriesResponse = z.infer<typeof importMemoriesResponseSchema>;
+export type PullMemoriesResponse = z.infer<typeof pullMemoriesResponseSchema>;
 export type StatsResponse = z.infer<typeof statsResponseSchema>;
 export type PruneMemoriesResponse = z.infer<
   typeof pruneMemoriesResponseSchema
@@ -344,6 +371,7 @@ export interface MemoryCoreRequestMap {
   forgetMemory: ForgetMemoryRequest;
   exportMemories: ExportMemoriesRequest;
   importMemories: ImportMemoriesRequest;
+  pullMemories: PullMemoriesRequest;
   stats: StatsRequest;
   pruneMemories: PruneMemoriesRequest;
   redactExisting: RedactExistingRequest;
@@ -361,6 +389,7 @@ export interface MemoryCoreResponseMap {
   forgetMemory: ForgetMemoryResponse;
   exportMemories: ExportMemoriesResponse;
   importMemories: ImportMemoriesResponse;
+  pullMemories: PullMemoriesResponse;
   stats: StatsResponse;
   pruneMemories: PruneMemoriesResponse;
   redactExisting: RedactExistingResponse;

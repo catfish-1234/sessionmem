@@ -42,7 +42,7 @@
 
 ### Team Mode
 
-- [ ] **TEAM-01**: Team can set shared-path sync and merge team memories into local retrieval.
+- [x] **TEAM-01**: Team can set shared-path sync and merge team memories into local retrieval.
 - [ ] **TEAM-02**: Team memories retain author attribution and timestamp provenance.
 - [ ] **TEAM-03**: Team can disable shared mode and return to local-only behavior without data loss.
 
@@ -110,7 +110,7 @@
 | CLI-04 | Phase 5 | Complete |
 | CLI-05 | Phase 5 | Complete |
 | CLI-06 | Phase 5 | Complete |
-| TEAM-01 | Phase 7 | Pending |
+| TEAM-01 | Phase 7 | Complete |
 | TEAM-02 | Phase 7 | Pending |
 | TEAM-03 | Phase 7 | Pending |
 | SECU-01 | Phase 6 | Pending |
