@@ -13,11 +13,23 @@ describe("run command startup", () => {
     expect(typeof adapter.startMcpServer).toBe("function");
   });
 
-  it("startMcpServer logs startup message without throwing", async () => {
+  // NOTE: startMcpServer() is now a REAL stdio MCP server — invoking it
+  // in-process would call server.connect(StdioServerTransport), bind to the
+  // test runner's stdin, and block forever (and touch ~/.sessionmem). Its
+  // runtime behavior (initialize handshake, tools/list, store->retrieve
+  // round-trip) is covered by the spawn-based integration spec
+  // tests/integration/mcp/stdio-server.spec.ts. Here we only assert the server
+  // path never writes to stdout (stdout is reserved for MCP protocol frames;
+  // a stray console.log would corrupt the stream — T-08-04).
+  it("server module does not log to stdout via console.log", async () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    const adapter = AdapterFactory.detectAdapter();
-    await adapter.startMcpServer!();
-    expect(logSpy).toHaveBeenCalled();
+    const { GenericMCPAdapter } = await import(
+      "../../../src/adapters/generic.js"
+    );
+    const adapter = new GenericMCPAdapter();
+    expect(typeof adapter.startMcpServer).toBe("function");
+    // Importing/constructing the adapter must not emit anything to stdout.
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("ping tool is available across all adapter configurations", () => {
