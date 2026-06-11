@@ -1,0 +1,9 @@
+-- Team-mode provenance (TEAM-02): record who authored each memory and, for
+-- synced/shared rows, which project they originated in. Both columns are added
+-- to the existing `memories` table without rewriting it so pre-existing rows
+-- survive (T-07-01). `author` is NOT NULL with a DEFAULT '' sentinel because a
+-- NOT NULL ADD COLUMN requires a default and the local OS username is not
+-- available inside static SQL (Open Q1). `origin_project_id` is nullable and
+-- only set on rows pulled in from another project's store.
+ALTER TABLE memories ADD COLUMN author TEXT NOT NULL DEFAULT '';
+ALTER TABLE memories ADD COLUMN origin_project_id TEXT;

@@ -20,6 +20,8 @@ export interface MemoryRecord {
   embedding: string | null;
   embedding_dim: number | null;
   embedding_version: string | null;
+  author: string;
+  origin_project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,6 +48,8 @@ export interface InsertMemoryInput {
   embedding?: string | null;
   embedding_dim?: number | null;
   embedding_version?: string | null;
+  author?: string;
+  origin_project_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
