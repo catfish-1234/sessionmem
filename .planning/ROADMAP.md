@@ -16,7 +16,7 @@
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
 | 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
 | 7 | Team Mode Shared Memory | 5/5 | Complete   | 2026-06-11 |
-| 8 | Launch Quality and Distribution | 4/6 | In Progress|  |
+| 8 | Launch Quality and Distribution | 5/6 | In Progress|  |
 
 ## Phase Details
 
@@ -209,7 +209,7 @@ Plans:
 
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -224,7 +224,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 08-05-PLAN.md — ci.yml 3x2 matrix lint/typecheck/test/build + install-smoke (QLTY-02)
+- [x] 08-05-PLAN.md — ci.yml 3x2 matrix lint/typecheck/test/build + install-smoke (QLTY-02)
 
 **Wave 4** *(blocked on 08-01 + 08-05)*
 
