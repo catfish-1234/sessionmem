@@ -161,6 +161,11 @@ export const redactExistingResponseSchema = z.object({
   scanned: z.number().int().nonnegative(),
   matched: z.number().int().nonnegative(),
   updated: z.number().int().nonnegative(),
+  // WR-03: rows that matched but could not be updated (e.g. deleted
+  // concurrently between the initial scan and the apply step). A non-zero
+  // skipped count lets the CLI report partial success instead of the whole
+  // operation erroring out and discarding prior updates/previews.
+  skipped: z.number().int().nonnegative().default(0),
   previews: z.array(z.string()),
 });
 

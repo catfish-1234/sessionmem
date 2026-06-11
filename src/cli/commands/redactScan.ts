@@ -37,7 +37,13 @@ export async function redactScanCommand(
   }
 
   if (apply) {
-    console.log(`Redacted ${result.updated} memories.`);
+    if (result.skipped > 0) {
+      console.log(
+        `Redacted ${result.updated} memories; ${result.skipped} skipped (not found).`,
+      );
+    } else {
+      console.log(`Redacted ${result.updated} memories.`);
+    }
     return;
   }
 

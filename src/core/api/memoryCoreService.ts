@@ -512,6 +512,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       let matched = 0;
       let updated = 0;
+      let skipped = 0;
       const previews: string[] = [];
 
       for (const memory of memories) {
@@ -533,14 +534,25 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           // Recompute the embedding-normalized text on the redacted content so
           // the stored normalized_content stays consistent with the scrub.
           const embedding = deterministicEmbed(redaction.text, dimension);
-          updateMemoryContent(
-            db,
-            parsed.projectId,
-            memory.id,
-            redaction.text,
-            embedding.normalizedText,
-          );
-          updated += 1;
+          // WR-03: a single row that was deleted concurrently between the
+          // initial listMemoriesByProject snapshot and this update would
+          // otherwise throw and abort the whole scrub, discarding the
+          // scanned/matched/updated counts and previews accumulated so far
+          // (and any prior updates already committed, since the loop is not
+          // wrapped in a transaction). Catch per-row and report it as
+          // skipped instead.
+          try {
+            updateMemoryContent(
+              db,
+              parsed.projectId,
+              memory.id,
+              redaction.text,
+              embedding.normalizedText,
+            );
+            updated += 1;
+          } catch {
+            skipped += 1;
+          }
         }
       }
 
@@ -549,6 +561,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         scanned: memories.length,
         matched,
         updated,
+        skipped,
         previews,
       };
     },
