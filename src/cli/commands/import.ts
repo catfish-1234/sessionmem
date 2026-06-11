@@ -1,6 +1,6 @@
 import { resolve } from "path";
 import { readFileSync } from "fs";
-import { listMemoriesByProject } from "../../core/storage/memoryRepo.js";
+import { listAllMemoryIds } from "../../core/storage/memoryRepo.js";
 import { createCliContext, type CliContext } from "../context.js";
 import { importMemoryRecordSchema } from "../../core/api/contracts.js";
 
@@ -41,9 +41,12 @@ export async function importCommand(
   let skippedCount = 0;
 
   if (!options.merge) {
-    // D-12 default: skip existing IDs (pre-filter)
-    const existingRows = listMemoriesByProject(context.db, context.projectId);
-    const existingIds = new Set(existingRows.map((r) => r.id));
+    // D-12 default: skip existing IDs (pre-filter). CR-02: `id` is a
+    // globally-unique PRIMARY KEY (not scoped by project), so the duplicate
+    // check must consider every project's ids -- otherwise a record whose id
+    // collides with another project's memory would not be pre-filtered here
+    // and could fall through to the service's ON CONFLICT(id) upsert.
+    const existingIds = listAllMemoryIds(context.db);
 
     const filtered = records.filter((r) => {
       const id = typeof r.id === "string" ? r.id : undefined;
@@ -94,9 +97,15 @@ export async function importCommand(
   }
 
   const importedCount = result.imported;
+  const crossProjectSuffix =
+    result.skippedCrossProject > 0
+      ? ` (${result.skippedCrossProject} skipped: id belongs to another project)`
+      : "";
   if (options.merge) {
-    console.log(`Imported (merged) ${importedCount} memories.`);
+    console.log(`Imported (merged) ${importedCount} memories.${crossProjectSuffix}`);
   } else {
-    console.log(`Imported ${importedCount}, skipped ${skippedCount} duplicates.`);
+    console.log(
+      `Imported ${importedCount}, skipped ${skippedCount} duplicates.${crossProjectSuffix}`,
+    );
   }
 }

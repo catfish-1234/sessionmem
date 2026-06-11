@@ -409,6 +409,16 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           updated_at = excluded.updated_at
       `);
 
+      // CR-02: `id` is a globally-unique PRIMARY KEY (not scoped by
+      // project_id). The upsert above reassigns `project_id = excluded.project_id`
+      // on conflict, which would let an imported record silently overwrite and
+      // relocate another project's memory if its `id` happens to collide.
+      // Look up existing ownership per id and skip (rather than upsert) any
+      // record whose id already belongs to a *different* project.
+      const ownerStmt = db.prepare(
+        "SELECT project_id FROM memories WHERE id = ?",
+      );
+
       // Aggregate redaction warnings across all imported records (D-08). A
       // Set de-duplicates the redaction_partial_failure code so the envelope
       // stays compact regardless of how many records tripped the same rule.
@@ -417,7 +427,20 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         parsed.redactionEnabled,
       );
 
+      let imported = 0;
+      let skippedCrossProject = 0;
+
       for (const memory of parsed.memories) {
+        const owner = ownerStmt.get(memory.id) as
+          | { project_id: string }
+          | undefined;
+        if (owner && owner.project_id !== parsed.projectId) {
+          // Another project already owns this id: skip rather than overwrite
+          // and reassign ownership via ON CONFLICT(id).
+          skippedCrossProject += 1;
+          continue;
+        }
+
         // Redact each record before embedding/upsert so secrets never persist
         // and the embedding reflects the redacted text (D-06).
         const redaction = applyRedaction(memory.content, {
@@ -443,11 +466,13 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           created_at: memory.createdAt,
           updated_at: memory.updatedAt,
         });
+        imported += 1;
       }
 
       return {
         ok: true,
-        imported: parsed.memories.length,
+        imported,
+        skippedCrossProject,
         warningCodes: [...warningCodeSet],
       };
     },

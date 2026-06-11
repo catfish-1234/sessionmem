@@ -88,6 +88,19 @@ export function listMemoriesByProject(
   return stmt.all(projectId) as MemoryRecord[];
 }
 
+/**
+ * All memory ids across every project (CR-02). `id` is a globally-unique
+ * PRIMARY KEY, so duplicate-skip checks in `import` must consider every
+ * project's ids, not just the current project's, to surface cross-project id
+ * collisions as "skipped" rather than silently importing them.
+ */
+export function listAllMemoryIds(db: Database): Set<string> {
+  const rows = db.prepare("SELECT id FROM memories").all() as Array<{
+    id: string;
+  }>;
+  return new Set(rows.map((r) => r.id));
+}
+
 export function countMemoriesOlderThan(
   db: Database,
   projectId: string,
