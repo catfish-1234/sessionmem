@@ -25,6 +25,8 @@
     "prepack": "npm run build",
     "test": "vitest run --reporter=dot",
     "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "benchmark": "node scripts/benchmark.mjs"
   },
   "dependencies": {
@@ -35,8 +37,12 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^7.6.13",
+    "eslint": "^10.4.1",
+    "globals": "^17.6.0",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.61.0",
     "vitest": "^4.1.8"
   }
 }

@@ -15,7 +15,7 @@ export class FallbackToolRegistrar {
           },
           required: ["query"],
         },
-        execute: async (args: any) => {
+        execute: async (args: { query: string }) => {
           // Wrap core retrieval logic
           return `Fetched memories for ${args.query}`;
         }
