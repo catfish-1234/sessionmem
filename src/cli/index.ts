@@ -14,6 +14,11 @@ import { statsCommand } from "./commands/stats.js";
 import { redactScanCommand } from "./commands/redactScan.js";
 import { retentionPruneCommand } from "./commands/retention.js";
 import { configGetCommand, configSetCommand } from "./commands/config.js";
+import {
+  teamEnableCommand,
+  teamDisableCommand,
+  teamStatusCommand,
+} from "./commands/team.js";
 
 const program = new Command();
 program.name("sessionmem").version("0.1.0");
@@ -123,6 +128,34 @@ config
   .command("set <key> <value>")
   .description("Persist a config key to ~/.sessionmem/config.json")
   .action((key, value) => configSetCommand(key, value));
+
+// team command group (D-13) — turn shared-memory mode on/off and inspect it.
+// enable/status take no CliContext (config-only), so their arrow-wraps just drop
+// commander's trailing Command argument. disable accepts an optional CliContext
+// seam for the --remove-team-memories DB delete; the arrow-wrap forwards only
+// options so production falls through to createCliContext() (NOTE above).
+const team = program
+  .command("team")
+  .description("Manage shared-path team memory mode");
+
+team
+  .command("enable <path>")
+  .description("Enable team mode and record the shared memory path")
+  .action((path) => teamEnableCommand(path));
+
+team
+  .command("disable")
+  .description("Disable team mode (teammate memories preserved by default)")
+  .option(
+    "--remove-team-memories",
+    "Also delete teammate-authored memories for this project (local-only revert)",
+  )
+  .action((options) => teamDisableCommand(options));
+
+team
+  .command("status")
+  .description("Show team mode state and shared-path availability")
+  .action(() => teamStatusCommand());
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
