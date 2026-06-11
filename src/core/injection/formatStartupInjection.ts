@@ -8,6 +8,7 @@ const KIND_RANK = new Map(KIND_ORDER.map((kind, index) => [kind, index]));
 
 export interface FormatStartupInjectionOptions {
   tokenCap?: number;
+  localUsername?: string;
 }
 
 interface IncludedMemory {
@@ -56,22 +57,41 @@ function formatScore(value: number): string {
   return value.toFixed(3);
 }
 
-function formatLine(entry: IncludedMemory): string {
+function authorPrefix(
+  memory: RetrievedMemoryCandidate,
+  localUsername?: string,
+): string {
+  if (
+    memory.author &&
+    localUsername &&
+    memory.author !== localUsername
+  ) {
+    return `${memory.author}: `;
+  }
+
+  return "";
+}
+
+function formatLine(entry: IncludedMemory, localUsername?: string): string {
   const { memory } = entry;
   const score = memory.score;
+  const prefix = authorPrefix(memory, localUsername);
 
   return [
-    `- [${memory.kind}] ${entry.content}`,
+    `- [${memory.kind}] ${prefix}${entry.content}`,
     `(score total=${formatScore(score.total)}, semantic=${formatScore(score.raw.semantic)}, recency=${formatScore(score.raw.recency)}, importance=${formatScore(score.raw.importance)}; source=${memory.source_adapter}; date=${memory.updated_at})`,
   ].join(" ");
 }
 
-function render(entries: IncludedMemory[]): string {
+function render(entries: IncludedMemory[], localUsername?: string): string {
   if (entries.length === 0) {
     return HEADER;
   }
 
-  return [HEADER, ...entries.map(formatLine)].join("\n");
+  return [
+    HEADER,
+    ...entries.map((entry) => formatLine(entry, localUsername)),
+  ].join("\n");
 }
 
 function lowestDroppableIndex(entries: IncludedMemory[]): number {
@@ -95,20 +115,21 @@ export function formatStartupInjection(
   options: FormatStartupInjectionOptions = {},
 ): string {
   const tokenCap = options.tokenCap ?? DEFAULT_TOKEN_CAP;
+  const localUsername = options.localUsername;
   let included = sortMemories(rankedMemories).map((memory) => ({
     memory,
     content: memory.content,
     priority: KIND_ORDER.length - kindRank(memory.kind),
     preserve: isCriticalWarning(memory),
   }));
-  let output = render(included);
+  let output = render(included, localUsername);
 
   while (included.length > 0 && countTokens(output) > tokenCap) {
     const trimmed = trimLowestPriorityContent(included);
 
     if (trimmed.some((entry, index) => entry.content !== included[index].content)) {
       included = trimmed;
-      output = render(included);
+      output = render(included, localUsername);
       continue;
     }
 
@@ -118,7 +139,7 @@ export function formatStartupInjection(
     }
 
     included = included.filter((_, index) => index !== dropIndex);
-    output = render(included);
+    output = render(included, localUsername);
   }
 
   return output;
