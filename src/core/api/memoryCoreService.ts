@@ -3,6 +3,7 @@ import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
+import { formatStartupInjection } from "../injection/formatStartupInjection.js";
 import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
@@ -351,6 +352,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         ok: true,
         memories: ranked.map(toRetrievedMemoryDto),
         total: ranked.length,
+        // CR-01: render the startup-injection block here so the `author:`
+        // prefix annotation for teammate-authored memories reaches CLI/MCP
+        // callers via the production retrieval path.
+        startupInjection: formatStartupInjection(ranked, {
+          localUsername: localAuthor,
+        }),
       };
     },
 

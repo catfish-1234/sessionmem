@@ -235,6 +235,10 @@ export const retrieveMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   memories: z.array(retrievedMemorySchema),
   total: z.number().int().nonnegative(),
+  // Pre-rendered startup-injection block (CR-01): includes the `author:`
+  // prefix annotation for teammate-authored memories, derived via
+  // formatStartupInjection() with the local username.
+  startupInjection: z.string(),
 });
 
 export const exportMemoriesResponseSchema = z.object({
