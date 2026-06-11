@@ -122,6 +122,11 @@ export const importMemoryRecordSchema = z.object({
   kind: z.string().min(1),
   content: z.string().min(1),
   importance: z.number().int().min(1).max(10),
+  // OPTIONAL for backward-compat with exports predating team provenance (A3):
+  // older exports lack author/originProjectId, so the service stamps the local
+  // username when author is absent.
+  author: z.string().optional(),
+  originProjectId: z.string().optional(),
   createdAt: z.string().min(1).optional(),
   updatedAt: z.string().min(1).optional(),
 });

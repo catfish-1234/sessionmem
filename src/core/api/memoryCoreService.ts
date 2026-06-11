@@ -1,3 +1,4 @@
+import { userInfo } from "node:os";
 import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
@@ -67,8 +68,27 @@ interface MemoryDto {
   embedding: string | null;
   embeddingDim: number | null;
   embeddingVersion: string | null;
+  author: string;
+  originProjectId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Resolve the local OS username for author stamping (D-07), sanitized to a
+ * filename-safe token and falling back to "" when unavailable. Mirrors
+ * cli/context.localUsername but without a "user" fallback so the service can be
+ * driven with an explicit username dep in tests.
+ */
+function resolveServiceUsername(explicit: string | undefined): string {
+  if (explicit !== undefined) {
+    return explicit;
+  }
+  try {
+    return (userInfo().username ?? "").replace(/[^A-Za-z0-9._-]/g, "_");
+  } catch {
+    return "";
+  }
 }
 
 interface RetrievedMemoryDto extends MemoryDto {
@@ -79,6 +99,11 @@ interface RetrievedMemoryDto extends MemoryDto {
 export interface CreateMemoryCoreServiceDeps {
   db: Database;
   embeddingDimension?: number;
+  /**
+   * Local author identity stamped on every locally-authored write (D-07).
+   * Defaults to the sanitized OS username; an explicit value is the test seam.
+   */
+  username?: string;
   policyConfig?: LocalOnlyPolicyConfig;
   /** Path to the policy config driving the session-end light prune. Test seam. */
   policyConfigPath?: string;
@@ -111,6 +136,8 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
     embedding: record.embedding,
     embeddingDim: record.embedding_dim,
     embeddingVersion: record.embedding_version,
+    author: record.author,
+    originProjectId: record.origin_project_id,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -129,6 +156,8 @@ function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemory
     embedding: null,
     embeddingDim: record.embedding_dim,
     embeddingVersion: record.embedding_version,
+    author: record.author,
+    originProjectId: record.origin_project_id,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
     semantic: record.semantic,
@@ -146,7 +175,8 @@ function getMemoryById(
       `
       SELECT
         id, project_id, session_id, source_adapter, kind, content, normalized_content,
-        importance, embedding, embedding_dim, embedding_version, created_at, updated_at
+        importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+        created_at, updated_at
       FROM memories
       WHERE project_id = ? AND id = ?
       LIMIT 1
@@ -180,6 +210,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
   const dimension = deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const { db } = deps;
+  // Resolve the local author identity once per service instance (D-07).
+  const localAuthor = resolveServiceUsername(deps.username);
   const policyConfigPath = deps.policyConfigPath ?? configFilePath();
 
   /**
@@ -198,6 +230,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
   const lifecycleService = createSessionLifecycleService({
     db,
     embeddingDimension: dimension,
+    username: localAuthor,
     policyConfigPath: deps.policyConfigPath,
     retentionDaysOverride: deps.retentionDaysOverride,
     now: deps.now,
@@ -246,6 +279,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         embedding: JSON.stringify(embedding.vector),
         embedding_dim: embedding.dimension,
         embedding_version: embedding.embeddingVersion,
+        author: localAuthor,
+        origin_project_id: null,
       });
 
       return {
@@ -282,6 +317,10 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         embedding: JSON.stringify(embedding.vector),
         embedding_dim: embedding.dimension,
         embedding_version: embedding.embeddingVersion,
+        // Locally-authored row: stamp the local username (D-07); origin is null
+        // because this row did not come from another project's store.
+        author: localAuthor,
+        origin_project_id: null,
       });
 
       const inserted = getMemoryById(db, parsed.projectId, parsed.memoryId);
@@ -387,10 +426,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const stmt = db.prepare(`
         INSERT INTO memories (
           id, project_id, session_id, source_adapter, kind, content, normalized_content,
-          importance, embedding, embedding_dim, embedding_version, created_at, updated_at
+          importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+          created_at, updated_at
         ) VALUES (
           @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
-          @importance, @embedding, @embedding_dim, @embedding_version,
+          @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
           COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
           COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         )
@@ -405,6 +445,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           embedding = excluded.embedding,
           embedding_dim = excluded.embedding_dim,
           embedding_version = excluded.embedding_version,
+          author = excluded.author,
+          origin_project_id = excluded.origin_project_id,
           created_at = excluded.created_at,
           updated_at = excluded.updated_at
       `);
@@ -463,6 +505,15 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           embedding: JSON.stringify(embedding.vector),
           embedding_dim: embedding.dimension,
           embedding_version: embedding.embeddingVersion,
+          // Plain import (not a team pull): preserve an incoming author when the
+          // export carried one, else stamp the local username so the row is
+          // never left with an empty author (D-07). origin_project_id is carried
+          // through when present, else null for locally-originating rows.
+          author:
+            memory.author && memory.author.trim() !== ""
+              ? memory.author
+              : localAuthor,
+          origin_project_id: memory.originProjectId ?? null,
           created_at: memory.createdAt,
           updated_at: memory.updatedAt,
         });

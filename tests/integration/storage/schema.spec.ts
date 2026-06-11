@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Database } from "better-sqlite3";
 import { runMigrations } from "../../../src/core/schema/runMigrations.js";
@@ -32,6 +33,13 @@ function indexExists(db: Database, indexName: string): boolean {
     .get(indexName);
 
   return Boolean(row);
+}
+
+function columnNames(db: Database, tableName: string): string[] {
+  const rows = db
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+  return rows.map((row) => row.name);
 }
 
 describe("schema migrations", () => {
@@ -72,7 +80,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(4);
+    expect(countRow.count).toBe(5);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -82,7 +90,105 @@ describe("schema migrations", () => {
       "002_indexes.sql",
       "003_summarization_failures.sql",
       "004_memory_feedback.sql",
+      "005_team_provenance.sql",
     ]);
+
+    db.close();
+  });
+
+  it("adds author and origin_project_id columns via migration 005", () => {
+    const db = openDb({ dbPath: createTempDbPath() });
+
+    const columns = columnNames(db, "memories");
+    expect(columns).toContain("author");
+    expect(columns).toContain("origin_project_id");
+
+    db.close();
+  });
+
+  it("preserves a pre-005 row and backfills author='' / origin_project_id=NULL", () => {
+    const dbPath = createTempDbPath();
+
+    // Simulate a pre-005 database: apply only the migrations that predate
+    // team-provenance by pointing the runner at a temp dir holding 001-004.
+    const baseMigrationsDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "sessionmem-mig-"),
+    );
+    tempDirs.push(baseMigrationsDir);
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const sourceMigrationsDir = path.resolve(
+      here,
+      "../../../src/core/schema/migrations",
+    );
+    for (const name of [
+      "001_initial.sql",
+      "002_indexes.sql",
+      "003_summarization_failures.sql",
+      "004_memory_feedback.sql",
+    ]) {
+      fs.copyFileSync(
+        path.join(sourceMigrationsDir, name),
+        path.join(baseMigrationsDir, name),
+      );
+    }
+
+    const legacyDb = openDb({ dbPath, migrationsDir: baseMigrationsDir });
+    legacyDb
+      .prepare(
+        `INSERT INTO memories (
+          id, project_id, session_id, source_adapter, kind, content,
+          normalized_content, importance
+        ) VALUES (
+          'legacy-1', 'proj-a', 'sess-1', 'codex', 'fact', 'old content',
+          'old content', 5
+        )`,
+      )
+      .run();
+    legacyDb.close();
+
+    // Re-open with the full migration set (now including 005).
+    const db = openDb({ dbPath });
+
+    const row = db
+      .prepare(
+        "SELECT id, content, author, origin_project_id FROM memories WHERE id = 'legacy-1'",
+      )
+      .get() as {
+      id: string;
+      content: string;
+      author: string;
+      origin_project_id: string | null;
+    };
+
+    expect(row.id).toBe("legacy-1");
+    expect(row.content).toBe("old content");
+    expect(row.author).toBe("");
+    expect(row.origin_project_id).toBeNull();
+
+    db.close();
+  });
+
+  it("exposes string author and string|null origin_project_id on stored rows", () => {
+    const db = openDb({ dbPath: createTempDbPath() });
+
+    db.prepare(
+      `INSERT INTO memories (
+        id, project_id, session_id, source_adapter, kind, content,
+        normalized_content, importance, author
+      ) VALUES (
+        'mem-1', 'proj-a', 'sess-1', 'codex', 'fact', 'hello', 'hello', 5, 'alice'
+      )`,
+    ).run();
+
+    const row = db
+      .prepare(
+        "SELECT author, origin_project_id FROM memories WHERE id = 'mem-1'",
+      )
+      .get() as { author: string; origin_project_id: string | null };
+
+    expect(typeof row.author).toBe("string");
+    expect(row.author).toBe("alice");
+    expect(row.origin_project_id).toBeNull();
 
     db.close();
   });
