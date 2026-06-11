@@ -528,7 +528,13 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
         // Preview is built from the REDACTED text and length-bounded so no raw
         // secret is echoed and no large body leaks in bulk (T-06-10, D-07/D-14).
-        previews.push(redaction.text.slice(0, REDACT_PREVIEW_MAX_LENGTH));
+        // IN-01: truncate on Unicode code-point boundaries (Array.from
+        // iterates by code point) rather than String.slice's UTF-16 code-unit
+        // boundaries, so a multi-byte character (emoji, non-BMP) straddling
+        // the limit isn't split into an unpaired surrogate.
+        previews.push(
+          Array.from(redaction.text).slice(0, REDACT_PREVIEW_MAX_LENGTH).join(""),
+        );
 
         if (parsed.apply) {
           // Recompute the embedding-normalized text on the redacted content so
