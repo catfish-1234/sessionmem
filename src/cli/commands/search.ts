@@ -35,4 +35,9 @@ export async function searchCommand(
   }
 
   console.log(formatTable(result.memories));
+  // Surface the pre-rendered startup-injection block (CR-01) so the D-10
+  // `author:` provenance annotation for teammate-authored memories is
+  // observable in real `search` output. Already a rendered string; no ANSI
+  // color (Phase 5 D-07).
+  console.log(result.startupInjection);
 }
