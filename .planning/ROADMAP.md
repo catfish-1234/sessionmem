@@ -15,7 +15,7 @@
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
 | 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
-| 7 | Team Mode Shared Memory | 2/4 | In Progress|  |
+| 7 | Team Mode Shared Memory | 3/4 | In Progress|  |
 | 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
 
 ## Phase Details
@@ -172,7 +172,7 @@ Plans:
 
 **Requirements:** TEAM-01, TEAM-02, TEAM-03
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 **Wave 1**
@@ -185,7 +185,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 1 + Wave 2)*
 
-- [ ] 07-03-PLAN.md — pullMemories merge (LWW/importance-preserve/redaction/cross-project skip) + sync push/pull CLI (TEAM-01)
+- [x] 07-03-PLAN.md — pullMemories merge (LWW/importance-preserve/redaction/cross-project skip) + sync push/pull CLI (TEAM-01)
 
 **Wave 4** *(blocked on Wave 1 + Wave 3)*
 
