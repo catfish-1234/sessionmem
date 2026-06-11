@@ -50,7 +50,10 @@ export const handleSessionEndConfigSchema = z.object({
   autoSummarize: z.boolean().default(true),
   minimumEventThreshold: z.number().int().min(1).max(100).default(3),
   summaryTokenCap: z.number().int().min(1).default(300),
-  redactionEnabled: z.boolean().default(true),
+  // No `.default()`: omission must be distinguishable from an explicit value so
+  // the service layer can fall back to the policy-config redactionEnabled
+  // setting (override > config.json > default precedence, D-11).
+  redactionEnabled: z.boolean().optional(),
   factMode: factModeSchema.default("summary+facts"),
   allowCloudSummarization: z.boolean().default(false),
   anthropicApiKey: z.string().min(1).optional(),
@@ -72,7 +75,10 @@ export const storeMemoryRequestSchema = z.object({
   kind: z.string().min(1),
   content: z.string().min(1),
   importance: z.number().int().min(1).max(10),
-  redactionEnabled: z.boolean().default(true),
+  // No `.default()`: omission must be distinguishable from an explicit value so
+  // the service layer can fall back to the policy-config redactionEnabled
+  // setting (override > config.json > default precedence, D-11).
+  redactionEnabled: z.boolean().optional(),
 });
 
 export const retrieveMemoriesRequestSchema = z.object({
@@ -122,7 +128,10 @@ export const importMemoryRecordSchema = z.object({
 
 export const importMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
-  redactionEnabled: z.boolean().default(true),
+  // No `.default()`: omission must be distinguishable from an explicit value so
+  // the service layer can fall back to the policy-config redactionEnabled
+  // setting (override > config.json > default precedence, D-11).
+  redactionEnabled: z.boolean().optional(),
   memories: z.array(importMemoryRecordSchema),
 });
 

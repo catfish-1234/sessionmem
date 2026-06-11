@@ -13,6 +13,11 @@ import {
   updateMemoryContent,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
+import {
+  configFilePath,
+  readPolicyConfig,
+  resolvePolicySettings,
+} from "../config/policyConfig.js";
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
@@ -175,6 +180,21 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
   const dimension = deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const { db } = deps;
+  const policyConfigPath = deps.policyConfigPath ?? configFilePath();
+
+  /**
+   * Resolve the effective redactionEnabled flag using precedence
+   * override (explicit per-request value) > config.json > default (D-11),
+   * mirroring resolveRetentionDays in sessionLifecycleService. An explicit
+   * `false` or `true` on the request always wins; omission falls back to
+   * `~/.sessionmem/config.json`'s redactionEnabled (CR-01).
+   */
+  function resolveRedactionEnabled(explicit: boolean | undefined): boolean {
+    return resolvePolicySettings({
+      override: explicit !== undefined ? { redactionEnabled: explicit } : undefined,
+      config: readPolicyConfig(policyConfigPath),
+    }).redactionEnabled;
+  }
   const lifecycleService = createSessionLifecycleService({
     db,
     embeddingDimension: dimension,
@@ -246,7 +266,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // the embedding is computed on the redacted text (D-06). warningCodes
       // reuse the existing redaction_partial_failure mechanism (D-08).
       const redaction = applyRedaction(parsed.content, {
-        redactionEnabled: parsed.redactionEnabled,
+        redactionEnabled: resolveRedactionEnabled(parsed.redactionEnabled),
       });
       const embedding = deterministicEmbed(redaction.text, dimension);
 
@@ -393,12 +413,15 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // Set de-duplicates the redaction_partial_failure code so the envelope
       // stays compact regardless of how many records tripped the same rule.
       const warningCodeSet = new Set<string>();
+      const effectiveRedactionEnabled = resolveRedactionEnabled(
+        parsed.redactionEnabled,
+      );
 
       for (const memory of parsed.memories) {
         // Redact each record before embedding/upsert so secrets never persist
         // and the embedding reflects the redacted text (D-06).
         const redaction = applyRedaction(memory.content, {
-          redactionEnabled: parsed.redactionEnabled,
+          redactionEnabled: effectiveRedactionEnabled,
         });
         for (const code of redaction.warningCodes) {
           warningCodeSet.add(code);

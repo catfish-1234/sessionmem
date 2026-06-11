@@ -81,9 +81,10 @@ export async function importCommand(
 
   const result = await context.service.call("importMemories", {
     projectId: context.projectId,
-    // Redaction defaults on for the import write path (D-06): secrets in an
-    // imported file are scrubbed before persistence unless explicitly disabled.
-    redactionEnabled: true,
+    // No explicit redactionEnabled here: the service resolves the effective
+    // value from ~/.sessionmem/config.json (override > config > default,
+    // D-11), so `sessionmem config set redactionEnabled false` governs the
+    // import write path too (CR-01).
     memories: mapped,
   });
 

@@ -8,6 +8,7 @@ import {
   configFilePath,
   DEFAULT_POLICY_CONFIG,
   readPolicyConfig,
+  resolvePolicySettings,
 } from "../config/policyConfig.js";
 import { listSessionEventsBySession } from "../storage/sessionEventsRepo.js";
 import { insertSummarizationFailure } from "../storage/summarizationFailuresRepo.js";
@@ -161,6 +162,24 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   }
 
   /**
+   * Resolve the effective redactionEnabled flag for the session-end
+   * auto-summarize redaction step using precedence override (explicit
+   * request.config.redactionEnabled) > config.json > default (D-11), mirroring
+   * resolveRetentionDays. Falls back to the built-in default on any read
+   * failure (T-06-15).
+   */
+  function resolveRedactionEnabled(explicit: boolean | undefined): boolean {
+    try {
+      return resolvePolicySettings({
+        override: explicit !== undefined ? { redactionEnabled: explicit } : undefined,
+        config: readPolicyConfig(policyConfigPath),
+      }).redactionEnabled;
+    } catch {
+      return explicit ?? DEFAULT_POLICY_CONFIG.redactionEnabled;
+    }
+  }
+
+  /**
    * D-02: light, non-blocking retention prune executed once at session-end.
    * Hard-deletes memories older than the effective retentionDays for this
    * project. retentionDays<=0 disables pruning (D-03). Any failure is swallowed
@@ -218,7 +237,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
     const baseInput = {
       events,
       summaryTokenCap: request.config.summaryTokenCap,
-      redactionEnabled: request.config.redactionEnabled,
+      redactionEnabled: resolveRedactionEnabled(request.config.redactionEnabled),
       factMode: request.config.factMode,
     };
 
