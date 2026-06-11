@@ -39,6 +39,8 @@ const CLOUD_ENABLED_MESSAGE =
 export interface SessionLifecycleServiceDeps {
   db: Database;
   embeddingDimension?: number;
+  /** Local author identity stamped on session-summary writes (D-07). */
+  username?: string;
   summarizeLocal?: (input: LocalSummarizeInput) => Promise<SummarizerResult>;
   summarizeCloud?: (input: CloudSummarizeInput) => Promise<SummarizerResult>;
   createFailureId?: () => string;
@@ -112,6 +114,7 @@ function storeSummaryMemory(
     sessionId: string;
     sourceAdapter: string;
     summary: string;
+    author: string;
   },
 ): void {
   const embedding = deterministicEmbed(input.summary, embeddingDimension);
@@ -127,6 +130,9 @@ function storeSummaryMemory(
     embedding: JSON.stringify(embedding.vector),
     embedding_dim: embedding.dimension,
     embedding_version: embedding.embeddingVersion,
+    // Session summaries are locally authored (D-07).
+    author: input.author,
+    origin_project_id: null,
   });
 }
 
@@ -140,6 +146,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   const embeddingDimension =
     deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const createFailureId = deps.createFailureId ?? defaultFailureId;
+  const author = deps.username ?? "";
   const policyConfigPath = deps.policyConfigPath ?? configFilePath();
   const now = deps.now ?? (() => new Date());
   const deleteOldMemories =
@@ -255,6 +262,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           sessionId: request.sessionId,
           sourceAdapter: request.sourceAdapter,
           summary: cloudResult.summary,
+          author,
         });
 
         runLightPrune(request.projectId);
@@ -281,6 +289,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           sessionId: request.sessionId,
           sourceAdapter: request.sourceAdapter,
           summary: fallbackResult.summary,
+          author,
         });
 
         runLightPrune(request.projectId);
@@ -336,6 +345,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         sessionId: request.sessionId,
         sourceAdapter: request.sourceAdapter,
         summary: localResult.summary,
+        author,
       });
 
       runLightPrune(request.projectId);
