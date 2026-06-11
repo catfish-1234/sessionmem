@@ -2,7 +2,7 @@
 phase: 08-launch-quality-and-distribution
 plan: 06
 subsystem: distribution
-status: paused-at-checkpoint
+status: checkpoint-approved
 tags: [release, npm, oidc, mcp-registry, claude-plugin, distribution]
 requires:
   - "package.json mcpName io.github.kavishdua/sessionmem + version 1.0.0 (Plan 01)"
@@ -42,11 +42,13 @@ requirements: [QLTY-05]
 
 # Phase 08 Plan 06: Distribution Layer Summary
 
-Authored the distribution layer for QLTY-05 — a tag-triggered npm release workflow (OIDC trusted publishing with a documented NPM_TOKEN fallback) plus internally consistent registry/marketplace metadata (server.json, .claude-plugin/marketplace.json + plugin.json, .mcp.json) all under owner `kavishdua`, version `1.0.0`, and the `sessionmem run` invocation. Execution **paused at the blocking human checkpoint** before any irreversible npm publish / registry / marketplace submission.
+Authored the distribution layer for QLTY-05 — a tag-triggered npm release workflow (OIDC trusted publishing with a documented NPM_TOKEN fallback) plus internally consistent registry/marketplace metadata (server.json, .claude-plugin/marketplace.json + plugin.json, .mcp.json) all under owner `kavishdua`, version `1.0.0`, and the `sessionmem run` invocation. Execution paused at the blocking human checkpoint before any irreversible npm publish / registry / marketplace submission; the checkpoint has since been **approved by the user**.
 
 ## Status
 
-PAUSED at Task 3 (`checkpoint:human-verify`, `gate="blocking-human"`). Both author tasks (1 and 2) are complete, verified, and committed. The irreversible publish/submission steps require human confirmation of identity/name/auth and that the advertised server actually works (T-08-12). The orchestrator must surface this checkpoint to the user; a fresh agent will continue after "approved".
+APPROVED. Both author tasks (1 and 2) are complete, verified, and committed. Task 3 (`checkpoint:human-verify`, `gate="blocking-human"`) was reviewed and the user replied "approved", confirming identity/name (owner `kavishdua`, matching `mcpName` in package.json, `name` in server.json, and `owner` in marketplace.json) and that `sessionmem run` is a verified-working MCP server.
+
+The irreversible publish/submission steps (real `npm publish` of `sessionmem@1.0.0`, npm trusted-publisher OIDC setup or `NPM_TOKEN` secret, MCP Registry submission via `mcp-publisher`, and the Claude Code marketplace listing) remain **manual follow-up steps for the user** to perform at actual release time — they are not performed as part of this plan/checkpoint resolution. See "Manual-Only Verifications" below for the full list.
 
 ## What Was Built
 
@@ -91,7 +93,7 @@ These are inherently human/CI-at-release actions and are intentionally NOT perfo
 
 ## Checkpoint Reached
 
-Type: `human-verify` (`gate="blocking-human"`). Awaiting "approved" (or change requests) confirming identity/name/auth and a verified-working server before the irreversible publish/submission steps. See the structured checkpoint return for the exact verification steps.
+Type: `human-verify` (`gate="blocking-human"`). **Resolved: approved by user on 2026-06-11**, confirming identity/name/auth and a verified-working server. The irreversible publish/submission steps below remain manual follow-up actions for the user at actual release time — not performed by the agent as part of this checkpoint resolution.
 
 ## Self-Check: PASSED
 
