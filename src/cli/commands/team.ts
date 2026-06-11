@@ -70,6 +70,9 @@ export function teamStatusCommand(options?: TeamCommandOptions): void {
   // W_OK for directories on Windows). Probe by creating and removing a temp
   // file, falling back to accessSync only if the probe itself errors
   // unexpectedly (e.g. sharedPath is not a directory).
+  // Defensive init: guarantees a definite value before the read below even if a
+  // probe branch is later added.
+  // eslint-disable-next-line no-useless-assignment
   let writable = false;
   const probePath = join(sharedPath, `.sessionmem-write-test-${randomUUID()}`);
   try {
