@@ -74,12 +74,29 @@ export async function importCommand(
     updatedAt: r.updatedAt as string | undefined,
   }));
 
+  // IN-02: validate each record but skip-and-warn on individual invalid
+  // records (consistent with the duplicate-skip UX) instead of aborting the
+  // entire import on the first invalid record, which would discard earlier
+  // valid records with no partial import.
+  const validMemories: Array<(typeof mapped)[number]> = [];
+  let invalidCount = 0;
   for (let i = 0; i < mapped.length; i++) {
     const check = importMemoryRecordSchema.safeParse(mapped[i]);
     if (!check.success) {
-      console.error(`Record at index ${i} is invalid: ${check.error.message}`);
-      process.exit(1);
+      console.error(`Record at index ${i} is invalid, skipping: ${check.error.message}`);
+      invalidCount += 1;
+      continue;
     }
+    validMemories.push(mapped[i]);
+  }
+
+  if (validMemories.length === 0) {
+    if (invalidCount > 0) {
+      console.log(`Imported 0, skipped ${invalidCount} invalid record(s).`);
+    } else if (skippedCount > 0) {
+      console.log(`Imported 0, skipped ${skippedCount} duplicates.`);
+    }
+    return;
   }
 
   const result = await context.service.call("importMemories", {
@@ -88,7 +105,7 @@ export async function importCommand(
     // value from ~/.sessionmem/config.json (override > config > default,
     // D-11), so `sessionmem config set redactionEnabled false` governs the
     // import write path too (CR-01).
-    memories: mapped,
+    memories: validMemories,
   });
 
   if (!result.ok) {
@@ -97,15 +114,18 @@ export async function importCommand(
   }
 
   const importedCount = result.imported;
-  const crossProjectSuffix =
+  let suffix =
     result.skippedCrossProject > 0
       ? ` (${result.skippedCrossProject} skipped: id belongs to another project)`
       : "";
+  if (invalidCount > 0) {
+    suffix += ` (${invalidCount} invalid record(s) skipped)`;
+  }
   if (options.merge) {
-    console.log(`Imported (merged) ${importedCount} memories.${crossProjectSuffix}`);
+    console.log(`Imported (merged) ${importedCount} memories.${suffix}`);
   } else {
     console.log(
-      `Imported ${importedCount}, skipped ${skippedCount} duplicates.${crossProjectSuffix}`,
+      `Imported ${importedCount}, skipped ${skippedCount} duplicates.${suffix}`,
     );
   }
 }
