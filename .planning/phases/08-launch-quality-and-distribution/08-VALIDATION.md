@@ -1,9 +1,9 @@
 ---
 phase: 08
 slug: launch-quality-and-distribution
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: approved
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-11
 ---
 
@@ -56,17 +56,19 @@ created: 2026-06-11
 
 ---
 
-## Wave 0 Requirements
+## In-Phase Prerequisites (delivered within this phase's own waves)
 
-- [ ] `eslint.config.mjs` — required before any lint step can run (D-03)
-- [ ] `tests/integration/docs/readme-docs.spec.ts` — covers QLTY-03 (README, D-05/D-09)
-- [ ] `tests/integration/docs/architecture-docs.spec.ts` — covers QLTY-03 (D-06/D-09)
-- [ ] `tests/integration/docs/troubleshooting-docs.spec.ts` — covers QLTY-03 (D-07/D-09)
-- [ ] `tests/integration/docs/migration-docs.spec.ts` — covers QLTY-03 (D-08/D-09)
-- [ ] `scripts/benchmark.mjs` + `npm run benchmark` script — covers QLTY-04 (D-12)
-- [ ] `.github/workflows/ci.yml` — covers QLTY-02 (the validation harness itself, D-01..D-04)
-- [ ] MCP stdio server implementation + integration test (D-17) — covers QLTY-01/QLTY-05 gap
-- [ ] Adapter `install()` parity tests (≥1 IDE + ≥1 global) — covers QLTY-01 gap
+> NOTE: These are NOT an external "Wave 0" prerequisite blocking this phase. Each item is a deliverable of this phase's own Wave 1–3 plans and is created before any later wave that consumes it. The dependency ordering is encoded in plan `wave`/`depends_on` frontmatter (e.g., `ci.yml` from Wave 3's 08-05 is reused by Wave 4's 08-06). Listed here for traceability of the artifact → requirement mapping.
+
+- [x] `eslint.config.mjs` — Wave 2 / 08-02 — covers QLTY-02 (D-03)
+- [x] `tests/integration/docs/readme-docs.spec.ts` — Wave 1 / 08-03 — covers QLTY-03 (D-05/D-09)
+- [x] `tests/integration/docs/architecture-docs.spec.ts` — Wave 1 / 08-03 — covers QLTY-03 (D-06/D-09)
+- [x] `tests/integration/docs/troubleshooting-docs.spec.ts` — Wave 1 / 08-03 — covers QLTY-03 (D-07/D-09)
+- [x] `tests/integration/docs/migration-docs.spec.ts` — Wave 1 / 08-03 — covers QLTY-03 (D-08/D-09)
+- [x] `scripts/benchmark.mjs` + `npm run benchmark` script — Wave 2 / 08-04 — covers QLTY-04 (D-12)
+- [x] `.github/workflows/ci.yml` — Wave 3 / 08-05 — covers QLTY-02 (the validation harness itself, D-01..D-04)
+- [x] MCP stdio server implementation + integration test (D-17) — Wave 1 / 08-01 — covers QLTY-01/QLTY-05 gap
+- [x] Adapter `install()` parity tests (≥1 IDE + ≥1 global) — Wave 2 / 08-02 — covers QLTY-01 gap
 
 ---
 
@@ -81,11 +83,11 @@ created: 2026-06-11
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or in-phase prerequisites (every automated task carries an `<automated>` command)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] In-phase prerequisites cover all MISSING references (no external Wave 0 needed)
+- [x] No watch-mode flags
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-06-11

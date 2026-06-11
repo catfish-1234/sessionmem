@@ -225,6 +225,9 @@ Plans:
 **Wave 3** *(blocked on Wave 2)*
 
 - [ ] 08-05-PLAN.md — ci.yml 3x2 matrix lint/typecheck/test/build + install-smoke (QLTY-02)
+
+**Wave 4** *(blocked on 08-01 + 08-05)*
+
 - [ ] 08-06-PLAN.md — release.yml (OIDC publish) + server.json/.claude-plugin/.mcp.json distribution metadata (QLTY-05)
 
 **Success Criteria:**
