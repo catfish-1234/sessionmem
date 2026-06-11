@@ -209,6 +209,24 @@ Plans:
 
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
+**Plans:** 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 08-01-PLAN.md — Real stdio MCP server (D-17) + publishable package.json/version/LICENSE (D-13/D-14)
+- [ ] 08-03-PLAN.md — README + architecture/troubleshooting/migration docs + coverage specs (QLTY-03)
+
+**Wave 2** *(blocked on 08-01)*
+
+- [ ] 08-02-PLAN.md — ESLint flat config (D-03) + adapter install-parity & generic-path tests (QLTY-01/02)
+- [ ] 08-04-PLAN.md — Reproducible benchmark script + docs/benchmark.md + coverage spec (QLTY-04)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 08-05-PLAN.md — ci.yml 3x2 matrix lint/typecheck/test/build + install-smoke (QLTY-02)
+- [ ] 08-06-PLAN.md — release.yml (OIDC publish) + server.json/.claude-plugin/.mcp.json distribution metadata (QLTY-05)
+
 **Success Criteria:**
 
 1. Unit and integration test coverage includes core flows and adapters.
