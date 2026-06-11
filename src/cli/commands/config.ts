@@ -33,6 +33,20 @@ function coerceInt(raw: string): number {
   return Number.parseInt(raw.trim(), 10);
 }
 
+// 100 years (in days). Far beyond any realistic retention window, and keeps
+// `Date.now() - retentionDays * 24 * 60 * 60 * 1000` well within the safe
+// Date range so `pruneMemories`'s cutoff computation never throws RangeError
+// (WR-01).
+const MAX_RETENTION_DAYS = 36500;
+
+function coerceRetentionDays(raw: string): number {
+  const n = coerceInt(raw);
+  if (n > MAX_RETENTION_DAYS) {
+    throw new Error(`retentionDays must be <= ${MAX_RETENTION_DAYS}, got "${raw}"`);
+  }
+  return n;
+}
+
 function coerceBool(raw: string): boolean {
   const v = raw.trim().toLowerCase();
   if (v === "true") return true;
@@ -43,8 +57,8 @@ function coerceBool(raw: string): boolean {
 // Accept both the dotted operator key (retention.days) and the raw policyConfig
 // field name (retentionDays) so CLI and policyConfig stay consistent (plan note).
 const CONFIG_KEYS: Record<string, ConfigKeyDef> = {
-  "retention.days": { field: "retentionDays", coerce: coerceInt },
-  retentionDays: { field: "retentionDays", coerce: coerceInt },
+  "retention.days": { field: "retentionDays", coerce: coerceRetentionDays },
+  retentionDays: { field: "retentionDays", coerce: coerceRetentionDays },
   redactionEnabled: { field: "redactionEnabled", coerce: coerceBool },
 };
 
