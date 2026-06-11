@@ -16,7 +16,7 @@
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
 | 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
 | 7 | Team Mode Shared Memory | 5/5 | Complete   | 2026-06-11 |
-| 8 | Launch Quality and Distribution | 2/6 | In Progress|  |
+| 8 | Launch Quality and Distribution | 4/6 | In Progress|  |
 
 ## Phase Details
 
@@ -209,7 +209,7 @@ Plans:
 
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
-**Plans:** 2/6 plans executed
+**Plans:** 4/6 plans executed
 
 Plans:
 **Wave 1**
@@ -219,8 +219,8 @@ Plans:
 
 **Wave 2** *(blocked on 08-01)*
 
-- [ ] 08-02-PLAN.md — ESLint flat config (D-03) + adapter install-parity & generic-path tests (QLTY-01/02)
-- [ ] 08-04-PLAN.md — Reproducible benchmark script + docs/benchmark.md + coverage spec (QLTY-04)
+- [x] 08-02-PLAN.md — ESLint flat config (D-03) + adapter install-parity & generic-path tests (QLTY-01/02)
+- [x] 08-04-PLAN.md — Reproducible benchmark script + docs/benchmark.md + coverage spec (QLTY-04)
 
 **Wave 3** *(blocked on Wave 2)*
 
