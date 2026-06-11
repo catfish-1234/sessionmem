@@ -2,7 +2,7 @@
 
 **Phase:** 08-launch-quality-and-distribution
 **Plan:** 01
-**Status:** Tasks 1 & 2 complete and committed. Task 3 is a blocking-human checkpoint — AWAITING APPROVAL.
+**Status:** Complete. All 3 tasks done and committed.
 
 ## What was built
 
@@ -48,10 +48,10 @@
 - New stdio integration spec — 3/3 pass.
 - Full suite — **281/281 pass, 53 files** (no regressions).
 
-## CHECKPOINT — Task 3 (blocking-human): verify [ASSUMED] SDK package
+## Task 3 — verify [ASSUMED] SDK package: APPROVED
 
-slopcheck could not run during research (sandbox-denied), so `@modelcontextprotocol/sdk` is tagged
-[ASSUMED] and must be human-verified before it ships in a published package. Machine-collected facts:
+slopcheck could not run during research (sandbox-denied), so `@modelcontextprotocol/sdk` was tagged
+[ASSUMED] pending human-verification before it ships in a published package. Machine-collected facts:
 
 | Check | Result |
 |-------|--------|
@@ -60,9 +60,7 @@ slopcheck could not run during research (sandbox-denied), so `@modelcontextproto
 | Maintainers | include `fweinberger@anthropic.com`, `ashwin@anthropic.com` (Anthropic) |
 | `scripts.postinstall` | empty (no postinstall script) |
 
-**Awaited:** Human to open https://www.npmjs.com/package/@modelcontextprotocol/sdk, confirm it is the
-official Anthropic Model Context Protocol SDK, and reply "approved" (or describe a discrepancy to halt).
-No code change is gated on this — it is a publish-safety sign-off.
+User confirmed `@modelcontextprotocol/sdk` is the official Anthropic Model Context Protocol SDK. Approved — no code change required.
 
 ## Decisions / deviations
 
