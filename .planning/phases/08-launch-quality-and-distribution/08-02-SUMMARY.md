@@ -1,7 +1,7 @@
 ---
 phase: 08-launch-quality-and-distribution
 plan: 02
-status: checkpoint-paused
+status: complete
 requirements: [QLTY-01, QLTY-02]
 autonomous: false
 ---
@@ -10,9 +10,8 @@ autonomous: false
 
 ## Status
 
-**PAUSED at blocking-human checkpoint (Task 3).** Both auto tasks (Task 1, Task 2)
-are complete, verified, and committed. Task 3 is a `checkpoint:human-verify`
-(Package Legitimacy Gate) that an executor agent cannot self-approve.
+**Complete.** All 3 tasks done and committed. Task 3 (`checkpoint:human-verify`,
+Package Legitimacy Gate) was approved by the user.
 
 ## Completed Tasks
 
@@ -20,7 +19,7 @@ are complete, verified, and committed. Task 3 is a `checkpoint:human-verify`
 |------|-------------|--------|--------|
 | 1 | ESLint 10 flat-config lint gate (QLTY-02, D-03) | `b348397` | DONE |
 | 2 | Adapter install() parity + generic path tests (QLTY-01) | `57a29a8` | DONE |
-| 3 | Human-verify ESLint toolchain package legitimacy | — | AWAITING APPROVAL |
+| 3 | Human-verify ESLint toolchain package legitimacy | — | APPROVED |
 
 ## What Was Built
 
@@ -72,27 +71,15 @@ are complete, verified, and committed. Task 3 is a `checkpoint:human-verify`
 - Added `globals` as an explicit devDep because `eslint.config.mjs` imports it for
   Node globals (it is otherwise only a transitive dep).
 
-## Checkpoint Details (Task 3 — BLOCKING, awaiting human)
+## Task 3 — Package Legitimacy Gate: APPROVED
 
-**Type:** `checkpoint:human-verify` (Package Legitimacy Gate).
-
-The ESLint toolchain was installed and pinned in the lockfile of a *published*
-package; slopcheck could not run during research (sandbox-denied), so legitimacy
-is `[ASSUMED]` (T-08-SC2) and must be human-verified before shipping.
-
-Installed / pinned versions to verify:
+`checkpoint:human-verify`. Installed / pinned versions:
 - `eslint@10.4.1` — https://www.npmjs.com/package/eslint
 - `typescript-eslint@8.61.0` — https://www.npmjs.com/package/typescript-eslint
 - `@eslint/js@10.0.1` — https://www.npmjs.com/package/@eslint/js
 - (`globals@17.6.0` added for Node globals in the flat config)
 
-Verification steps for the human:
-1. Confirm each npm page is the official package (ESLint team / typescript-eslint org).
-2. Confirm installed versions match real published versions.
-3. Confirm none ship a postinstall script (`npm view <pkg> scripts.postinstall`
-   returned empty for all three during install).
-
-**Resume signal:** reply "approved" to continue, or describe the discrepancy to halt.
+User confirmed these are the official packages with correct versions and no postinstall scripts. Approved — no code change required.
 
 ## Verification
 
