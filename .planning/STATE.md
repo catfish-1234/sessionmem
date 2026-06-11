@@ -3,27 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: ready_to_plan
-last_updated: "2026-06-10T22:36:34.789Z"
+last_updated: "2026-06-11T05:07:28.678Z"
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 22
-  completed_plans: 15
-  percent: 50
+  completed_phases: 6
+  total_plans: 27
+  completed_plans: 27
+  percent: 75
 ---
 
 # Project State
 
 **Project:** sessionmem
-**State Updated:** 2026-06-04
+**State Updated:** 2026-06-10
 
 ## Current Status
 
 - Milestone: v1.0 launch-ready foundation
-- Current phase: Phase 5 - CLI Lifecycle and Data Operations (in progress)
-- Progress: 4 / 8 phases complete
-- Current plan position: Phase 5 Plan 1 complete; ready for Phase 5 Plan 2
-- Last completed plan: 05-01-PLAN.md
+- Current phase: Phase 6 - Security, Privacy, and Retention Hardening (complete)
+- Progress: 6 / 8 phases complete
+- Current plan position: Phase 6 complete; ready for Phase 7
+- Last completed plan: 06-07-PLAN.md
 
 ## Project Reference
 
@@ -70,6 +70,8 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 13. 2026-06-04 (03-03): Quality harness codifies startup injection relevance as warning-first ordering, decision/fact preservation, critical-warning retention, and deterministic snapshot output.
 14. 2026-06-09 (05-01): Resolved deriveProjectId() as basename of process.cwd() — aligns with Phase 1/2 session capture project_id convention (Open Q1).
 15. 2026-06-09 (05-01): Used import.meta.url + dirname to resolve migrationsDir package-relative — avoids loading attacker-controlled migrations from invocation directory (T-05-01).
+16. 2026-06-10 (06-review): `redactionEnabled` from `~/.sessionmem/config.json` now actually gates `applyRedaction` on storeMemory/importMemories/session-end paths via `resolvePolicySettings` (was previously cosmetic-only in stats).
+17. 2026-06-10 (06-review): `importMemories` checks existing row ownership before `ON CONFLICT(id)` upsert and skips cross-project id collisions (`skippedCrossProject`) — relevant for Phase 7 shared-memory import flows.
 
 ## Performance Metrics
 
@@ -92,13 +94,13 @@ See: .planning/PROJECT.md (updated 2026-05-24)
 
 ## Session
 
-- Last session: 2026-06-09T00:00:00Z
-- Stopped at: Completed 05-01-PLAN.md
+- Last session: 2026-06-10T00:00:00Z
+- Stopped at: Completed Phase 6 (06-07-PLAN.md), code review fixes applied, verification passed
 - Resume file: None
 
 ## Next Action
 
-Execute Phase 5 Plan 2: `$gsd:execute-phase 5`
+Plan Phase 7: `/gsd:plan-phase 7`
 
 ---
 *Initialized by gsd-new-project on 2026-05-24*

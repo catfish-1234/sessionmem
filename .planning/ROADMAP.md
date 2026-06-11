@@ -14,7 +14,7 @@
 | 3 | Injection Quality + Token Control | Implement startup injection formatter and ranking controls with bounded token budget and importance feedback | RETR-03, RETR-04, RETR-05 | 5 |
 | 4 | Multi-Platform Adapter Rollout | Deliver parity adapters for tier-1 hosts and generic MCP host path | PLAT-01, PLAT-02, PLAT-03, PLAT-04, PLAT-05, PLAT-06, PLAT-07, PLAT-08 | 6 |
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
-| 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-10 |
+| 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
 | 7 | Team Mode Shared Memory | Implement shared-path sync, provenance metadata, and safe local-only fallback | TEAM-01, TEAM-02, TEAM-03 | 5 |
 | 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
 
