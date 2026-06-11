@@ -14,7 +14,22 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
 export const DEFAULT_POLICY_CONFIG = {
   retentionDays: 90,
   redactionEnabled: true,
+  team: { enabled: false },
 } as const;
+
+/**
+ * Strict schema for the nested `team` section (D-14). `enabled` toggles team
+ * mode; `sharedPath` points at the shared filesystem store the `sync` command
+ * (Plan 03) reads/writes. `.strict()` rejects unknown keys inside `team`
+ * (threat T-07-09); `.default()` keeps backward compat for configs predating
+ * team mode (the section materializes as `{ enabled: false }`).
+ */
+const teamConfigShape = z
+  .object({
+    enabled: z.boolean().default(false),
+    sharedPath: z.string().optional(),
+  })
+  .strict();
 
 /**
  * Field definitions shared between the read and write schemas. `.default()`
@@ -24,6 +39,7 @@ export const DEFAULT_POLICY_CONFIG = {
 const policyConfigShape = {
   retentionDays: z.number().int().default(DEFAULT_POLICY_CONFIG.retentionDays),
   redactionEnabled: z.boolean().default(DEFAULT_POLICY_CONFIG.redactionEnabled),
+  team: teamConfigShape.default({ enabled: false }),
 };
 
 /**
@@ -100,12 +116,21 @@ export interface ResolvePolicyInput {
   config?: Partial<PolicyConfig>;
 }
 
+/** Flat scalar policy settings — the only keys the per-key resolve loop owns. */
+type ScalarPolicyKey = "retentionDays" | "redactionEnabled";
+export type ScalarPolicySettings = Pick<PolicyConfig, ScalarPolicyKey>;
+
 /**
- * Resolve effective settings using precedence override > config.json > default
- * (D-11). Each setting is resolved independently.
+ * Resolve effective FLAT settings using precedence override > config.json >
+ * default (D-11). Each scalar setting is resolved independently.
+ *
+ * RESEARCH Pitfall 5: this loop assumes flat scalars. The nested `team` object
+ * is deliberately NOT routed through here — use {@link resolveTeamConfig} for it.
  */
-export function resolvePolicySettings(input: ResolvePolicyInput): PolicyConfig {
-  const resolve = <K extends keyof PolicyConfig>(key: K): PolicyConfig[K] => {
+export function resolvePolicySettings(
+  input: ResolvePolicyInput,
+): ScalarPolicySettings {
+  const resolve = <K extends ScalarPolicyKey>(key: K): PolicyConfig[K] => {
     const fromOverride = input.override?.[key];
     if (fromOverride !== undefined) return fromOverride;
     const fromConfig = input.config?.[key];
@@ -117,4 +142,25 @@ export function resolvePolicySettings(input: ResolvePolicyInput): PolicyConfig {
     retentionDays: resolve("retentionDays"),
     redactionEnabled: resolve("redactionEnabled"),
   };
+}
+
+export type TeamConfig = PolicyConfig["team"];
+
+export interface ResolveTeamInput {
+  /** Highest precedence — e.g. an explicit override. */
+  override?: TeamConfig;
+  /** Middle precedence — the `team` section read from config.json. */
+  config?: TeamConfig;
+}
+
+/**
+ * Resolve the `team` config as a single object unit using precedence
+ * override > config.json > default (RESEARCH Pitfall 5). Unlike
+ * {@link resolvePolicySettings}, `team` is resolved whole — it is an object, not
+ * a flat scalar, so it must never be fed through the per-key scalar loop.
+ */
+export function resolveTeamConfig(input: ResolveTeamInput): TeamConfig {
+  if (input.override !== undefined) return input.override;
+  if (input.config !== undefined) return input.config;
+  return { ...DEFAULT_POLICY_CONFIG.team };
 }
