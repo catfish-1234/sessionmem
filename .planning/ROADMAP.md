@@ -172,6 +172,25 @@ Plans:
 
 **Requirements:** TEAM-01, TEAM-02, TEAM-03
 
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Migration 005 (author/origin_project_id) + column threading + author stamping (TEAM-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 07-02-PLAN.md — team config section + team enable/disable/status CLI; disable-without-data-loss (TEAM-03)
+
+**Wave 3** *(blocked on Wave 1 + Wave 2)*
+
+- [ ] 07-03-PLAN.md — pullMemories merge (LWW/importance-preserve/redaction/cross-project skip) + sync push/pull CLI (TEAM-01)
+
+**Wave 4** *(blocked on Wave 1 + Wave 3)*
+
+- [ ] 07-04-PLAN.md — D-10 author annotation in injection + docs/team-mode.md + doc-coverage test (TEAM-02)
+
 **Success Criteria:**
 
 1. Shared-path sync reads/writes team memory artifacts reliably.
