@@ -16,7 +16,7 @@
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
 | 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
 | 7 | Team Mode Shared Memory | 5/5 | Complete   | 2026-06-11 |
-| 8 | Launch Quality and Distribution | 5/6 | In Progress|  |
+| 8 | Launch Quality and Distribution | 6/6 | Complete   | 2026-06-11 |
 
 ## Phase Details
 
@@ -209,7 +209,7 @@ Plans:
 
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 **Wave 1**
@@ -228,7 +228,7 @@ Plans:
 
 **Wave 4** *(blocked on 08-01 + 08-05)*
 
-- [ ] 08-06-PLAN.md — release.yml (OIDC publish) + server.json/.claude-plugin/.mcp.json distribution metadata (QLTY-05)
+- [x] 08-06-PLAN.md — release.yml (OIDC publish) + server.json/.claude-plugin/.mcp.json distribution metadata (QLTY-05)
 
 **Success Criteria:**
 
