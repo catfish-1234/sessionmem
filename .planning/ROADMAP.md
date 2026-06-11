@@ -16,7 +16,7 @@
 | 5 | CLI Lifecycle and Data Operations | 5/5 | Complete   | 2026-06-10 |
 | 6 | Security, Privacy, and Retention Hardening | 7/7 | Complete   | 2026-06-11 |
 | 7 | Team Mode Shared Memory | 5/5 | Complete   | 2026-06-11 |
-| 8 | Launch Quality and Distribution | Deliver tests, CI, docs, benchmark, npm publish, and marketplace/plugin submissions | QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05 | 6 |
+| 8 | Launch Quality and Distribution | 2/6 | In Progress|  |
 
 ## Phase Details
 
@@ -209,13 +209,13 @@ Plans:
 
 **Requirements:** QLTY-01, QLTY-02, QLTY-03, QLTY-04, QLTY-05
 
-**Plans:** 6 plans
+**Plans:** 2/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Real stdio MCP server (D-17) + publishable package.json/version/LICENSE (D-13/D-14)
-- [ ] 08-03-PLAN.md — README + architecture/troubleshooting/migration docs + coverage specs (QLTY-03)
+- [x] 08-01-PLAN.md — Real stdio MCP server (D-17) + publishable package.json/version/LICENSE (D-13/D-14)
+- [x] 08-03-PLAN.md — README + architecture/troubleshooting/migration docs + coverage specs (QLTY-03)
 
 **Wave 2** *(blocked on 08-01)*
 
