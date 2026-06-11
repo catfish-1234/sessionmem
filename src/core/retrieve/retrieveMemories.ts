@@ -31,6 +31,8 @@ export interface RetrievedMemoryCandidate {
   content: string;
   normalized_content: string;
   importance: number;
+  author: string;
+  origin_project_id: string | null;
   created_at: string;
   updated_at: string;
   embedding_dim: number | null;
@@ -113,6 +115,8 @@ export function retrieveMemories(
         content: candidate.content,
         normalized_content: candidate.normalized_content,
         importance: candidate.importance,
+        author: candidate.author,
+        origin_project_id: candidate.origin_project_id,
         created_at: candidate.created_at,
         updated_at: candidate.updated_at,
         embedding_dim: candidate.embedding_dim,
