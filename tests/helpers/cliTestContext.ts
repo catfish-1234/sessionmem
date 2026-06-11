@@ -1,7 +1,7 @@
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { unlinkSync } from "fs";
+import { mkdirSync, rmSync, unlinkSync } from "fs";
 import { openDb } from "../../src/core/storage/db.js";
 import { createMemoryCoreService } from "../../src/core/api/memoryCoreService.js";
 import type { CliContext } from "../../src/cli/context.js";
@@ -65,6 +65,60 @@ export async function createTestCliContext(): Promise<TestCliContext> {
         } catch {
           // ignore
         }
+      }
+    },
+  };
+}
+
+/**
+ * Build an empty (unseeded) CliContext over a temp-file DB for an explicit team
+ * user. Each call gets its own DB + username so two contexts can share one
+ * `sharedPath` for the sync round-trip test. `username` is propagated to the
+ * service so author stamping/own-file-skip resolve to this user.
+ */
+export function createTeamUserContext(opts: {
+  username: string;
+  projectId?: string;
+}): TestCliContext {
+  const dbPath = join(tmpdir(), `sessionmem-team-${randomUUID()}.db`);
+  const projectId = opts.projectId ?? "team-project";
+
+  const db = openDb({ dbPath });
+  const service = createMemoryCoreService({ db, username: opts.username });
+
+  return {
+    db,
+    service,
+    projectId,
+    username: opts.username,
+    dbPath,
+    cleanup: () => {
+      db.close();
+      for (const suffix of ["", "-wal", "-shm"]) {
+        try {
+          unlinkSync(dbPath + suffix);
+        } catch {
+          // ignore
+        }
+      }
+    },
+  };
+}
+
+/**
+ * Create a fresh temp directory to act as the team `sharedPath`. Returns the
+ * path plus a cleanup that recursively removes it.
+ */
+export function withSharedDir(): { sharedPath: string; cleanup: () => void } {
+  const sharedPath = join(tmpdir(), `sessionmem-shared-${randomUUID()}`);
+  mkdirSync(sharedPath, { recursive: true });
+  return {
+    sharedPath,
+    cleanup: () => {
+      try {
+        rmSync(sharedPath, { recursive: true, force: true });
+      } catch {
+        // ignore
       }
     },
   };

@@ -124,9 +124,12 @@ export const importMemoryRecordSchema = z.object({
   importance: z.number().int().min(1).max(10),
   // OPTIONAL for backward-compat with exports predating team provenance (A3):
   // older exports lack author/originProjectId, so the service stamps the local
-  // username when author is absent.
-  author: z.string().optional(),
-  originProjectId: z.string().optional(),
+  // username when author is absent. `.nullable()` because exportMemories emits
+  // `originProjectId: null` (and `author: ""`) for locally-authored rows — a
+  // team sync round-trips those exported snapshots verbatim, so the schema must
+  // accept the null the DTO carries rather than skip-and-warn every local row.
+  author: z.string().nullable().optional(),
+  originProjectId: z.string().nullable().optional(),
   createdAt: z.string().min(1).optional(),
   updatedAt: z.string().min(1).optional(),
 });
