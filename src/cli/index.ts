@@ -19,6 +19,7 @@ import {
   teamDisableCommand,
   teamStatusCommand,
 } from "./commands/team.js";
+import { syncCommand } from "./commands/sync.js";
 
 const program = new Command();
 program.name("sessionmem").version("0.1.0");
@@ -156,6 +157,14 @@ team
   .command("status")
   .description("Show team mode state and shared-path availability")
   .action(() => teamStatusCommand());
+
+// sync (TEAM-01) — push a local snapshot to the shared path and pull every
+// teammate snapshot back. syncCommand declares a trailing `ctx?` test seam, so
+// arrow-wrap to drop commander's trailing Command argument (NOTE above).
+program
+  .command("sync")
+  .description("Push local memories and pull teammate memories via the shared path")
+  .action(() => syncCommand());
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));
