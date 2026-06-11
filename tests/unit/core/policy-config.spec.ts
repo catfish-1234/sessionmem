@@ -7,6 +7,7 @@ import {
   readPolicyConfig,
   writePolicyConfig,
   resolvePolicySettings,
+  resolveTeamConfig,
   configFilePath,
 } from "../../../src/core/config/policyConfig.js";
 
@@ -22,10 +23,11 @@ describe("policyConfig", () => {
   });
 
   describe("DEFAULT_POLICY_CONFIG", () => {
-    it("has retentionDays 90 and redactionEnabled true", () => {
+    it("has retentionDays 90, redactionEnabled true, and team disabled", () => {
       expect(DEFAULT_POLICY_CONFIG).toEqual({
         retentionDays: 90,
         redactionEnabled: true,
+        team: { enabled: false },
       });
     });
   });
@@ -69,8 +71,40 @@ describe("policyConfig", () => {
         "utf8",
       );
       const cfg = readPolicyConfig(path);
-      expect(cfg).toEqual({ retentionDays: 15, redactionEnabled: true });
+      expect(cfg).toEqual({
+        retentionDays: 15,
+        redactionEnabled: true,
+        team: { enabled: false },
+      });
       expect((cfg as Record<string, unknown>).somethingElse).toBeUndefined();
+    });
+  });
+
+  describe("team config section", () => {
+    it("writePolicyConfig persists a team section that readPolicyConfig returns", () => {
+      const path = join(dir, "config.json");
+      writePolicyConfig(path, {
+        team: { enabled: true, sharedPath: "/x" },
+      });
+      const cfg = readPolicyConfig(path);
+      expect(cfg.team.enabled).toBe(true);
+      expect(cfg.team.sharedPath).toBe("/x");
+    });
+
+    it("defaults team to { enabled: false } when config.json lacks a team key", () => {
+      const path = join(dir, "config.json");
+      writeFileSync(path, JSON.stringify({ retentionDays: 30 }), "utf8");
+      const cfg = readPolicyConfig(path);
+      expect(cfg.team).toEqual({ enabled: false });
+    });
+
+    it("rejects an unknown key inside team on write (.strict())", () => {
+      const path = join(dir, "config.json");
+      expect(() =>
+        writePolicyConfig(path, {
+          team: { enabled: true, bogus: 1 },
+        } as never),
+      ).toThrow();
     });
   });
 
@@ -131,6 +165,16 @@ describe("policyConfig", () => {
       });
       expect(result.redactionEnabled).toBe(false);
       expect(result.retentionDays).toBe(45);
+    });
+  });
+
+  describe("resolveTeamConfig", () => {
+    it("resolves team as a whole object: override > config > default", () => {
+      const override = { enabled: true, sharedPath: "/o" };
+      const config = { enabled: true, sharedPath: "/c" };
+      expect(resolveTeamConfig({ override, config })).toEqual(override);
+      expect(resolveTeamConfig({ config })).toEqual(config);
+      expect(resolveTeamConfig({})).toEqual({ enabled: false });
     });
   });
 
