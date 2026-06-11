@@ -73,6 +73,20 @@ function makeContext(): TestCtx {
     author: "carol",
     origin_project_id: "carol-project",
   });
+  // Legacy pre-migration-005 row: author backfilled to '' (CR-02). This is
+  // a locally-authored memory predating provenance stamping and must
+  // survive --remove-team-memories.
+  insertMemory(db, {
+    id: "legacy-1",
+    project_id: PROJECT,
+    session_id: "s0",
+    source_adapter: "codex",
+    kind: "fact",
+    content: "legacy local fact",
+    normalized_content: "legacy local fact",
+    importance: 4,
+    author: "",
+  });
 
   return {
     db,
@@ -161,8 +175,9 @@ describe("team enable/disable/status commands", () => {
 
     const onDisk = JSON.parse(readFileSync(path, "utf8"));
     expect(onDisk.team.enabled).toBe(false);
-    // All four rows survive — no data loss default (TEAM-03).
+    // All five rows survive — no data loss default (TEAM-03).
     expect(authorsFor(ctx.db).sort()).toEqual([
+      "",
       "alice",
       "alice",
       "bob",
@@ -178,7 +193,8 @@ describe("team enable/disable/status commands", () => {
 
     teamDisableCommand({ configPath: path, removeTeamMemories: true }, ctx);
 
-    // Only the two local-authored rows remain.
-    expect(authorsFor(ctx.db)).toEqual(["alice", "alice"]);
+    // Only the two local-authored rows and the legacy empty-author row
+    // remain (CR-02): empty author means "local/legacy", not "teammate".
+    expect(authorsFor(ctx.db).sort()).toEqual(["", "alice", "alice"]);
   });
 });

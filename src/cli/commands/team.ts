@@ -97,7 +97,9 @@ export function teamDisableCommand(
 
   const context = ctx ?? createCliContext();
   const result = context.db
-    .prepare("DELETE FROM memories WHERE project_id = ? AND author != ?")
+    .prepare(
+      "DELETE FROM memories WHERE project_id = ? AND author != ? AND author != ''",
+    )
     .run(context.projectId, context.username);
 
   console.log(
