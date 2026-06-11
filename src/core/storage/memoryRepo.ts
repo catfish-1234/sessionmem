@@ -17,6 +17,8 @@ function toParams(input: InsertMemoryInput) {
     embedding: input.embedding ?? null,
     embedding_dim: input.embedding_dim ?? null,
     embedding_version: input.embedding_version ?? null,
+    author: input.author ?? "",
+    origin_project_id: input.origin_project_id ?? null,
     created_at: input.created_at ?? null,
     updated_at: input.updated_at ?? null,
   };
@@ -28,10 +30,11 @@ export function insertMemory(db: Database, input: InsertMemoryInput): void {
   const stmt = db.prepare(`
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, embedding, embedding_dim, embedding_version, created_at, updated_at
+      importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
-      @importance, @embedding, @embedding_dim, @embedding_version,
+      @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -49,10 +52,11 @@ export function upsertSessionSummaryMemory(
   const stmt = db.prepare(`
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, embedding, embedding_dim, embedding_version, created_at, updated_at
+      importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, 'summary', @content, @normalized_content,
-      @importance, @embedding, @embedding_dim, @embedding_version,
+      @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -66,6 +70,8 @@ export function upsertSessionSummaryMemory(
       embedding = excluded.embedding,
       embedding_dim = excluded.embedding_dim,
       embedding_version = excluded.embedding_version,
+      author = excluded.author,
+      origin_project_id = excluded.origin_project_id,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   `);
 
@@ -79,7 +85,8 @@ export function listMemoriesByProject(
   const stmt = db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, embedding, embedding_dim, embedding_version, created_at, updated_at
+      importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      created_at, updated_at
     FROM memories
     WHERE project_id = ?
     ORDER BY updated_at DESC
