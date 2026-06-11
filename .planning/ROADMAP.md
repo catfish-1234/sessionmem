@@ -193,7 +193,7 @@ Plans:
 
 **Wave 5 (gap closure)** *(blocked on Wave 4)*
 
-- [ ] 07-05-PLAN.md — wire result.startupInjection into search command output + e2e author-prefix test (TEAM-02 gap)
+- [x] 07-05-PLAN.md — wire result.startupInjection into search command output + e2e author-prefix test (TEAM-02 gap)
 
 **Success Criteria:**
 
