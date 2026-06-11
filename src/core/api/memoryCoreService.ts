@@ -27,6 +27,7 @@ import {
   getMemoryRequestSchema,
   handleSessionEndRequestSchema,
   importMemoriesRequestSchema,
+  pullMemoriesRequestSchema,
   ingestSessionEventsRequestSchema,
   listMemoriesRequestSchema,
   pruneMemoriesRequestSchema,
@@ -523,6 +524,132 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         imported,
+        skippedCrossProject,
+        warningCodes: [...warningCodeSet],
+      };
+    },
+
+    async pullMemories(request) {
+      const parsed = parseRequest(pullMemoriesRequestSchema, request);
+
+      // Structural twin of importMemories with three team-pull changes:
+      //  - importance uses MAX(local, incoming) so a teammate can never lower a
+      //    locally-boosted importance (D-11, last-write-wins on content but
+      //    importance-preserving).
+      //  - author/origin_project_id are stamped from the incoming record's
+      //    provenance (D-06) so pulled rows carry the teammate's identity and
+      //    their source project_id.
+      //  - cross-project id collisions are skipped (D-09), exactly as import.
+      const stmt = db.prepare(`
+        INSERT INTO memories (
+          id, project_id, session_id, source_adapter, kind, content, normalized_content,
+          importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+          created_at, updated_at
+        ) VALUES (
+          @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
+          @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
+          COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+          COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+        )
+        ON CONFLICT(id) DO UPDATE SET
+          project_id = excluded.project_id,
+          session_id = excluded.session_id,
+          source_adapter = excluded.source_adapter,
+          kind = excluded.kind,
+          content = excluded.content,
+          normalized_content = excluded.normalized_content,
+          -- D-11: importance-preserving merge. better-sqlite3@12 bundles a
+          -- SQLite that accepts the two-arg scalar MAX() inside DO UPDATE; the
+          -- pull-merge importance-preserve test verifies both directions.
+          importance = MAX(memories.importance, excluded.importance),
+          embedding = excluded.embedding,
+          embedding_dim = excluded.embedding_dim,
+          embedding_version = excluded.embedding_version,
+          author = excluded.author,
+          origin_project_id = excluded.origin_project_id,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at
+      `);
+
+      // D-09: same cross-project ownership skip as importMemories. A colliding
+      // id owned by a different project is skipped, never overwritten/relocated.
+      const ownerStmt = db.prepare(
+        "SELECT project_id FROM memories WHERE id = ?",
+      );
+
+      const warningCodeSet = new Set<string>();
+      const effectiveRedactionEnabled = resolveRedactionEnabled(
+        parsed.redactionEnabled,
+      );
+
+      let pulledNew = 0;
+      let pulledUpdated = 0;
+      let skippedCrossProject = 0;
+
+      for (const memory of parsed.memories) {
+        const owner = ownerStmt.get(memory.id) as
+          | { project_id: string }
+          | undefined;
+        if (owner && owner.project_id !== parsed.projectId) {
+          skippedCrossProject += 1;
+          continue;
+        }
+
+        // D-16: an id already owned by THIS project is an update; otherwise a
+        // brand-new insert. Snapshotting per-id via ownerStmt keeps the count
+        // correct even when the same id appears across multiple teammate files.
+        const isUpdate = owner !== undefined;
+
+        // D-12: re-run redaction on every pulled record regardless of the
+        // teammate's redaction setting (4th write path), then re-embed the
+        // redacted text so secrets never persist and the embedding matches.
+        const redaction = applyRedaction(memory.content, {
+          redactionEnabled: effectiveRedactionEnabled,
+        });
+        for (const code of redaction.warningCodes) {
+          warningCodeSet.add(code);
+        }
+
+        const embedding = deterministicEmbed(redaction.text, dimension);
+        stmt.run({
+          id: memory.id,
+          // LOCAL project_id so merged rows are retrievable in the pulling
+          // user's project (Open Q4).
+          project_id: parsed.projectId,
+          session_id: memory.sessionId,
+          source_adapter: memory.sourceAdapter,
+          kind: memory.kind,
+          content: redaction.text,
+          normalized_content: embedding.normalizedText,
+          importance: memory.importance,
+          embedding: JSON.stringify(embedding.vector),
+          embedding_dim: embedding.dimension,
+          embedding_version: embedding.embeddingVersion,
+          // D-06: stamp the teammate's provenance. author falls back to the
+          // local username only when the incoming record carries none.
+          author:
+            memory.author && memory.author.trim() !== ""
+              ? memory.author
+              : localAuthor,
+          // origin_project_id records the record's source-machine project_id:
+          // its explicit originProjectId if present, else the record's own
+          // incoming projectId (Open Q4).
+          origin_project_id: memory.originProjectId ?? memory.projectId,
+          created_at: memory.createdAt,
+          updated_at: memory.updatedAt,
+        });
+
+        if (isUpdate) {
+          pulledUpdated += 1;
+        } else {
+          pulledNew += 1;
+        }
+      }
+
+      return {
+        ok: true,
+        pulledNew,
+        pulledUpdated,
         skippedCrossProject,
         warningCodes: [...warningCodeSet],
       };
