@@ -1,0 +1,13 @@
+{
+  "name": "sessionmem",
+  "owner": {
+    "name": "kavishdua"
+  },
+  "plugins": [
+    {
+      "name": "sessionmem",
+      "source": "./",
+      "description": "Cross-session agent memory"
+    }
+  ]
+}
