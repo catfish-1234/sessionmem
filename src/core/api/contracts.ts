@@ -247,6 +247,10 @@ export const handleSessionEndResponseSchema = z.object({
 export const importMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   imported: z.number().int().nonnegative(),
+  // CR-02: count of records skipped because their `id` already belongs to a
+  // different project's memory. These are never upserted, preventing
+  // cross-project overwrite/reassignment via ON CONFLICT(id).
+  skippedCrossProject: z.number().int().nonnegative().default(0),
   warningCodes: z.array(z.string()),
 });
 
