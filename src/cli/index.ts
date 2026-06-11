@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { createRequire } from "node:module";
 import { runMcpServer } from "./commands/run.js";
 import { installCommand } from "./commands/install.js";
 import { uninstallCommand } from "./commands/uninstall.js";
@@ -21,8 +22,16 @@ import {
 } from "./commands/team.js";
 import { syncCommand } from "./commands/sync.js";
 
+// Source the version from package.json (single source of truth) so `--version`
+// never drifts from the published manifest. createRequire + resolveJsonModule
+// reads the manifest relative to this module; from dist/cli/index.js the
+// "../../package.json" specifier resolves to the package root.
+const pkg = createRequire(import.meta.url)("../../package.json") as {
+  version: string;
+};
+
 const program = new Command();
-program.name("sessionmem").version("0.1.0");
+program.name("sessionmem").version(pkg.version);
 
 program
   .command("run")

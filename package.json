@@ -1,17 +1,34 @@
 {
   "name": "sessionmem",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "private": false,
   "type": "module",
+  "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
+  "license": "MIT",
+  "author": "kavishdua",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kavishdua/sessionmem.git"
+  },
+  "mcpName": "io.github.kavishdua/sessionmem",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "sessionmem": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc && node scripts/copy-migrations.mjs",
+    "prepack": "npm run build",
     "test": "vitest run --reporter=dot",
-    "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot"
+    "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot",
+    "benchmark": "node scripts/benchmark.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.4.1",
     "commander": "^15.0.0",
     "js-tiktoken": "^1.0.21",
