@@ -4,6 +4,7 @@ import {
   readPolicyConfig,
   resolvePolicySettings,
 } from "../../core/config/policyConfig.js";
+import { MAX_RETENTION_DAYS } from "./config.js";
 
 interface RetentionPruneOptions {
   /** --force: actually delete (default is dry-run, D-12). */
@@ -28,14 +29,26 @@ export async function retentionPruneCommand(
 ): Promise<void> {
   const context = ctx ?? createCliContext();
 
-  // --days override is parsed as a positive integer; anything invalid is treated
-  // as "no override" so we fall through to config.json / default.
+  // --days override must be a clean integer, matching `config set
+  // retention.days`'s validation (WR-02): Number.parseInt("30abc", 10) === 30
+  // would otherwise silently accept trailing garbage. Also enforce the same
+  // upper bound as `config set` (WR-01) so an out-of-range --days can't
+  // produce an Invalid Date / RangeError when computing the prune cutoff.
   let override: { retentionDays: number } | undefined;
   if (options.days !== undefined) {
-    const parsed = Number.parseInt(options.days, 10);
-    if (!Number.isNaN(parsed)) {
-      override = { retentionDays: parsed };
+    const trimmed = options.days.trim();
+    if (!/^-?\d+$/.test(trimmed)) {
+      console.error(`Invalid --days value "${options.days}": expected an integer.`);
+      process.exit(1);
     }
+    const parsed = Number.parseInt(trimmed, 10);
+    if (parsed > MAX_RETENTION_DAYS) {
+      console.error(
+        `Invalid --days value "${options.days}": must be <= ${MAX_RETENTION_DAYS}.`,
+      );
+      process.exit(1);
+    }
+    override = { retentionDays: parsed };
   }
 
   const { retentionDays } = resolvePolicySettings({

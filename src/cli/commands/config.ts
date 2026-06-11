@@ -36,8 +36,9 @@ function coerceInt(raw: string): number {
 // 100 years (in days). Far beyond any realistic retention window, and keeps
 // `Date.now() - retentionDays * 24 * 60 * 60 * 1000` well within the safe
 // Date range so `pruneMemories`'s cutoff computation never throws RangeError
-// (WR-01).
-const MAX_RETENTION_DAYS = 36500;
+// (WR-01). Exported so `retention prune --days` (WR-02) enforces the same
+// bound as `config set retentionDays`.
+export const MAX_RETENTION_DAYS = 36500;
 
 function coerceRetentionDays(raw: string): number {
   const n = coerceInt(raw);
