@@ -22,7 +22,7 @@ export interface CliContextOverrides {
   db?: Database;
   service?: ReturnType<typeof createMemoryCoreService>;
   /**
-   * Test seam for the install config-defaults step (D-10): target a temp
+   * Test seam for the install config-defaults step: target a temp
    * config.json instead of ~/.sessionmem/config.json. Not consumed by
    * createCliContext itself — install.ts reads it directly.
    */
@@ -30,15 +30,15 @@ export interface CliContextOverrides {
 }
 
 /**
- * Resolve the local OS username once per invocation (D-07) and sanitize it to a
+ * Resolve the local OS username once per invocation and sanitize it to a
  * filename-safe token so it can be embedded in exports/filenames without path
  * traversal. Any character outside [A-Za-z0-9._-] becomes "_"; an empty result
- * falls back to "user" (D-05).
+ * falls back to "user".
  */
 export function localUsername(): string {
   // Env override is a test-injection seam (mirrors deriveProjectId): the CLI
   // runs as the invoking user, so SESSIONMEM_USERNAME is operator-controlled at
-  // the same trust level (T-05-15).
+  // the same trust level.
   const envUsername = process.env.SESSIONMEM_USERNAME;
   const raw =
     envUsername && envUsername.trim() !== "" ? envUsername : safeUserInfoName();
@@ -59,7 +59,7 @@ function deriveProjectId(): string {
   // Env override is a test-injection seam (mirrors Plan 01's override pattern):
   // it lets a spawned binary target a deterministic projectId without touching
   // the real ~/.sessionmem. No privilege boundary is crossed — the CLI runs as
-  // the invoking user and the env var is operator-controlled (T-05-15).
+  // the invoking user and the env var is operator-controlled.
   const envProjectId = process.env.SESSIONMEM_PROJECT_ID;
   if (envProjectId && envProjectId.trim() !== "") return envProjectId;
 

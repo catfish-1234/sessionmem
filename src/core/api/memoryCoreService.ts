@@ -54,7 +54,7 @@ import { createSessionLifecycleService } from "./sessionLifecycleService.js";
 const DEFAULT_EMBEDDING_DIMENSION = 32;
 
 // Maximum length of a redactExisting preview entry. Previews are built from the
-// REDACTED text (never the raw secret per D-07/D-14) and truncated so a long
+// REDACTED text (never the raw secret) and truncated so a long
 // memory body cannot leak surrounding context in bulk.
 const REDACT_PREVIEW_MAX_LENGTH = 120;
 
@@ -77,7 +77,7 @@ interface MemoryDto {
 }
 
 /**
- * Resolve the local OS username for author stamping (D-07), sanitized to a
+ * Resolve the local OS username for author stamping, sanitized to a
  * filename-safe token and falling back to "" when unavailable. Mirrors
  * cli/context.localUsername but without a "user" fallback so the service can be
  * driven with an explicit username dep in tests.
@@ -102,7 +102,7 @@ export interface CreateMemoryCoreServiceDeps {
   db: Database;
   embeddingDimension?: number;
   /**
-   * Local author identity stamped on every locally-authored write (D-07).
+   * Local author identity stamped on every locally-authored write.
    * Defaults to the sanitized OS username; an explicit value is the test seam.
    */
   username?: string;
@@ -212,16 +212,16 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
   const dimension = deps.embeddingDimension ?? DEFAULT_EMBEDDING_DIMENSION;
   const { db } = deps;
-  // Resolve the local author identity once per service instance (D-07).
+  // Resolve the local author identity once per service instance.
   const localAuthor = resolveServiceUsername(deps.username);
   const policyConfigPath = deps.policyConfigPath ?? configFilePath();
 
   /**
    * Resolve the effective redactionEnabled flag using precedence
-   * override (explicit per-request value) > config.json > default (D-11),
+   * override (explicit per-request value) > config.json > default,
    * mirroring resolveRetentionDays in sessionLifecycleService. An explicit
    * `false` or `true` on the request always wins; omission falls back to
-   * `~/.sessionmem/config.json`'s redactionEnabled (CR-01).
+   * `~/.sessionmem/config.json`'s redactionEnabled.
    */
   function resolveRedactionEnabled(explicit: boolean | undefined): boolean {
     return resolvePolicySettings({
@@ -300,8 +300,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const parsed = parseRequest(storeMemoryRequestSchema, request);
 
       // Redact before embedding/persisting so secrets never reach storage and
-      // the embedding is computed on the redacted text (D-06). warningCodes
-      // reuse the existing redaction_partial_failure mechanism (D-08).
+      // the embedding is computed on the redacted text. warningCodes
+      // reuse the existing redaction_partial_failure mechanism.
       const redaction = applyRedaction(parsed.content, {
         redactionEnabled: resolveRedactionEnabled(parsed.redactionEnabled),
       });
@@ -319,7 +319,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         embedding: JSON.stringify(embedding.vector),
         embedding_dim: embedding.dimension,
         embedding_version: embedding.embeddingVersion,
-        // Locally-authored row: stamp the local username (D-07); origin is null
+        // Locally-authored row: stamp the local username; origin is null
         // because this row did not come from another project's store.
         author: localAuthor,
         origin_project_id: null,
@@ -352,7 +352,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         ok: true,
         memories: ranked.map(toRetrievedMemoryDto),
         total: ranked.length,
-        // CR-01: render the startup-injection block here so the `author:`
+        // Render the startup-injection block here so the `author:`
         // prefix annotation for teammate-authored memories reaches CLI/MCP
         // callers via the production retrieval path.
         startupInjection: formatStartupInjection(ranked, {
@@ -459,7 +459,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           updated_at = excluded.updated_at
       `);
 
-      // CR-02: `id` is a globally-unique PRIMARY KEY (not scoped by
+      // `id` is a globally-unique PRIMARY KEY (not scoped by
       // project_id). The upsert above reassigns `project_id = excluded.project_id`
       // on conflict, which would let an imported record silently overwrite and
       // relocate another project's memory if its `id` happens to collide.
@@ -469,7 +469,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         "SELECT project_id FROM memories WHERE id = ?",
       );
 
-      // Aggregate redaction warnings across all imported records (D-08). A
+      // Aggregate redaction warnings across all imported records. A
       // Set de-duplicates the redaction_partial_failure code so the envelope
       // stays compact regardless of how many records tripped the same rule.
       const warningCodeSet = new Set<string>();
@@ -492,7 +492,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         }
 
         // Redact each record before embedding/upsert so secrets never persist
-        // and the embedding reflects the redacted text (D-06).
+        // and the embedding reflects the redacted text.
         const redaction = applyRedaction(memory.content, {
           redactionEnabled: effectiveRedactionEnabled,
         });
@@ -515,7 +515,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           embedding_version: embedding.embeddingVersion,
           // Plain import (not a team pull): preserve an incoming author when the
           // export carried one, else stamp the local username so the row is
-          // never left with an empty author (D-07). origin_project_id is carried
+          // never left with an empty author. origin_project_id is carried
           // through when present, else null for locally-originating rows.
           author:
             memory.author && memory.author.trim() !== ""
@@ -541,12 +541,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       // Structural twin of importMemories with three team-pull changes:
       //  - importance uses MAX(local, incoming) so a teammate can never lower a
-      //    locally-boosted importance (D-11, last-write-wins on content but
+      //    locally-boosted importance (last-write-wins on content but
       //    importance-preserving).
       //  - author/origin_project_id are stamped from the incoming record's
-      //    provenance (D-06) so pulled rows carry the teammate's identity and
+      //    provenance so pulled rows carry the teammate's identity and
       //    their source project_id.
-      //  - cross-project id collisions are skipped (D-09), exactly as import.
+      //  - cross-project id collisions are skipped, exactly as import.
       const stmt = db.prepare(`
         INSERT INTO memories (
           id, project_id, session_id, source_adapter, kind, content, normalized_content,
@@ -565,7 +565,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           kind = excluded.kind,
           content = excluded.content,
           normalized_content = excluded.normalized_content,
-          -- D-11: importance-preserving merge. better-sqlite3@12 bundles a
+          -- Importance-preserving merge. better-sqlite3@12 bundles a
           -- SQLite that accepts the two-arg scalar MAX() inside DO UPDATE; the
           -- pull-merge importance-preserve test verifies both directions.
           importance = MAX(memories.importance, excluded.importance),
@@ -578,7 +578,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           updated_at = excluded.updated_at
       `);
 
-      // D-09: same cross-project ownership skip as importMemories. A colliding
+      // Same cross-project ownership skip as importMemories. A colliding
       // id owned by a different project is skipped, never overwritten/relocated.
       const ownerStmt = db.prepare(
         "SELECT project_id FROM memories WHERE id = ?",
@@ -602,12 +602,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           continue;
         }
 
-        // D-16: an id already owned by THIS project is an update; otherwise a
+        // An id already owned by THIS project is an update; otherwise a
         // brand-new insert. Snapshotting per-id via ownerStmt keeps the count
         // correct even when the same id appears across multiple teammate files.
         const isUpdate = owner !== undefined;
 
-        // D-12: re-run redaction on every pulled record regardless of the
+        // Re-run redaction on every pulled record regardless of the
         // teammate's redaction setting (4th write path), then re-embed the
         // redacted text so secrets never persist and the embedding matches.
         const redaction = applyRedaction(memory.content, {
@@ -632,7 +632,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           embedding: JSON.stringify(embedding.vector),
           embedding_dim: embedding.dimension,
           embedding_version: embedding.embeddingVersion,
-          // D-06: stamp the teammate's provenance. author falls back to the
+          // Stamp the teammate's provenance. author falls back to the
           // local username only when the incoming record carries none.
           author:
             memory.author && memory.author.trim() !== ""
@@ -665,9 +665,9 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     async pruneMemories(request) {
       const parsed = parseRequest(pruneMemoriesRequestSchema, request);
 
-      // retentionDays <= 0 disables pruning entirely (D-03). A non-positive
+      // retentionDays <= 0 disables pruning entirely. A non-positive
       // window must never translate into a future cutoff that could delete
-      // everything (T-06-07).
+      // everything.
       if (parsed.retentionDays <= 0) {
         return { ok: true, deleted: 0, eligible: 0 };
       }
@@ -691,7 +691,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     async redactExisting(request) {
       const parsed = parseRequest(redactExistingRequestSchema, request);
 
-      // One-time scrub of pre-existing rows (D-07). Dry-run by default (D-14):
+      // One-time scrub of pre-existing rows. Dry-run by default:
       // apply=false reports matches and previews but writes nothing.
       const memories = listMemoriesByProject(db, parsed.projectId);
 
@@ -712,8 +712,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         matched += 1;
 
         // Preview is built from the REDACTED text and length-bounded so no raw
-        // secret is echoed and no large body leaks in bulk (T-06-10, D-07/D-14).
-        // IN-01: truncate on Unicode code-point boundaries (Array.from
+        // secret is echoed and no large body leaks in bulk.
+        // Truncate on Unicode code-point boundaries (Array.from
         // iterates by code point) rather than String.slice's UTF-16 code-unit
         // boundaries, so a multi-byte character (emoji, non-BMP) straddling
         // the limit isn't split into an unpaired surrogate.
@@ -725,7 +725,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           // Recompute the embedding-normalized text on the redacted content so
           // the stored normalized_content stays consistent with the scrub.
           const embedding = deterministicEmbed(redaction.text, dimension);
-          // WR-03: a single row that was deleted concurrently between the
+          // A single row that was deleted concurrently between the
           // initial listMemoriesByProject snapshot and this update would
           // otherwise throw and abort the whole scrub, discarding the
           // scanned/matched/updated counts and previews accumulated so far

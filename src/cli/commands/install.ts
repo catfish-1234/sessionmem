@@ -32,7 +32,7 @@ export async function installCommand(
   _options?: Record<string, unknown>,
   contextOverrides?: CliContextOverrides,
 ): Promise<void> {
-  // Step 1: DB init — run migrations and confirm DB init (D-04 item 1)
+  // Step 1: DB init — run migrations and confirm DB init
   let dbPath: string;
   try {
     const ctx = createCliContext(contextOverrides);
@@ -49,9 +49,9 @@ export async function installCommand(
 
   console.log(`✓ DB initialized (${dbPath!})`);
 
-  // Step 1b: Config defaults — write config.json with defaults only when absent
-  // (D-10). An existing config is preserved byte-for-byte so user settings are
-  // never clobbered (T-06-18).
+  // Step 1b: Config defaults — write config.json with defaults only when absent.
+  // An existing config is preserved byte-for-byte so user settings are
+  // never clobbered.
   const configPath = contextOverrides?.configPath ?? configFilePath();
   if (existsSync(configPath)) {
     console.log(`✓ config.json preserved (${configPath})`);
@@ -60,7 +60,7 @@ export async function installCommand(
     console.log(`✓ config.json initialized (${configPath})`);
   }
 
-  // Step 2: Adapter config — detect adapter and install (D-04 item 2)
+  // Step 2: Adapter config — detect adapter and install
   const adapter = AdapterFactory.detectAdapter();
 
   if (!adapter.install) {
@@ -78,6 +78,6 @@ export async function installCommand(
 
   console.log(`✓ ${adapter.name} config updated`);
 
-  // Step 3: Full success checklist (D-05)
+  // Step 3: Full success checklist
   console.log("✓ sessionmem ready");
 }

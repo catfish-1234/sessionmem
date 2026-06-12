@@ -1,22 +1,22 @@
 import { createCliContext, type CliContext } from "../context.js";
 
 interface RedactScanOptions {
-  /** --apply: redact matching rows in place (default is a non-destructive scan, D-14). */
+  /** --apply: redact matching rows in place (default is a non-destructive scan). */
   apply?: boolean;
 }
 
 /**
  * `sessionmem redact-scan [--apply]`.
  *
- * Scan-by-default one-time scrub over pre-existing memories (D-07/D-14): with no
+ * Scan-by-default one-time scrub over pre-existing memories: with no
  * flags it reports `Found N memories with potential secrets` plus truncated,
  * already-redacted previews and writes nothing. `--apply` redacts matching rows
  * in place and prints a summary count.
  *
  * The underlying `redactExisting` service builds previews from the REDACTED text
  * (never the raw secret) and length-bounds them, so printing them as-is cannot
- * leak a full secret (T-06-20). Scan always calls with apply:false so a missing
- * --apply can never mutate data (T-06-22).
+ * leak a full secret. Scan always calls with apply:false so a missing
+ * --apply can never mutate data.
  */
 export async function redactScanCommand(
   options: RedactScanOptions,

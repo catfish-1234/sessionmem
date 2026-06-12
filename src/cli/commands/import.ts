@@ -41,7 +41,7 @@ export async function importCommand(
   let skippedCount = 0;
 
   if (!options.merge) {
-    // D-12 default: skip existing IDs (pre-filter). CR-02: `id` is a
+    // By default, skip existing IDs (pre-filter). `id` is a
     // globally-unique PRIMARY KEY (not scoped by project), so the duplicate
     // check must consider every project's ids -- otherwise a record whose id
     // collides with another project's memory would not be pre-filtered here
@@ -74,7 +74,7 @@ export async function importCommand(
     updatedAt: r.updatedAt as string | undefined,
   }));
 
-  // IN-02: validate each record but skip-and-warn on individual invalid
+  // Validate each record but skip-and-warn on individual invalid
   // records (consistent with the duplicate-skip UX) instead of aborting the
   // entire import on the first invalid record, which would discard earlier
   // valid records with no partial import.
@@ -102,9 +102,9 @@ export async function importCommand(
   const result = await context.service.call("importMemories", {
     projectId: context.projectId,
     // No explicit redactionEnabled here: the service resolves the effective
-    // value from ~/.sessionmem/config.json (override > config > default,
-    // D-11), so `sessionmem config set redactionEnabled false` governs the
-    // import write path too (CR-01).
+    // value from ~/.sessionmem/config.json (override > config > default),
+    // so `sessionmem config set redactionEnabled false` governs the
+    // import write path too.
     memories: validMemories,
   });
 

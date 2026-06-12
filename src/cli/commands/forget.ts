@@ -18,7 +18,7 @@ export async function forgetCommand(
   }
 
   if (!options.force) {
-    // Dry-run: preview and exit 0 without deleting (D-09)
+    // Dry-run: preview and exit 0 without deleting
     const preview = getResult.memory.content.replace(/\s+/g, " ").slice(0, 60);
     console.log(`Would delete: ${preview}. Pass --force to confirm.`);
     return;

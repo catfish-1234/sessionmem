@@ -7,7 +7,7 @@ import {
 import { MAX_RETENTION_DAYS } from "./config.js";
 
 interface RetentionPruneOptions {
-  /** --force: actually delete (default is dry-run, D-12). */
+  /** --force: actually delete (default is dry-run). */
   force?: boolean;
   /** --days <n>: CLI override of the effective retention window (highest precedence). */
   days?: string;
@@ -16,11 +16,11 @@ interface RetentionPruneOptions {
 /**
  * `sessionmem retention prune [--force] [--days <n>]`.
  *
- * Dry-run by default (D-12): prints the eligible count and exits 0 without
+ * Dry-run by default: prints the eligible count and exits 0 without
  * deleting. `--force` hard-deletes eligible memories and prints a summary count.
  *
  * Effective retentionDays follows precedence CLI flag > config.json > default
- * (D-11) via {@link resolvePolicySettings}. The dry-run path always calls
+ * via {@link resolvePolicySettings}. The dry-run path always calls
  * pruneMemories with dryRun:true so a missing --force can never delete.
  */
 export async function retentionPruneCommand(
@@ -30,9 +30,9 @@ export async function retentionPruneCommand(
   const context = ctx ?? createCliContext();
 
   // --days override must be a clean integer, matching `config set
-  // retention.days`'s validation (WR-02): Number.parseInt("30abc", 10) === 30
+  // retention.days`'s validation: Number.parseInt("30abc", 10) === 30
   // would otherwise silently accept trailing garbage. Also enforce the same
-  // upper bound as `config set` (WR-01) so an out-of-range --days can't
+  // upper bound as `config set` so an out-of-range --days can't
   // produce an Invalid Date / RangeError when computing the prune cutoff.
   let override: { retentionDays: number } | undefined;
   if (options.days !== undefined) {

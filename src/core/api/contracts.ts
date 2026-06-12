@@ -52,7 +52,7 @@ export const handleSessionEndConfigSchema = z.object({
   summaryTokenCap: z.number().int().min(1).default(300),
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
-  // setting (override > config.json > default precedence, D-11).
+  // setting (override > config.json > default precedence).
   redactionEnabled: z.boolean().optional(),
   factMode: factModeSchema.default("summary+facts"),
   allowCloudSummarization: z.boolean().default(false),
@@ -77,7 +77,7 @@ export const storeMemoryRequestSchema = z.object({
   importance: z.number().int().min(1).max(10),
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
-  // setting (override > config.json > default precedence, D-11).
+  // setting (override > config.json > default precedence).
   redactionEnabled: z.boolean().optional(),
 });
 
@@ -138,16 +138,16 @@ export const importMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
-  // setting (override > config.json > default precedence, D-11).
+  // setting (override > config.json > default precedence).
   redactionEnabled: z.boolean().optional(),
   memories: z.array(importMemoryRecordSchema),
 });
 
-// Team pull (Plan 03, TEAM-01). Mirrors importMemoriesRequestSchema — the pull
+// Team pull. Mirrors importMemoriesRequestSchema — the pull
 // path reuses importMemoryRecordSchema verbatim (carrying author/originProjectId
-// through) but the service applies MAX-importance LWW (D-11), author/origin
-// stamping (D-06), and the cross-project skip (D-09). redactionEnabled is
-// omitted on real pulls so the service resolves config.json (D-12).
+// through) but the service applies MAX-importance last-write-wins, author/origin
+// stamping, and the cross-project skip. redactionEnabled is
+// omitted on real pulls so the service resolves config.json.
 export const pullMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
   redactionEnabled: z.boolean().optional(),
@@ -180,7 +180,7 @@ export const redactExistingResponseSchema = z.object({
   scanned: z.number().int().nonnegative(),
   matched: z.number().int().nonnegative(),
   updated: z.number().int().nonnegative(),
-  // WR-03: rows that matched but could not be updated (e.g. deleted
+  // Rows that matched but could not be updated (e.g. deleted
   // concurrently between the initial scan and the apply step). A non-zero
   // skipped count lets the CLI report partial success instead of the whole
   // operation erroring out and discarding prior updates/previews.
@@ -198,7 +198,7 @@ export const singleMemoryResponseSchema = z.object({
 });
 
 // Dedicated store response: extends the single-memory shape with the
-// warningCodes envelope (D-08). getMemory continues to use
+// warningCodes envelope. getMemory continues to use
 // singleMemoryResponseSchema so its shape is unchanged.
 export const storeMemoryResponseSchema = z.object({
   ok: z.literal(true),
@@ -235,7 +235,7 @@ export const retrieveMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   memories: z.array(retrievedMemorySchema),
   total: z.number().int().nonnegative(),
-  // Pre-rendered startup-injection block (CR-01): includes the `author:`
+  // Pre-rendered startup-injection block: includes the `author:`
   // prefix annotation for teammate-authored memories, derived via
   // formatStartupInjection() with the local username.
   startupInjection: z.string(),
@@ -275,16 +275,16 @@ export const handleSessionEndResponseSchema = z.object({
 export const importMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   imported: z.number().int().nonnegative(),
-  // CR-02: count of records skipped because their `id` already belongs to a
+  // Count of records skipped because their `id` already belongs to a
   // different project's memory. These are never upserted, preventing
   // cross-project overwrite/reassignment via ON CONFLICT(id).
   skippedCrossProject: z.number().int().nonnegative().default(0),
   warningCodes: z.array(z.string()),
 });
 
-// Team pull response (D-16): distinguishes brand-new inserts from updates so the
+// Team pull response: distinguishes brand-new inserts from updates so the
 // `sync` CLI can render "Pushed N memories, pulled M new + updated K from
-// teammates." skippedCrossProject mirrors the import path (D-09).
+// teammates." skippedCrossProject mirrors the import path.
 export const pullMemoriesResponseSchema = z.object({
   ok: z.literal(true),
   pulledNew: z.number().int().nonnegative(),

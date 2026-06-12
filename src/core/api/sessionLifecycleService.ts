@@ -39,7 +39,7 @@ const CLOUD_ENABLED_MESSAGE =
 export interface SessionLifecycleServiceDeps {
   db: Database;
   embeddingDimension?: number;
-  /** Local author identity stamped on session-summary writes (D-07). */
+  /** Local author identity stamped on session-summary writes. */
   username?: string;
   summarizeLocal?: (input: LocalSummarizeInput) => Promise<SummarizerResult>;
   summarizeCloud?: (input: CloudSummarizeInput) => Promise<SummarizerResult>;
@@ -60,7 +60,7 @@ export interface SessionLifecycleServiceDeps {
   /**
    * Injection seam for the hard-delete. Defaults to the real
    * {@link deleteMemoriesOlderThanDefault}; tests force a throw to prove the
-   * prune failure is swallowed (D-02 / T-06-14).
+   * prune failure is swallowed.
    */
   deleteOldMemories?: (
     db: Database,
@@ -130,7 +130,7 @@ function storeSummaryMemory(
     embedding: JSON.stringify(embedding.vector),
     embedding_dim: embedding.dimension,
     embedding_version: embedding.embeddingVersion,
-    // Session summaries are locally authored (D-07).
+    // Session summaries are locally authored.
     author: input.author,
     origin_project_id: null,
   });
@@ -155,7 +155,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   /**
    * Resolve the effective retentionDays for a session-end prune. An explicit
    * override wins (test seam); otherwise read the validated policy config, which
-   * itself falls back to the 90-day default on any failure (T-06-15).
+   * itself falls back to the 90-day default on any failure.
    */
   function resolveRetentionDays(): number {
     if (deps.retentionDaysOverride !== undefined) {
@@ -171,9 +171,9 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   /**
    * Resolve the effective redactionEnabled flag for the session-end
    * auto-summarize redaction step using precedence override (explicit
-   * request.config.redactionEnabled) > config.json > default (D-11), mirroring
+   * request.config.redactionEnabled) > config.json > default, mirroring
    * resolveRetentionDays. Falls back to the built-in default on any read
-   * failure (T-06-15).
+   * failure.
    */
   function resolveRedactionEnabled(explicit: boolean | undefined): boolean {
     try {
@@ -187,10 +187,10 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
   }
 
   /**
-   * D-02: light, non-blocking retention prune executed once at session-end.
+   * Light, non-blocking retention prune executed once at session-end.
    * Hard-deletes memories older than the effective retentionDays for this
-   * project. retentionDays<=0 disables pruning (D-03). Any failure is swallowed
-   * so it can never block or fail summarization (T-06-14).
+   * project. retentionDays<=0 disables pruning. Any failure is swallowed
+   * so it can never block or fail summarization.
    */
   function runLightPrune(projectId: string): void {
     try {
@@ -204,7 +204,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
       const cutoffIso = new Date(cutoffMs).toISOString();
       deleteOldMemories(deps.db, projectId, cutoffIso);
     } catch {
-      // Light prune is best-effort: never block or fail summarization (D-02).
+      // Light prune is best-effort: never block or fail summarization.
     }
   }
 

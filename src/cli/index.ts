@@ -101,7 +101,7 @@ program
   .description("Show memory statistics for the current project")
   .action(() => statsCommand());
 
-// redact-scan (D-07/D-14) — one-time scrub over existing memories. Scan is the
+// redact-scan — one-time scrub over existing memories. Scan is the
 // non-destructive default; --apply redacts matching rows in place.
 program
   .command("redact-scan")
@@ -109,7 +109,7 @@ program
   .option("--apply", "Redact matching memories in place")
   .action((options) => redactScanCommand(options));
 
-// retention command group (D-12) — room for future subcommands. The "prune"
+// retention command group — room for future subcommands. The "prune"
 // subcommand is dry-run by default; --force confirms the hard delete.
 const retention = program
   .command("retention")
@@ -122,7 +122,7 @@ retention
   .option("--days <n>", "Override the retention window in days")
   .action((options) => retentionPruneCommand(options));
 
-// config command group (D-13) — generic get/set over ~/.sessionmem/config.json.
+// config command group — generic get/set over ~/.sessionmem/config.json.
 // config get/set are synchronous and take no CliContext, so the arrow-wrap here
 // only drops commander's trailing Command argument.
 const config = program
@@ -139,7 +139,7 @@ config
   .description("Persist a config key to ~/.sessionmem/config.json")
   .action((key, value) => configSetCommand(key, value));
 
-// team command group (D-13) — turn shared-memory mode on/off and inspect it.
+// team command group — turn shared-memory mode on/off and inspect it.
 // enable/status take no CliContext (config-only), so their arrow-wraps just drop
 // commander's trailing Command argument. disable accepts an optional CliContext
 // seam for the --remove-team-memories DB delete; the arrow-wrap forwards only
@@ -167,7 +167,7 @@ team
   .description("Show team mode state and shared-path availability")
   .action(() => teamStatusCommand());
 
-// sync (TEAM-01) — push a local snapshot to the shared path and pull every
+// sync — push a local snapshot to the shared path and pull every
 // teammate snapshot back. syncCommand declares a trailing `ctx?` test seam, so
 // arrow-wrap to drop commander's trailing Command argument (NOTE above).
 program
