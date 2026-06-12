@@ -1,7 +1,7 @@
 import { homedir } from "os";
-import { join } from "path";
+import { join, dirname } from "path";
 import { resolve } from "path";
-import { writeFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { createCliContext, type CliContext } from "../context.js";
 
 export async function exportCommand(
@@ -26,6 +26,10 @@ export async function exportCommand(
   const outPath = pathArg
     ? resolve(pathArg) // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
     : join(homedir(), ".sessionmem", `export-${new Date().toISOString().slice(0, 10)}.json`);
+
+  // Ensure the target directory exists (the default ~/.sessionmem dir may not
+  // have been created yet in this context, e.g. a test-supplied CliContext).
+  mkdirSync(dirname(outPath), { recursive: true });
 
   // D-10: JSON array, pretty-printed
   writeFileSync(outPath, JSON.stringify(res.memories, null, 2), "utf8");

@@ -61,8 +61,13 @@ export async function syncCommand(
   // Pitfall 2: build every shared path with path.join ONLY (Windows/UNC safe).
   // The project dir + filename derive from the LOCAL projectId/username, never
   // from a string inside a teammate file (T-07-07).
+  // projectId/username are sanitized to [A-Za-z0-9._-] in context.ts
+  // (localUsername/deriveProjectId), so no path traversal here.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const dir = join(sharedPath, context.projectId);
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const finalPath = join(dir, `${context.username}.json`);
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const tmpPath = join(dir, `${context.username}.json.tmp`);
 
   try {
@@ -100,6 +105,9 @@ export async function syncCommand(
     try {
       // T-07-03: a truncated/corrupt teammate file is skipped-and-warned, never
       // aborting the rest of the pull.
+      // file comes from readdirSync(dir) filtered to *.json entries, so it is
+      // a plain filename with no path separators, not user input.
+      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
       parsed = JSON.parse(readFileSync(join(dir, file), "utf8"));
     } catch {
       console.error(`Skipping unreadable teammate file: ${file}`);

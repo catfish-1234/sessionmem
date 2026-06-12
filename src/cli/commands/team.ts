@@ -74,6 +74,9 @@ export function teamStatusCommand(options?: TeamCommandOptions): void {
   // probe branch is later added.
   // eslint-disable-next-line no-useless-assignment
   let writable = false;
+  // sharedPath is operator-configured (team enable <path>); the filename
+  // suffix is a randomUUID(), not user input.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const probePath = join(sharedPath, `.sessionmem-write-test-${randomUUID()}`);
   try {
     writeFileSync(probePath, "");
