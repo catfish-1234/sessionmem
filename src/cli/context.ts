@@ -65,7 +65,13 @@ function deriveProjectId(): string {
 
   const cwd = process.cwd();
   const parts = cwd.replace(/\\/g, "/").split("/");
-  return parts[parts.length - 1] || "default";
+  const raw = parts[parts.length - 1] || "default";
+  // Sanitize to a filename-safe token (mirrors localUsername) so it can be
+  // embedded in shared-path join()s without path traversal.
+  const sanitized = raw.replace(/[^A-Za-z0-9._-]/g, "_");
+  return sanitized === "" || sanitized === "." || sanitized === ".."
+    ? "default"
+    : sanitized;
 }
 
 function defaultDbPath(dir: string): string {

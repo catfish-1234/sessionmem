@@ -25,6 +25,9 @@ const root = join(__dirname, "..");
 const distDir = join(root, "dist");
 
 async function importDist(relPath, names) {
+  // relPath is always a hardcoded literal passed from this file (see call
+  // sites below), never user input.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const abs = join(distDir, relPath);
   let mod;
   try {
