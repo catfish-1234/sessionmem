@@ -12,7 +12,9 @@ import {
   type MemoryCoreMethod,
   type MemoryCoreRequest,
 } from "../core/api/contracts.js";
+import { join } from "path";
 import { createCliContext } from "../cli/context.js";
+import { IDEInstaller } from "./ide/installer.js";
 
 /**
  * Diagnostic logging sink for the stdio server. CRITICAL: the MCP protocol
@@ -90,6 +92,22 @@ export class GenericMCPAdapter implements HostAdapterContract {
     supportsResources: true,
     supportsTools: true,
   };
+
+  /**
+   * Fallback for hosts that aren't specifically detected: register sessionmem
+   * in a project-local `.mcp.json` (the de-facto generic MCP config format).
+   */
+  async install(): Promise<boolean> {
+    const configPath = join(process.cwd(), ".mcp.json");
+    return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
+      "run",
+    ]);
+  }
+
+  async uninstall(): Promise<boolean> {
+    const configPath = join(process.cwd(), ".mcp.json");
+    return IDEInstaller.removeMcpConfig(configPath, "sessionmem");
+  }
 
   async call<M extends MemoryCoreMethod>(
     _method: M,
