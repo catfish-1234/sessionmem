@@ -18,7 +18,7 @@ import { createCliContext } from "../cli/context.js";
  * Diagnostic logging sink for the stdio server. CRITICAL: the MCP protocol
  * frames are written to STDOUT by StdioServerTransport, so anything this server
  * emits for humans MUST go to stderr — a stray console.log to stdout corrupts
- * the JSON-RPC stream and breaks every client (T-08-04, RESEARCH Pitfall 1).
+ * the JSON-RPC stream and breaks every client.
  */
 function logDiagnostic(message: string): void {
   process.stderr.write(`[sessionmem] ${message}\n`);

@@ -24,7 +24,7 @@ function resolvePath(options?: TeamCommandOptions): string {
 
 /**
  * `sessionmem team enable <path>` — turn on team mode and record the shared path.
- * Missing/empty path -> error to stderr + exit 1 (Phase 5 D-03).
+ * Missing/empty path -> error to stderr + exit 1.
  */
 export function teamEnableCommand(
   sharedPath: string,
@@ -44,8 +44,8 @@ export function teamEnableCommand(
 
 /**
  * `sessionmem team status` — print enabled state + the shared path, and report
- * whether that path exists and is writable. Reads local fs only (T-07-10).
- * Does NOT print a last-sync time — there is no synced_at column (D-08).
+ * whether that path exists and is writable. Reads local fs only.
+ * Does NOT print a last-sync time — there is no synced_at column.
  */
 export function teamStatusCommand(options?: TeamCommandOptions): void {
   const config = readPolicyConfig(resolvePath(options));
@@ -65,7 +65,7 @@ export function teamStatusCommand(options?: TeamCommandOptions): void {
     return;
   }
 
-  // WR-02: accessSync(..., W_OK) is unreliable on Windows for directories
+  // accessSync(..., W_OK) is unreliable on Windows for directories
   // (NTFS ACL semantics differ from POSIX access(), and Node largely ignores
   // W_OK for directories on Windows). Probe by creating and removing a temp
   // file, falling back to accessSync only if the probe itself errors
@@ -102,11 +102,11 @@ export function teamStatusCommand(options?: TeamCommandOptions): void {
 /**
  * `sessionmem team disable [--remove-team-memories]` — stop team sync.
  *
- * Default (TEAM-03): flip enabled to false and KEEP already-pulled teammate
- * rows (no data loss). With `--remove-team-memories` (D-15): additionally
+ * By default, flip enabled to false and KEEP already-pulled teammate
+ * rows (no data loss). With `--remove-team-memories`, additionally
  * delete rows authored by someone other than the local username for the current
  * project, reverting to a local-only store. The DELETE binds projectId/username
- * as parameters — never string-concatenated (T-07-08 / T-06-11 precedent).
+ * as parameters — never string-concatenated.
  */
 export function teamDisableCommand(
   options?: TeamDisableOptions,

@@ -8,8 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
  * or fails validation, and as the lowest-precedence source in
  * {@link resolvePolicySettings}.
  *
- * D-03: default retention window is 90 days.
- * D-06: redaction defaults on.
+ * The default retention window is 90 days, and redaction defaults on.
  */
 export const DEFAULT_POLICY_CONFIG = {
   retentionDays: 90,
@@ -18,11 +17,12 @@ export const DEFAULT_POLICY_CONFIG = {
 } as const;
 
 /**
- * Strict schema for the nested `team` section (D-14). `enabled` toggles team
+ * Strict schema for the nested `team` section. `enabled` toggles team
  * mode; `sharedPath` points at the shared filesystem store the `sync` command
- * (Plan 03) reads/writes. `.strict()` rejects unknown keys inside `team`
- * (threat T-07-09); `.default()` keeps backward compat for configs predating
- * team mode (the section materializes as `{ enabled: false }`).
+ * reads/writes. `.strict()` rejects unknown keys inside `team` so
+ * unrecognized fields can't slip through; `.default()` keeps backward compat
+ * for configs predating team mode (the section materializes as
+ * `{ enabled: false }`).
  */
 const teamConfigShape = z
   .object({
@@ -44,7 +44,7 @@ const policyConfigShape = {
 
 /**
  * Strict schema for `~/.sessionmem/config.json`. `.strict()` rejects unknown keys
- * so caller-supplied writes cannot set unvalidated settings (threat T-06-04).
+ * so caller-supplied writes cannot set unvalidated settings.
  */
 export const policyConfigSchema = z.object(policyConfigShape).strict();
 
@@ -52,8 +52,8 @@ export const policyConfigSchema = z.object(policyConfigShape).strict();
  * Read schema. Unlike the write path, reading from disk STRIPS unknown keys
  * rather than rejecting the whole file. This keeps known-good values when a
  * config written by a newer binary carries fields this version doesn't know,
- * while still discarding unvalidated keys (threat T-06-04). Type-invalid known
- * fields still throw and trigger the safe-default fallback (threat T-06-02).
+ * while still discarding unvalidated keys. Type-invalid known fields still
+ * throw and trigger the safe-default fallback.
  */
 const policyConfigReadSchema = z.object(policyConfigShape).strip();
 
@@ -72,7 +72,7 @@ export function configFilePath(): string {
  *
  * Defaults safely (like localOnlyPolicy.ts): any failure — missing file,
  * unreadable file, malformed JSON, or schema-invalid contents — returns
- * {@link DEFAULT_POLICY_CONFIG} without throwing (threat T-06-02). Stored values
+ * {@link DEFAULT_POLICY_CONFIG} without throwing. Stored values
  * are merged over defaults via the schema's per-field `.default()`.
  */
 export function readPolicyConfig(filePath: string): PolicyConfig {
@@ -91,7 +91,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
  * pretty-printed JSON.
  *
  * The partial is validated against the strict schema, so unknown keys are
- * rejected (throws) rather than silently written (threat T-06-04).
+ * rejected (throws) rather than silently written.
  */
 export function writePolicyConfig(
   filePath: string,
@@ -122,7 +122,7 @@ export type ScalarPolicySettings = Pick<PolicyConfig, ScalarPolicyKey>;
 
 /**
  * Resolve effective FLAT settings using precedence override > config.json >
- * default (D-11). Each scalar setting is resolved independently.
+ * default. Each scalar setting is resolved independently.
  *
  * RESEARCH Pitfall 5: this loop assumes flat scalars. The nested `team` object
  * is deliberately NOT routed through here — use {@link resolveTeamConfig} for it.

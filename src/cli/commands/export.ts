@@ -19,7 +19,7 @@ export async function exportCommand(
     process.exit(1);
   }
 
-  // D-11: default ISO-dated path; V12: resolve user-supplied path.
+  // Default to an ISO-dated path; resolve user-supplied path otherwise.
   // Path comes from the local CLI invoker's own argv (same trust level as
   // the process itself), not from a remote/network-facing input, so
   // resolving it to an absolute path is not a path-traversal vector.
@@ -31,7 +31,7 @@ export async function exportCommand(
   // have been created yet in this context, e.g. a test-supplied CliContext).
   mkdirSync(dirname(outPath), { recursive: true });
 
-  // D-10: JSON array, pretty-printed
+  // Write as a pretty-printed JSON array
   writeFileSync(outPath, JSON.stringify(res.memories, null, 2), "utf8");
 
   console.log(`Exported ${res.memories.length} memories to ${outPath}`);

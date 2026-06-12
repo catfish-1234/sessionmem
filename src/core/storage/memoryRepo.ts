@@ -96,7 +96,7 @@ export function listMemoriesByProject(
 }
 
 /**
- * All memory ids across every project (CR-02). `id` is a globally-unique
+ * All memory ids across every project. `id` is a globally-unique
  * PRIMARY KEY, so duplicate-skip checks in `import` must consider every
  * project's ids, not just the current project's, to surface cross-project id
  * collisions as "skipped" rather than silently importing them.
@@ -133,9 +133,9 @@ export function deleteMemoriesOlderThan(
   projectId: string,
   cutoffIso: string,
 ): number {
-  // Hard-delete (D-04) scoped to the memories table only (D-01); never touches
+  // Hard-delete scoped to the memories table only; never touches
   // session_events or memory_feedback. project_id and cutoff are bound, never
-  // string-concatenated, to prevent SQL injection (T-06-05).
+  // string-concatenated, to prevent SQL injection.
   const result = db
     .prepare(
       `
@@ -181,10 +181,10 @@ export function updateMemoryContent(
   newContent: string,
   newNormalizedContent?: string,
 ): void {
-  // In-place content rewrite for the one-time redaction scrub (D-07). All
+  // In-place content rewrite for the one-time redaction scrub. All
   // values are bound parameters — projectId, memoryId, and content are never
   // string-concatenated — mirroring updateMemoryImportance to prevent SQL
-  // injection (T-06-11). normalized_content is only overwritten when a new
+  // injection. normalized_content is only overwritten when a new
   // value is supplied so embeddings stay consistent with the redacted text.
   const result = db
     .prepare(

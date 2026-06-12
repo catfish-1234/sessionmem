@@ -11,13 +11,13 @@ interface ConfigCommandOptions {
 }
 
 /**
- * Maps operator-facing CLI keys (D-13) to {@link PolicyConfig} fields plus a
+ * Maps operator-facing CLI keys to {@link PolicyConfig} fields plus a
  * type-coercion/validation step. Adding a new policy setting means adding one
- * entry here — no new per-setting command (D-13 extensibility).
+ * entry here — no new per-setting command needed.
  *
  * `get` reads `field` from the effective config. `set` runs `coerce(value)`,
  * which returns the typed value or throws on an invalid input (the command then
- * exits 1 without writing — T-06-17).
+ * exits 1 without writing).
  */
 interface ConfigKeyDef {
   field: keyof PolicyConfig;
@@ -35,8 +35,8 @@ function coerceInt(raw: string): number {
 
 // 100 years (in days). Far beyond any realistic retention window, and keeps
 // `Date.now() - retentionDays * 24 * 60 * 60 * 1000` well within the safe
-// Date range so `pruneMemories`'s cutoff computation never throws RangeError
-// (WR-01). Exported so `retention prune --days` (WR-02) enforces the same
+// Date range so `pruneMemories`'s cutoff computation never throws RangeError.
+// Exported so `retention prune --days` enforces the same
 // bound as `config set retentionDays`.
 export const MAX_RETENTION_DAYS = 36500;
 
@@ -90,7 +90,7 @@ export function configGetCommand(
 
 /**
  * `sessionmem config set <key> <value>` — coerce and persist to config.json.
- * Unknown key or invalid value -> error + exit 1 with NO file write (T-06-17).
+ * Unknown key or invalid value -> error + exit 1 with NO file write.
  */
 export function configSetCommand(
   key: string,

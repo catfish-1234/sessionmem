@@ -31,13 +31,13 @@ export async function uninstallCommand(options: UninstallOptions = {}): Promise<
   const dbPath = options.dbPath ?? join(homedir(), ".sessionmem", "memories.db");
 
   if (options.purge) {
-    // --purge: delete only memories.db, not logs or the ~/.sessionmem directory (Open Q3 / T-05-04)
+    // --purge: delete only memories.db, not logs or the ~/.sessionmem directory
     if (existsSync(dbPath)) {
       rmSync(dbPath, { force: true });
     }
     console.log("✓ memories.db deleted");
   } else {
-    // Default: preserve memories.db (D-06 / T-05-05)
+    // Default: preserve memories.db
     console.log(`Memory DB preserved at ${dbPath}`);
   }
 }

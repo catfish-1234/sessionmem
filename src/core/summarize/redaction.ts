@@ -14,7 +14,7 @@ export interface RedactionResult {
 // JWTs) run BEFORE the narrower single-token rules so a broad rule cannot redact
 // a fragment of a larger secret and leave a partial body behind. All patterns are
 // anchored with explicit literal prefixes/markers and use bounded quantifiers to
-// avoid catastrophic backtracking (ReDoS — see threat T-06-03).
+// avoid catastrophic backtracking (ReDoS).
 function defaultRules(): RedactionRule[] {
   return [
     // Email (original rule — unchanged).

@@ -21,15 +21,13 @@ interface SyncOptions {
 
 /**
  * `sessionmem sync` — push a full snapshot of local project memories to the
- * shared path and pull every teammate's snapshot back into the local DB
- * (TEAM-01).
+ * shared path and pull every teammate's snapshot back into the local DB.
  *
- * No-ops with a clear message when team mode is disabled (D-13). Push writes
- * `{sharedPath}/{projectId}/{username}.json` atomically (temp-file + rename,
- * Pitfall 4). Pull enumerates every other `*.json` in that dir, skip-and-warns
- * on unreadable/non-array files (T-07-03), validates each record, and merges
+ * No-ops with a clear message when team mode is disabled. Push writes
+ * `{sharedPath}/{projectId}/{username}.json` atomically (temp-file + rename).
+ * Pull enumerates every other `*.json` in that dir, skip-and-warns
+ * on unreadable/non-array files, validates each record, and merges
  * via `pullMemories` (MAX-importance LWW + re-redaction + cross-project skip).
- * Prints the D-16 summary.
  */
 export async function syncCommand(
   ctx?: CliContext,
@@ -40,7 +38,7 @@ export async function syncCommand(
   const config = readPolicyConfig(options?.configPath ?? configFilePath());
   const { enabled, sharedPath } = config.team;
 
-  // D-13: clean no-op (exit 0) when team mode is off or unconfigured.
+  // Clean no-op (exit 0) when team mode is off or unconfigured.
   if (!enabled || !sharedPath) {
     console.log(
       "Team mode is not enabled. Run `sessionmem team enable <path>`.",
@@ -58,9 +56,9 @@ export async function syncCommand(
     return;
   }
 
-  // Pitfall 2: build every shared path with path.join ONLY (Windows/UNC safe).
+  // Build every shared path with path.join ONLY (Windows/UNC safe).
   // The project dir + filename derive from the LOCAL projectId/username, never
-  // from a string inside a teammate file (T-07-07).
+  // from a string inside a teammate file.
   // projectId/username are sanitized to [A-Za-z0-9._-] in context.ts
   // (localUsername/deriveProjectId), so no path traversal here.
   // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
@@ -72,13 +70,13 @@ export async function syncCommand(
 
   try {
     mkdirSync(dir, { recursive: true });
-    // Pitfall 4 / T-07-12: atomic write — temp file in the SAME dir then rename,
+    // Atomic write — temp file in the SAME dir then rename,
     // so a teammate never reads a half-written snapshot off a network drive.
     writeFileSync(tmpPath, JSON.stringify(exportRes.memories, null, 2), "utf8");
     renameSync(tmpPath, finalPath);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // D-03: missing/unwritable shared path -> stderr + non-zero exit.
+    // Missing/unwritable shared path -> stderr + non-zero exit.
     console.error(`Failed to write to shared path: ${message}`);
     process.exit(1);
     return;
@@ -103,7 +101,7 @@ export async function syncCommand(
   for (const file of teammateFiles) {
     let parsed: unknown;
     try {
-      // T-07-03: a truncated/corrupt teammate file is skipped-and-warned, never
+      // A truncated/corrupt teammate file is skipped-and-warned, never
       // aborting the rest of the pull.
       // file comes from readdirSync(dir) filtered to *.json entries, so it is
       // a plain filename with no path separators, not user input.
@@ -120,7 +118,7 @@ export async function syncCommand(
 
     for (const raw of parsed as Array<Record<string, unknown>>) {
       // Carry author/originProjectId through; per-record skip-and-warn so one
-      // bad record never discards the rest (IN-02 precedent).
+      // bad record never discards the rest.
       const check = importMemoryRecordSchema.safeParse(raw);
       if (!check.success) {
         console.error(
@@ -149,7 +147,7 @@ export async function syncCommand(
     pulledUpdated = pullRes.pulledUpdated;
   }
 
-  // D-16: the exact summary string.
+  // The exact summary string.
   console.log(
     `Pushed ${pushed} memories, pulled ${pulledNew} new + updated ${pulledUpdated} from teammates.`,
   );

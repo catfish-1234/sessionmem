@@ -37,12 +37,12 @@ export async function statsCommand(
     0,
   );
 
-  // Effective policy (D-15): retention window + redaction state for visibility.
+  // Effective policy: retention window + redaction state for visibility.
   const { retentionDays, redactionEnabled } = readPolicyConfig(
     options?.configPath ?? configFilePath(),
   );
 
-  // retentionDays<=0 disables pruning (D-03); report that rather than a
+  // retentionDays<=0 disables pruning; report that rather than a
   // misleading eligible count against a non-positive window.
   let retentionLine: string;
   if (retentionDays <= 0) {
