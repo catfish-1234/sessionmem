@@ -2,5 +2,7 @@ node_modules/
 *.log
 dist/
 
-# GSD planning/process docs: kept locally, not published to GitHub.
+# Local development/process artifacts: kept on disk, not published to GitHub.
 .planning/
+.agents/
+skills-lock.json
