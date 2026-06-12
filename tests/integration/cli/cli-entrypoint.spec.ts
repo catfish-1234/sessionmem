@@ -225,5 +225,5 @@ describe("cli entrypoint (spawned dist/cli/index.js)", () => {
     verifyDb.close();
     const ids = rows.map((r) => r.id).sort();
     expect(ids).toEqual([...SEEDED_IDS].sort());
-  });
+  }, 20000); // two real binary spawns + DB setup/verification; slow on Windows CI
 });
