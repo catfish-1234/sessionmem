@@ -32,9 +32,9 @@ jobs:
 
       - run: npm ci
 
-      - run: npm test
-
       - run: npm run build
+
+      - run: npm test
 
       # OIDC trusted publishing is auto-detected when id-token: write is present;
       # provenance is emitted automatically, so no --provenance flag is needed.
