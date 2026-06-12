@@ -1,3 +1,6 @@
 node_modules/
 *.log
 dist/
+
+# GSD planning/process docs: kept locally, not published to GitHub.
+.planning/
