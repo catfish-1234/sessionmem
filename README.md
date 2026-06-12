@@ -1,5 +1,7 @@
 # sessionmem
 
+[![npm version](https://img.shields.io/npm/v/sessionmem.svg)](https://www.npmjs.com/package/sessionmem) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/catfish-1234/sessionmem/blob/main/LICENSE)
+
 **Give your AI coding assistant a memory that lasts beyond one conversation — stored entirely on your own computer.**
 
 `sessionmem` is a local-first memory layer for AI coding assistants (Claude Code, Cursor, Codex, Cline, Windsurf, Antigravity, QCoder, and any other tool that speaks [MCP](https://modelcontextprotocol.io)). It watches your coding sessions, writes down the important stuff (decisions, warnings, facts about your project), and quietly reminds the assistant about it the next time you start working — without you having to repeat yourself.
