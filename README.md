@@ -25,6 +25,7 @@ Everything happens on your machine. There is no account to create, no cloud serv
 - [Supported tools](#supported-tools)
 - [Further documentation](#further-documentation)
 - [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -300,6 +301,25 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 - QCoder
 
 ...and any other tool that implements the [Model Context Protocol](https://modelcontextprotocol.io).
+
+---
+
+## FAQ
+
+**How do I give Cursor, Cline, or Windsurf memory between sessions?**
+Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. It registers as an MCP server with any supported host automatically.
+
+**How do I give Claude Code persistent memory?**
+Same install. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` file in the repo), so it works with Claude Code's native plugin system too.
+
+**Is there a local MCP memory server that works offline with no API key?**
+Yes — sessionmem stores everything in a single SQLite file at `~/.sessionmem/memories.db` and works fully offline by default. Nothing leaves your machine unless you explicitly enable the optional cloud summarization path.
+
+**How is sessionmem different from claude-mem?**
+sessionmem is not Claude-only. It works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder, and any other MCP host — not just Claude Code. It also redacts secrets (API keys, tokens, JWTs) by default, prunes stale memory automatically, and ships reproducible benchmarks you can run yourself.
+
+**Does sessionmem send my code to the cloud?**
+No. Nothing leaves your machine by default. The optional cloud summarization path is opt-in and off by default.
 
 ---
 
