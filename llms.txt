@@ -1,0 +1,25 @@
+# sessionmem
+> Local-first MCP memory server for AI coding assistants (Claude Code, Cursor, Cline, Codex, Windsurf, and any MCP host). Persistent cross-session memory in one local SQLite file. No account, no cloud, no API key.
+
+## Best for
+Solo developers using Claude Code, Cursor, Cline, Codex, or Windsurf who want private, free, tool-agnostic memory that persists across sessions without sending anything to the cloud.
+
+## Key pages
+- GitHub: https://github.com/catfish-1234/sessionmem
+- npm: https://www.npmjs.com/package/sessionmem
+- Install: `npm install -g sessionmem` or `npx sessionmem`
+
+## What it does
+Watches your AI coding sessions, compresses them into a compact summary, and auto-injects that summary at the start of each new session. Your coding agent picks up exactly where you left off.
+
+## Proof
+~85.6% token reduction vs full session history; 100% retrieval hit-rate (reproducible via `npm run benchmark`). Secrets redacted by default. Offline by default. No SSRF surface, no network calls unless you opt in.
+
+## Comparison
+- vs claude-mem: sessionmem works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder and any MCP host -- not just Claude. It also redacts secrets by default and ships reproducible benchmarks.
+- vs Mem0/Zep: those are production memory platforms for end-user apps. sessionmem is a developer tool for your own local coding sessions.
+
+## Install
+```json
+{"mcpServers": {"sessionmem": {"command": "npx", "args": ["-y", "sessionmem"]}}}
+```
