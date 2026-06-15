@@ -10,12 +10,54 @@ Everything happens on your machine. There is no account to create, no cloud serv
 
 ---
 
+## Quickstart
+
+No programming experience needed for these steps — just a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org) installed.
+
+### 1. Install sessionmem
+
+```bash
+npm install -g sessionmem
+```
+
+### 2. Register it with your AI tool
+
+Run this inside the project folder you're working on, with your AI tool (Claude Code, Cursor, etc.) configured:
+
+```bash
+sessionmem install
+```
+
+This does two things:
+- Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
+- Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults — **only if one doesn't already exist.**
+
+### 3. Start using your AI tool as normal
+
+```bash
+sessionmem run
+```
+
+(Most of the time you won't run this yourself — your AI tool's host starts it for you automatically once it's registered.)
+
+That's it. From here:
+- `sessionmem` watches your sessions in the background.
+- At the end of each session, it writes down a short summary of what mattered.
+- At the start of your next session, it quietly reminds your assistant of the relevant bits.
+
+You can verify everything is working with:
+
+```bash
+sessionmem ping
+```
+
+---
+
 ## Table of Contents
 
 - [What problem does this solve?](#what-problem-does-this-solve)
 - [How is sessionmem different?](#how-is-sessionmem-different)
 - [Benchmark results](#benchmark-results)
-- [Quickstart](#quickstart)
 - [How it works (in plain English)](#how-it-works-in-plain-english)
 - [CLI command reference](#cli-command-reference)
 - [Privacy, secrets, and your data](#privacy-secrets-and-your-data)
@@ -100,49 +142,6 @@ These benchmarks are deterministic and reproducible — run them yourself:
 ```bash
 npm run build      # benchmark imports the compiled code from dist/
 npm run benchmark  # regenerates docs/benchmark.md
-```
-
----
-
-## Quickstart
-
-No programming experience needed for these steps — just a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org) installed.
-
-### 1. Install sessionmem
-
-```bash
-npm install -g sessionmem
-```
-
-### 2. Register it with your AI tool
-
-Run this inside the project folder you're working on, with your AI tool (Claude Code, Cursor, etc.) configured:
-
-```bash
-sessionmem install
-```
-
-This does two things:
-- Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
-- Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults — **only if one doesn't already exist.**
-
-### 3. Start using your AI tool as normal
-
-```bash
-sessionmem run
-```
-
-(Most of the time you won't run this yourself — your AI tool's host starts it for you automatically once it's registered.)
-
-That's it. From here:
-- `sessionmem` watches your sessions in the background.
-- At the end of each session, it writes down a short summary of what mattered.
-- At the start of your next session, it quietly reminds your assistant of the relevant bits.
-
-You can verify everything is working with:
-
-```bash
-sessionmem ping
 ```
 
 ---
@@ -304,25 +303,6 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
 ---
 
-## FAQ
-
-**How do I give Cursor, Cline, or Windsurf memory between sessions?**
-Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. It registers as an MCP server with any supported host automatically.
-
-**How do I give Claude Code persistent memory?**
-Same install. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` file in the repo), so it works with Claude Code's native plugin system too.
-
-**Is there a local MCP memory server that works offline with no API key?**
-Yes — sessionmem stores everything in a single SQLite file at `~/.sessionmem/memories.db` and works fully offline by default. Nothing leaves your machine unless you explicitly enable the optional cloud summarization path.
-
-**How is sessionmem different from claude-mem?**
-sessionmem is not Claude-only. It works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder, and any other MCP host — not just Claude Code. It also redacts secrets (API keys, tokens, JWTs) by default, prunes stale memory automatically, and ships reproducible benchmarks you can run yourself.
-
-**Does sessionmem send my code to the cloud?**
-No. Nothing leaves your machine by default. The optional cloud summarization path is opt-in and off by default.
-
----
-
 ## Further documentation
 
 - [Architecture](docs/architecture.md) — how the core engine, adapters, CLI, and SQLite storage fit together.
@@ -345,6 +325,25 @@ Quick checks:
 sessionmem ping     # is the server reachable?
 sessionmem stats    # is data being stored?
 ```
+
+---
+
+## FAQ
+
+**How do I give Cursor, Cline, or Windsurf memory between sessions?**
+Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. It registers as an MCP server with any supported host automatically.
+
+**How do I give Claude Code persistent memory?**
+Same install. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` file in the repo), so it works with Claude Code's native plugin system too.
+
+**Is there a local MCP memory server that works offline with no API key?**
+Yes — sessionmem stores everything in a single SQLite file at `~/.sessionmem/memories.db` and works fully offline by default. Nothing leaves your machine unless you explicitly enable the optional cloud summarization path.
+
+**How is sessionmem different from claude-mem?**
+sessionmem is not Claude-only. It works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder, and any other MCP host — not just Claude Code. It also redacts secrets (API keys, tokens, JWTs) by default, prunes stale memory automatically, and ships reproducible benchmarks you can run yourself.
+
+**Does sessionmem send my code to the cloud?**
+No. Nothing leaves your machine by default. The optional cloud summarization path is opt-in and off by default.
 
 ---
 
