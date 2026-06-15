@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+        exclude:
+          - os: windows-latest
+            node: 20
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  install-smoke:
+    needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+        exclude:
+          - os: windows-latest
+            node: 20
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack tarball
+        run: npm pack
+
+      - name: Install tarball globally (POSIX)
+        if: runner.os != 'Windows'
+        run: npm install -g ./sessionmem-*.tgz
+
+      - name: Install tarball globally (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tarball = Get-ChildItem -Filter "sessionmem-*.tgz" | Select-Object -First 1
+          npm install -g "./$($tarball.Name)"
+
+      - name: Run sessionmem --version (POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          VERSION=$(sessionmem --version)
+          echo "version: $VERSION"
+          if [ "$VERSION" != "1.0.0" ]; then
+            echo "Expected version 1.0.0, got $VERSION"
+            exit 1
+          fi
+
+      - name: Run sessionmem --version (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (sessionmem --version).Trim()
+          Write-Host "version: $version"
+          if ($version -ne "1.0.0") {
+            Write-Error "Expected version 1.0.0, got $version"
+            exit 1
+          }
+
+      - name: Run sessionmem ping
+        run: sessionmem ping
+
+      - name: sessionmem install (isolated temp HOME, POSIX)
+        if: runner.os != 'Windows'
+        run: |
+          TMP_HOME="$(mktemp -d)"
+          export HOME="$TMP_HOME"
+          sessionmem install
+          if [ ! -f "$TMP_HOME/.sessionmem/config.json" ]; then
+            echo "config.json was not written to isolated HOME ($TMP_HOME)"
+            exit 1
+          fi
+          echo "config.json found at $TMP_HOME/.sessionmem/config.json"
+
+      - name: sessionmem install (isolated temp HOME, Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tmpHome = Join-Path $env:RUNNER_TEMP "sessionmem-home"
+          New-Item -ItemType Directory -Force -Path $tmpHome | Out-Null
+          $env:HOME = $tmpHome
+          $env:USERPROFILE = $tmpHome
+          $env:HOMEDRIVE = (Split-Path $tmpHome -Qualifier)
+          $env:HOMEPATH = (Split-Path $tmpHome -NoQualifier)
+          sessionmem install
+          $configPath = Join-Path $tmpHome ".sessionmem\config.json"
+          if (-not (Test-Path $configPath)) {
+            Write-Error "config.json was not written to isolated HOME ($configPath)"
+            exit 1
+          }
+          Write-Host "config.json found at $configPath"
