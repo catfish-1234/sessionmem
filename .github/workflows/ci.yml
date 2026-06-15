@@ -24,6 +24,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          npm_config_msvs_version: '2022'
 
       - name: Lint
         run: npx eslint .
@@ -56,6 +58,8 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          npm_config_msvs_version: '2022'
 
       - name: Build
         run: npm run build
