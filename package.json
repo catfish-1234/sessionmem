@@ -1,6 +1,6 @@
 {
   "name": "sessionmem",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "type": "module",
   "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
@@ -8,9 +8,9 @@
   "author": "kavishdua",
   "repository": {
     "type": "git",
-        "url": "git+https://github.com/catfish-1234/sessionmem.git"
+    "url": "git+https://github.com/catfish-1234/sessionmem.git"
   },
-    "mcpName": "io.github.catfish-1234/sessionmem",
+  "mcpName": "io.github.catfish-1234/sessionmem",
   "files": [
     "dist"
   ],
