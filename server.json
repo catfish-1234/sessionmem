@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-    "name": "io.github.catfish-1234/sessionmem",
+  "name": "io.github.catfish-1234/sessionmem",
   "description": "Cross-session, cross-platform memory for coding agents.",
   "repository": {
-        "url": "https://github.com/catfish-1234/sessionmem",
+    "url": "https://github.com/catfish-1234/sessionmem",
     "source": "github"
   },
   "version": "1.0.0",
