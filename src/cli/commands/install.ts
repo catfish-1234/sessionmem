@@ -1,5 +1,8 @@
 import { existsSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 import { AdapterFactory } from "../../adapters/factory.js";
+import { injectClaudeMdBlock } from "../../adapters/claudeMdInjector.js";
 import { createCliContext } from "../context.js";
 import type { CliContextOverrides } from "../context.js";
 import {
@@ -78,6 +81,19 @@ export async function installCommand(
 
   console.log(`✓ ${adapter.name} config updated`);
 
-  // Step 3: Full success checklist
+  // Step 3: CLAUDE.md injection — non-fatal
+  const claudeMdPath = join(homedir(), ".claude", "CLAUDE.md");
+  try {
+    const injected = injectClaudeMdBlock(claudeMdPath);
+    if (injected) {
+      console.log(`✓ CLAUDE.md instructions injected (${claudeMdPath})`);
+    } else {
+      console.error("✗ CLAUDE.md injection failed (non-fatal)");
+    }
+  } catch {
+    console.error("✗ CLAUDE.md injection failed (non-fatal)");
+  }
+
+  // Step 4: Full success checklist
   console.log("✓ sessionmem ready");
 }

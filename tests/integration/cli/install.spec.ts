@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { tmpdir } from "os";
+import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { existsSync, readFileSync, writeFileSync, rmSync } from "fs";
 import { AdapterFactory } from "../../../src/adapters/factory.js";
 import { installCommand } from "../../../src/cli/commands/install.js";
 import { readPolicyConfig } from "../../../src/core/config/policyConfig.js";
+import {
+  hasClaudeMdBlock,
+  removeClaudeMdBlock,
+} from "../../../src/adapters/claudeMdInjector.js";
 
 function mockSuccessfulAdapter() {
   const mockAdapter = {
@@ -155,6 +159,26 @@ describe("installCommand", () => {
       expect(allLogs).toContain("config.json");
     } finally {
       rmSync(configPath, { force: true });
+    }
+  });
+
+  it("injects CLAUDE.md block during install", async () => {
+    const dbPath = join(tmpdir(), `sessionmem-install-test-${randomUUID()}.db`);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    mockSuccessfulAdapter();
+
+    const claudeMdPath = join(homedir(), ".claude", "CLAUDE.md");
+    const hadBlockBefore = hasClaudeMdBlock(claudeMdPath);
+
+    try {
+      await installCommand({}, { dbPath });
+
+      expect(hasClaudeMdBlock(claudeMdPath)).toBe(true);
+    } finally {
+      // Clean up: only remove the block if it was not there before the test
+      if (!hadBlockBefore) {
+        removeClaudeMdBlock(claudeMdPath);
+      }
     }
   });
 });

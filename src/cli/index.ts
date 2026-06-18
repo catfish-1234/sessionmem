@@ -12,6 +12,7 @@ import { forgetCommand } from "./commands/forget.js";
 import { exportCommand } from "./commands/export.js";
 import { importCommand } from "./commands/import.js";
 import { statsCommand } from "./commands/stats.js";
+import { savingsCommand } from "./commands/savings.js";
 import { redactScanCommand } from "./commands/redactScan.js";
 import { retentionPruneCommand } from "./commands/retention.js";
 import { configGetCommand, configSetCommand } from "./commands/config.js";
@@ -100,6 +101,12 @@ program
   .command("stats")
   .description("Show memory statistics for the current project")
   .action(() => statsCommand());
+
+program
+  .command("savings")
+  .description("Show token savings from sessionmem compression and injection")
+  .option("--json", "Output raw metrics as JSON")
+  .action((options) => savingsCommand(undefined, options));
 
 // redact-scan — one-time scrub over existing memories. Scan is the
 // non-destructive default; --apply redacts matching rows in place.

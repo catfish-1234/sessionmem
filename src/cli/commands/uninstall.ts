@@ -2,6 +2,7 @@ import { existsSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { AdapterFactory } from "../../adapters/factory.js";
+import { removeClaudeMdBlock } from "../../adapters/claudeMdInjector.js";
 
 export interface UninstallOptions {
   purge?: boolean;
@@ -26,6 +27,15 @@ export async function uninstallCommand(options: UninstallOptions = {}): Promise<
   }
 
   console.log(`✓ ${adapter.name} config removed`);
+
+  // CLAUDE.md cleanup — non-fatal
+  const claudeMdPath = join(homedir(), ".claude", "CLAUDE.md");
+  try {
+    removeClaudeMdBlock(claudeMdPath);
+    console.log("✓ CLAUDE.md instructions removed");
+  } catch {
+    console.error("✗ CLAUDE.md cleanup failed (non-fatal)");
+  }
 
   // Resolve dbPath: use injected override (for tests) or the default location
   const dbPath = options.dbPath ?? join(homedir(), ".sessionmem", "memories.db");

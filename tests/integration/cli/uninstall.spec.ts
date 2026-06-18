@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { tmpdir } from "os";
+import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { writeFileSync, existsSync } from "fs";
 import { AdapterFactory } from "../../../src/adapters/factory.js";
 import { uninstallCommand } from "../../../src/cli/commands/uninstall.js";
+import {
+  injectClaudeMdBlock,
+  hasClaudeMdBlock,
+} from "../../../src/adapters/claudeMdInjector.js";
 
 describe("uninstallCommand", () => {
   afterEach(() => {
@@ -112,5 +116,32 @@ describe("uninstallCommand", () => {
     expect(exitCode).toBe(1);
     const allErrors = errSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(allErrors).toContain("NoUninstallAdapter");
+  });
+
+  it("removes CLAUDE.md block during uninstall", async () => {
+    const dbPath = join(tmpdir(), `sessionmem-uninstall-test-${randomUUID()}.db`);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(process, "exit").mockImplementation((_code?: number) => {
+      throw new Error(`process.exit(${_code})`);
+    });
+
+    const mockAdapter = {
+      name: "TestAdapter",
+      capabilities: { supportsPrompts: false, supportsResources: false, supportsTools: true },
+      uninstall: vi.fn().mockResolvedValue(true),
+      call: vi.fn(),
+      startMcpServer: vi.fn(),
+    };
+    vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue(mockAdapter as never);
+
+    const claudeMdPath = join(homedir(), ".claude", "CLAUDE.md");
+
+    // Pre-inject the block so we can verify removal
+    injectClaudeMdBlock(claudeMdPath);
+    expect(hasClaudeMdBlock(claudeMdPath)).toBe(true);
+
+    await uninstallCommand({ dbPath });
+
+    expect(hasClaudeMdBlock(claudeMdPath)).toBe(false);
   });
 });
