@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "sessionmem": {
-      "command": "sessionmem",
+      "command": "node",
       "args": [
+        "C:\\Users\\kavis\\sessionmem\\dist\\cli\\index.js",
         "run"
       ]
     }
