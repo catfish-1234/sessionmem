@@ -83,10 +83,11 @@ jobs:
       - name: Run sessionmem --version (POSIX)
         if: runner.os != 'Windows'
         run: |
+          EXPECTED=$(node -p "require('./package.json').version")
           VERSION=$(sessionmem --version)
-          echo "version: $VERSION"
-          if [ "$VERSION" != "1.0.0" ]; then
-            echo "Expected version 1.0.0, got $VERSION"
+          echo "version: $VERSION (expected: $EXPECTED)"
+          if [ "$VERSION" != "$EXPECTED" ]; then
+            echo "Expected version $EXPECTED, got $VERSION"
             exit 1
           fi
 
@@ -94,10 +95,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          $expected = node -p "require('./package.json').version"
           $version = (sessionmem --version).Trim()
-          Write-Host "version: $version"
-          if ($version -ne "1.0.0") {
-            Write-Error "Expected version 1.0.0, got $version"
+          Write-Host "version: $version (expected: $expected)"
+          if ($version -ne $expected) {
+            Write-Error "Expected version $expected, got $version"
             exit 1
           }
 

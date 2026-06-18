@@ -28,9 +28,10 @@ Run this inside the project folder you're working on, with your AI tool (Claude 
 sessionmem install
 ```
 
-This does two things:
+This does three things:
 - Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
 - Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults — **only if one doesn't already exist.**
+- Injects instructions into `~/.claude/CLAUDE.md` so Claude Code knows about sessionmem's tools and uses them proactively (idempotent — safe to re-run).
 
 ### 3. Start using your AI tool as normal
 
@@ -197,6 +198,7 @@ For a deeper technical dive, see [`docs/architecture.md`](docs/architecture.md).
 | `sessionmem export [path]` | Export memories to a JSON file. |
 | `sessionmem import <path> [--merge]` | Import memories from a JSON file. |
 | `sessionmem stats` | Show memory statistics for the current project. |
+| `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
 | `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
 | `sessionmem retention prune [--force] [--days <n>]` | Prune old memories (dry-run by default). |
 | `sessionmem config get <key>` / `config set <key> <value>` | Read and write policy config. |
@@ -344,6 +346,9 @@ sessionmem is not Claude-only. It works with Cursor, Cline, Codex, Windsurf, Ant
 
 **Does sessionmem send my code to the cloud?**
 No. Nothing leaves your machine by default. The optional cloud summarization path is opt-in and off by default.
+
+**How do I see how many tokens sessionmem saved me?**
+Run `sessionmem savings` to see a breakdown of storage compression (raw session tokens vs memory tokens) and injection efficiency. Add `--json` for machine-readable output.
 
 ---
 
