@@ -33,6 +33,7 @@ export interface RetrievedMemoryCandidate {
   importance: number;
   author: string;
   origin_project_id: string | null;
+  access_count: number;
   created_at: string;
   updated_at: string;
   embedding_dim: number | null;
@@ -102,6 +103,7 @@ export function retrieveMemories(
           semantic,
           updated_at: candidate.updated_at,
           importance: candidate.importance,
+          access_count: candidate.access_count,
         },
         now,
       );
@@ -117,6 +119,7 @@ export function retrieveMemories(
         importance: candidate.importance,
         author: candidate.author,
         origin_project_id: candidate.origin_project_id,
+        access_count: candidate.access_count,
         created_at: candidate.created_at,
         updated_at: candidate.updated_at,
         embedding_dim: candidate.embedding_dim,
