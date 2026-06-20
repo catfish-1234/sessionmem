@@ -3,15 +3,17 @@ import type { Database } from "better-sqlite3";
 import { ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
+import { computeEffectiveImportance } from "../retrieve/score.js";
 import { formatStartupInjection } from "../injection/formatStartupInjection.js";
 import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
   countMemoriesOlderThan,
   deleteMemoriesOlderThan,
+  incrementAccessCounts,
   insertMemory,
   listMemoriesByProject,
-  recordUse,
+  resetAccessCounts,
   updateMemoryContent,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
@@ -32,8 +34,8 @@ import {
   ingestSessionEventsRequestSchema,
   listMemoriesRequestSchema,
   pruneMemoriesRequestSchema,
-  recordMemoryUsedRequestSchema,
   redactExistingRequestSchema,
+  resetAccessCountsRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
@@ -72,6 +74,9 @@ interface MemoryDto {
   embeddingVersion: string | null;
   author: string;
   originProjectId: string | null;
+  accessCount: number;
+  lastAccessed: string | null;
+  effectiveImportance: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -140,6 +145,9 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
     embeddingVersion: record.embedding_version,
     author: record.author,
     originProjectId: record.origin_project_id,
+    accessCount: record.access_count,
+    lastAccessed: record.last_accessed,
+    effectiveImportance: computeEffectiveImportance(record.importance, record.access_count),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -160,6 +168,9 @@ function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemory
     embeddingVersion: record.embedding_version,
     author: record.author,
     originProjectId: record.origin_project_id,
+    accessCount: record.access_count,
+    lastAccessed: null,
+    effectiveImportance: computeEffectiveImportance(record.importance, record.access_count),
     createdAt: record.created_at,
     updatedAt: record.updated_at,
     semantic: record.semantic,
@@ -178,7 +189,7 @@ function getMemoryById(
       SELECT
         id, project_id, session_id, source_adapter, kind, content, normalized_content,
         importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-        created_at, updated_at
+        access_count, last_accessed, created_at, updated_at
       FROM memories
       WHERE project_id = ? AND id = ?
       LIMIT 1
@@ -348,33 +359,17 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         limit,
       });
 
+      if (ranked.length > 0) {
+        incrementAccessCounts(db, parsed.projectId, ranked.map((m) => m.id));
+      }
+
       return {
         ok: true,
         memories: ranked.map(toRetrievedMemoryDto),
         total: ranked.length,
-        // Render the startup-injection block here so the `author:`
-        // prefix annotation for teammate-authored memories reaches CLI/MCP
-        // callers via the production retrieval path.
         startupInjection: formatStartupInjection(ranked, {
           localUsername: localAuthor,
         }),
-      };
-    },
-
-    async recordMemoryUsed(request) {
-      const parsed = parseRequest(recordMemoryUsedRequestSchema, request);
-      const result = recordUse(db, {
-        project_id: parsed.projectId,
-        memory_id: parsed.memoryId,
-        feedback_type: parsed.feedbackType,
-        used_at: parsed.usedAt,
-      });
-
-      return {
-        ok: true,
-        memoryId: result.memory_id,
-        previousImportance: result.previous_importance,
-        newImportance: result.new_importance,
       };
     },
 
@@ -770,6 +765,15 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         ok: true,
         totalMemories: memoryCount.count,
         totalSessionEvents: sessionEventCount.count,
+      };
+    },
+
+    async resetAccessCounts(request) {
+      const parsed = parseRequest(resetAccessCountsRequestSchema, request);
+      const affected = resetAccessCounts(db, parsed.projectId);
+      return {
+        ok: true,
+        affected,
       };
     },
   };
