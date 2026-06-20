@@ -13,6 +13,9 @@ export const memorySchema = z.object({
   embedding: z.string().nullable(),
   embeddingDim: z.number().int().nullable(),
   embeddingVersion: z.string().nullable(),
+  accessCount: z.number().int().nonnegative(),
+  lastAccessed: z.string().nullable(),
+  effectiveImportance: z.number().int().min(1).max(10),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
 });
@@ -87,13 +90,6 @@ export const retrieveMemoriesRequestSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
   mode: z.enum(["auto", "on-demand"]).default("auto"),
   depth: z.enum(["default", "deep"]).default("default"),
-});
-
-export const recordMemoryUsedRequestSchema = z.object({
-  projectId: z.string().min(1),
-  memoryId: z.string().min(1),
-  feedbackType: z.enum(["auto_use", "manual"]).default("auto_use"),
-  usedAt: z.string().min(1).optional(),
 });
 
 export const listMemoriesRequestSchema = z.object({
@@ -186,6 +182,15 @@ export const redactExistingResponseSchema = z.object({
   // operation erroring out and discarding prior updates/previews.
   skipped: z.number().int().nonnegative().default(0),
   previews: z.array(z.string()),
+});
+
+export const resetAccessCountsRequestSchema = z.object({
+  projectId: z.string().min(1),
+});
+
+export const resetAccessCountsResponseSchema = z.object({
+  ok: z.literal(true),
+  affected: z.number().int().nonnegative(),
 });
 
 export const operationResultSchema = z.object({
@@ -293,13 +298,6 @@ export const pullMemoriesResponseSchema = z.object({
   warningCodes: z.array(z.string()),
 });
 
-export const recordMemoryUsedResponseSchema = z.object({
-  ok: z.literal(true),
-  memoryId: z.string().min(1),
-  previousImportance: z.number().int().min(1).max(10),
-  newImportance: z.number().int().min(1).max(10),
-});
-
 export interface ErrorResponseEnvelope {
   ok: false;
   error: {
@@ -320,9 +318,6 @@ export type HandleSessionEndRequest = z.infer<
 >;
 export type StoreMemoryRequest = z.infer<typeof storeMemoryRequestSchema>;
 export type RetrieveMemoriesRequest = z.infer<typeof retrieveMemoriesRequestSchema>;
-export type RecordMemoryUsedRequest = z.infer<
-  typeof recordMemoryUsedRequestSchema
->;
 export type ListMemoriesRequest = z.infer<typeof listMemoriesRequestSchema>;
 export type GetMemoryRequest = z.infer<typeof getMemoryRequestSchema>;
 export type ForgetMemoryRequest = z.infer<typeof forgetMemoryRequestSchema>;
@@ -332,6 +327,7 @@ export type PullMemoriesRequest = z.infer<typeof pullMemoriesRequestSchema>;
 export type StatsRequest = z.infer<typeof statsRequestSchema>;
 export type PruneMemoriesRequest = z.infer<typeof pruneMemoriesRequestSchema>;
 export type RedactExistingRequest = z.infer<typeof redactExistingRequestSchema>;
+export type ResetAccessCountsRequest = z.infer<typeof resetAccessCountsRequestSchema>;
 
 export type IngestSessionEventsResponse = z.infer<
   typeof ingestSessionEventsResponseSchema
@@ -346,9 +342,6 @@ export type StoreMemoryResponse = z.infer<typeof storeMemoryResponseSchema>;
 export type RetrieveMemoriesResponse = z.infer<
   typeof retrieveMemoriesResponseSchema
 >;
-export type RecordMemoryUsedResponse = z.infer<
-  typeof recordMemoryUsedResponseSchema
->;
 export type ListMemoriesResponse = z.infer<typeof memoryListResponseSchema>;
 export type GetMemoryResponse = z.infer<typeof singleMemoryResponseSchema>;
 export type ForgetMemoryResponse = z.infer<typeof operationResultSchema>;
@@ -362,6 +355,7 @@ export type PruneMemoriesResponse = z.infer<
 export type RedactExistingResponse = z.infer<
   typeof redactExistingResponseSchema
 >;
+export type ResetAccessCountsResponse = z.infer<typeof resetAccessCountsResponseSchema>;
 
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
@@ -369,7 +363,6 @@ export interface MemoryCoreRequestMap {
   handleSessionEnd: HandleSessionEndRequest;
   storeMemory: StoreMemoryRequest;
   retrieveMemories: RetrieveMemoriesRequest;
-  recordMemoryUsed: RecordMemoryUsedRequest;
   listMemories: ListMemoriesRequest;
   getMemory: GetMemoryRequest;
   forgetMemory: ForgetMemoryRequest;
@@ -379,6 +372,7 @@ export interface MemoryCoreRequestMap {
   stats: StatsRequest;
   pruneMemories: PruneMemoriesRequest;
   redactExisting: RedactExistingRequest;
+  resetAccessCounts: ResetAccessCountsRequest;
 }
 
 export interface MemoryCoreResponseMap {
@@ -387,7 +381,6 @@ export interface MemoryCoreResponseMap {
   handleSessionEnd: HandleSessionEndResponse;
   storeMemory: StoreMemoryResponse;
   retrieveMemories: RetrieveMemoriesResponse;
-  recordMemoryUsed: RecordMemoryUsedResponse;
   listMemories: ListMemoriesResponse;
   getMemory: GetMemoryResponse;
   forgetMemory: ForgetMemoryResponse;
@@ -397,6 +390,7 @@ export interface MemoryCoreResponseMap {
   stats: StatsResponse;
   pruneMemories: PruneMemoriesResponse;
   redactExisting: RedactExistingResponse;
+  resetAccessCounts: ResetAccessCountsResponse;
 }
 
 export type MemoryCoreMethod = keyof MemoryCoreRequestMap;

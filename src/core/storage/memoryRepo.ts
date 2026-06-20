@@ -1,8 +1,4 @@
 import type { Database } from "better-sqlite3";
-import {
-  insertMemoryFeedbackEvent,
-  type MemoryFeedbackType,
-} from "./memoryFeedbackRepo.js";
 import type { InsertMemoryInput, MemoryRecord } from "./types.js";
 
 function assertImportance(importance: number): void {
@@ -86,7 +82,7 @@ export function listMemoriesByProject(
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-      created_at, updated_at
+      access_count, last_accessed, created_at, updated_at
     FROM memories
     WHERE project_id = ?
     ORDER BY updated_at DESC
@@ -148,32 +144,6 @@ export function deleteMemoriesOlderThan(
   return result.changes;
 }
 
-export function updateMemoryImportance(
-  db: Database,
-  projectId: string,
-  memoryId: string,
-  nextImportance: number,
-  usedAt?: string,
-): void {
-  assertImportance(nextImportance);
-
-  const result = db
-    .prepare(
-      `
-      UPDATE memories
-      SET
-        importance = ?,
-        updated_at = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-      WHERE project_id = ? AND id = ?
-    `,
-    )
-    .run(nextImportance, usedAt ?? null, projectId, memoryId);
-
-  if (result.changes === 0) {
-    throw new Error(`Memory not found: ${memoryId}`);
-  }
-}
-
 export function updateMemoryContent(
   db: Database,
   projectId: string,
@@ -181,11 +151,8 @@ export function updateMemoryContent(
   newContent: string,
   newNormalizedContent?: string,
 ): void {
-  // In-place content rewrite for the one-time redaction scrub. All
-  // values are bound parameters — projectId, memoryId, and content are never
-  // string-concatenated — mirroring updateMemoryImportance to prevent SQL
-  // injection. normalized_content is only overwritten when a new
-  // value is supplied so embeddings stay consistent with the redacted text.
+  // All values are bound parameters to prevent SQL injection.
+  // normalized_content is only overwritten when a new value is supplied.
   const result = db
     .prepare(
       `
@@ -204,73 +171,45 @@ export function updateMemoryContent(
   }
 }
 
-export interface RecordMemoryUseInput {
-  project_id: string;
-  memory_id: string;
-  feedback_type?: MemoryFeedbackType;
-  next_importance?: number;
-  used_at?: string;
-  feedback_id?: string;
-}
-
-export interface RecordMemoryUseResult {
-  memory_id: string;
-  previous_importance: number;
-  new_importance: number;
-}
-
-export function recordUse(
+export function incrementAccessCounts(
   db: Database,
-  input: RecordMemoryUseInput,
-): RecordMemoryUseResult {
-  const transaction = db.transaction((txInput: RecordMemoryUseInput) => {
-    const memory = db
-      .prepare(
-        `
-        SELECT id, importance
-        FROM memories
-        WHERE project_id = ? AND id = ?
-        LIMIT 1
-      `,
-      )
-      .get(txInput.project_id, txInput.memory_id) as
-      | { id: string; importance: number }
-      | undefined;
+  projectId: string,
+  memoryIds: string[],
+  accessedAt?: string,
+): void {
+  if (memoryIds.length === 0) return;
 
-    if (!memory) {
-      throw new Error(`Memory not found: ${txInput.memory_id}`);
+  const stmt = db.prepare(`
+    UPDATE memories
+    SET
+      access_count = access_count + 1,
+      last_accessed = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    WHERE project_id = ? AND id = ?
+  `);
+
+  const run = db.transaction(() => {
+    for (const id of memoryIds) {
+      stmt.run(accessedAt ?? null, projectId, id);
     }
-
-    const feedbackType = txInput.feedback_type ?? "auto_use";
-    const nextImportance =
-      txInput.next_importance ??
-      (feedbackType === "auto_use"
-        ? Math.min(memory.importance + 1, 9)
-        : memory.importance);
-
-    updateMemoryImportance(
-      db,
-      txInput.project_id,
-      txInput.memory_id,
-      nextImportance,
-      txInput.used_at,
-    );
-
-    insertMemoryFeedbackEvent(db, {
-      id: txInput.feedback_id,
-      memory_id: txInput.memory_id,
-      feedback_type: feedbackType,
-      previous_importance: memory.importance,
-      new_importance: nextImportance,
-      created_at: txInput.used_at,
-    });
-
-    return {
-      memory_id: txInput.memory_id,
-      previous_importance: memory.importance,
-      new_importance: nextImportance,
-    };
   });
 
-  return transaction(input);
+  run();
 }
+
+export function resetAccessCounts(
+  db: Database,
+  projectId: string,
+): number {
+  const result = db
+    .prepare(
+      `
+      UPDATE memories
+      SET access_count = 0, last_accessed = NULL
+      WHERE project_id = ?
+    `,
+    )
+    .run(projectId);
+
+  return result.changes;
+}
+
