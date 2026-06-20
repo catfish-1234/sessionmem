@@ -6,6 +6,7 @@ import {
   forgetMemoryRequestSchema,
   getMemoryRequestSchema,
   listMemoriesRequestSchema,
+  resetAccessCountsRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
@@ -154,6 +155,15 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
       "WHEN NOT TO CALL: As part of normal context loading. stats returns counts only, not content; use retrieveMemories to load actual context.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     inputShape: shapeWithoutProjectId(statsRequestSchema.shape),
+  },
+  {
+    method: "resetAccessCounts",
+    description:
+      "Reset access-pattern counters for all memories in the current project. Sets access_count to 0 and clears last_accessed timestamps without deleting any memories. Useful after large refactors when old access patterns no longer reflect current relevance.\n\n" +
+      "WHEN TO CALL: After major codebase restructuring, project pivots, or when access-boosted rankings no longer reflect current relevance.\n\n" +
+      "WHEN NOT TO CALL: During normal operation — access patterns self-correct as usage shifts.",
+    annotations: { destructiveHint: false, idempotentHint: true },
+    inputShape: shapeWithoutProjectId(resetAccessCountsRequestSchema.shape),
   },
 ];
 

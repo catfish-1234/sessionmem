@@ -11,6 +11,7 @@ export interface MemorySearchCandidate {
   importance: number;
   author: string;
   origin_project_id: string | null;
+  access_count: number;
   created_at: string;
   updated_at: string;
   embedding: number[] | null;
@@ -29,6 +30,7 @@ interface MemorySearchRow {
   importance: number;
   author: string;
   origin_project_id: string | null;
+  access_count: number;
   created_at: string;
   updated_at: string;
   embedding: string | null;
@@ -61,8 +63,8 @@ export function searchMemoryCandidates(
   const stmt = db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, author, origin_project_id, created_at, updated_at, embedding,
-      embedding_dim, embedding_version
+      importance, author, origin_project_id, access_count, created_at, updated_at,
+      embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = ?
   `);

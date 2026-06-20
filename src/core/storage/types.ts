@@ -22,6 +22,8 @@ export interface MemoryRecord {
   embedding_version: string | null;
   author: string;
   origin_project_id: string | null;
+  access_count: number;
+  last_accessed: string | null;
   created_at: string;
   updated_at: string;
 }

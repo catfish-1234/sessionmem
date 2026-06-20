@@ -80,7 +80,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(5);
+    expect(countRow.count).toBe(6);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -91,6 +91,7 @@ describe("schema migrations", () => {
       "003_summarization_failures.sql",
       "004_memory_feedback.sql",
       "005_team_provenance.sql",
+      "006_access_pattern_boosting.sql",
     ]);
 
     db.close();
@@ -164,6 +165,34 @@ describe("schema migrations", () => {
     expect(row.content).toBe("old content");
     expect(row.author).toBe("");
     expect(row.origin_project_id).toBeNull();
+
+    db.close();
+  });
+
+  it("adds access_count and last_accessed columns via migration 006", () => {
+    const db = openDb({ dbPath: createTempDbPath() });
+
+    const columns = columnNames(db, "memories");
+    expect(columns).toContain("access_count");
+    expect(columns).toContain("last_accessed");
+
+    db.prepare(
+      `INSERT INTO memories (
+        id, project_id, session_id, source_adapter, kind, content,
+        normalized_content, importance, author
+      ) VALUES (
+        'mem-006', 'proj-a', 'sess-1', 'test', 'fact', 'hello', 'hello', 5, 'bob'
+      )`,
+    ).run();
+
+    const row = db
+      .prepare(
+        "SELECT access_count, last_accessed FROM memories WHERE id = 'mem-006'",
+      )
+      .get() as { access_count: number; last_accessed: string | null };
+
+    expect(row.access_count).toBe(0);
+    expect(row.last_accessed).toBeNull();
 
     db.close();
   });

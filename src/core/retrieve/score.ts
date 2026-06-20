@@ -7,10 +7,24 @@ export const SCORING_WEIGHTS = {
   importance: 0.15,
 } as const;
 
+export const ACCESS_BOOST_THRESHOLD = 3;
+export const ACCESS_BOOST_AMOUNT = 2;
+
+export function computeEffectiveImportance(
+  storedImportance: number,
+  accessCount: number,
+): number {
+  if (accessCount >= ACCESS_BOOST_THRESHOLD) {
+    return Math.min(storedImportance + ACCESS_BOOST_AMOUNT, 10);
+  }
+  return storedImportance;
+}
+
 export interface ScoreMemoryCandidateInput {
   semantic: number;
   updated_at: string;
   importance: number;
+  access_count?: number;
 }
 
 export interface ScoreBreakdown {
@@ -32,7 +46,11 @@ export function scoreMemoryCandidate(
   now: Date = new Date(),
 ): ScoreBreakdown {
   const recency = getRecencyBandScore(candidate.updated_at, now);
-  const importance = normalizeImportance(candidate.importance);
+  const effectiveImportance = computeEffectiveImportance(
+    candidate.importance,
+    candidate.access_count ?? 0,
+  );
+  const importance = normalizeImportance(effectiveImportance);
 
   const weighted = {
     semantic: candidate.semantic * SCORING_WEIGHTS.semantic,
