@@ -1,6 +1,7 @@
 import type { Database } from "better-sqlite3";
 
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
+import { decayOldBoosts } from "./decay.js";
 import {
   scoreMemoryCandidate,
   type ScoreBreakdown,
@@ -92,10 +93,11 @@ export function retrieveMemories(
   const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
   const candidates = searchMemoryCandidates(input.db, input.projectId);
+  const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
 
-  const ranked = candidates
+  const ranked = decayedCandidates
     .map((candidate) => {
       const semantic = cosineSimilarity(queryVector, candidate.embedding);
       const score = scoreMemoryCandidate(
@@ -104,6 +106,7 @@ export function retrieveMemories(
           updated_at: candidate.updated_at,
           importance: candidate.importance,
           access_count: candidate.access_count,
+          decayedImportance: candidate.decayedImportance,
         },
         now,
       );
