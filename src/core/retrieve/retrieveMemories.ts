@@ -96,7 +96,11 @@ export function retrieveMemories(
 
   const ranked = candidates
     .map((candidate) => {
-      const semantic = cosineSimilarity(queryVector, candidate.embedding);
+      // When embedding is null (version mismatch or missing), use a neutral
+      // score of 0.5 so the memory is neither penalized nor boosted.
+      const semantic = candidate.embedding === null
+        ? 0.5
+        : cosineSimilarity(queryVector, candidate.embedding);
       const score = scoreMemoryCandidate(
         {
           semantic,
