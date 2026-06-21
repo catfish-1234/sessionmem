@@ -20,6 +20,7 @@ import {
   readPolicyConfig,
   resolvePolicySettings,
 } from "../config/policyConfig.js";
+import { insertMemoryFeedbackEvent } from "../storage/memoryFeedbackRepo.js";
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
@@ -405,6 +406,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async forgetMemory(request) {
       const parsed = parseRequest(forgetMemoryRequestSchema, request);
+
+      // Capture the memory's importance before deletion so we can record
+      // it in the feedback table as an analytics signal.
+      const existing = getMemoryById(db, parsed.projectId, parsed.memoryId);
+
       const result = db
         .prepare("DELETE FROM memories WHERE project_id = ? AND id = ?")
         .run(parsed.projectId, parsed.memoryId);
@@ -412,6 +418,16 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       if (result.changes === 0) {
         throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
       }
+
+      // Record the explicit user deletion as feedback. The FK on
+      // memory_feedback no longer cascades (migration 006), so this row
+      // survives the memory deletion and serves as an analytics signal.
+      insertMemoryFeedbackEvent(db, {
+        memory_id: parsed.memoryId,
+        feedback_type: "manual_delete",
+        previous_importance: existing?.importance ?? 0,
+        new_importance: 0,
+      });
 
       return {
         ok: true,
