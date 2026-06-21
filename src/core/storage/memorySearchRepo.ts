@@ -1,5 +1,7 @@
 import type { Database } from "better-sqlite3";
 
+import { EMBEDDING_VERSION } from "../embed/embeddingVersion.js";
+
 export interface MemorySearchCandidate {
   id: string;
   project_id: string;
@@ -69,8 +71,14 @@ export function searchMemoryCandidates(
 
   const rows = stmt.all(projectId) as MemorySearchRow[];
 
-  return rows.map((row) => ({
-    ...row,
-    embedding: parseEmbedding(row.embedding),
-  }));
+  return rows.map((row) => {
+    const parsed = parseEmbedding(row.embedding);
+    // Nullify embedding when the stored version doesn't match the current
+    // model version — stale embeddings produce meaningless cosine similarity.
+    const versionMatch = row.embedding_version === EMBEDDING_VERSION;
+    return {
+      ...row,
+      embedding: versionMatch ? parsed : null,
+    };
+  });
 }
