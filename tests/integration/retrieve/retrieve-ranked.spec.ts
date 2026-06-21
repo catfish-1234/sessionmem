@@ -28,7 +28,7 @@ describe("retrieveMemories ranking", () => {
       embedding: JSON.stringify(semanticFirst),
       embedding_dim: semanticFirst.length,
       embedding_version: "v1-hash-local",
-      updated_at: "2026-03-01T12:00:00.000Z",
+      updated_at: "2026-05-01T12:00:00.000Z",
     });
 
     insertMemory(db, {

@@ -163,15 +163,6 @@ export function resolvePolicySettings(
 }
 
 /**
- * Maximum number of candidate rows loaded by `searchMemoryCandidates` before
- * cosine-similarity ranking. Rows are ordered by importance DESC, updated_at
- * DESC so the most relevant candidates are always included.
- *
- * TODO: Opt 3 will replace this LIMIT with importance/date WHERE clause
- */
-export const MAX_SEMANTIC_CANDIDATES = 2000;
-
-/**
  * Per-session write soft limit. When a session has stored at least this many
  * memories, subsequent storeMemory calls still succeed but the response
  * includes a "session_write_limit_warning" warningCode, giving the agent
