@@ -12,3 +12,4 @@ dist/
 skills-lock.json
 .mcp.json
 .claude/worktrees/
+audit*.txt
