@@ -1,7 +1,11 @@
 import type { HostCapabilities } from "../contract/hostAdapterContract.js";
+import type { createMemoryCoreService } from "../../core/api/memoryCoreService.js";
 
 export class FallbackToolRegistrar {
-  static getFallbackTools(capabilities: HostCapabilities) {
+  static getFallbackTools(
+    capabilities: HostCapabilities,
+    context: { service: ReturnType<typeof createMemoryCoreService>; projectId: string },
+  ) {
     const tools = [];
 
     if (!capabilities.supportsResources) {
@@ -19,9 +23,14 @@ export class FallbackToolRegistrar {
           required: ["query"],
         },
         execute: async (args: { query: string }) => {
-          // Wrap core retrieval logic
-          return `Fetched memories for ${args.query}`;
-        }
+          const result = await context.service.call("retrieveMemories", {
+            projectId: context.projectId,
+            query: args.query,
+            limit: 10,
+          });
+          if (!result.ok) return `Error: ${result.error.message}`;
+          return JSON.stringify(result.memories, null, 2);
+        },
       });
     }
 
@@ -37,8 +46,14 @@ export class FallbackToolRegistrar {
           properties: {},
         },
         execute: async () => {
-          return "Startup memories injected.";
-        }
+          const result = await context.service.call("retrieveMemories", {
+            projectId: context.projectId,
+            query: "session startup context",
+            limit: 20,
+          });
+          if (!result.ok) return `Error: ${result.error.message}`;
+          return result.startupInjection;
+        },
       });
     }
 
