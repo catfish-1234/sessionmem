@@ -22,6 +22,7 @@ import {
   teamStatusCommand,
 } from "./commands/team.js";
 import { syncCommand } from "./commands/sync.js";
+import { reEmbedCommand } from "./commands/reEmbed.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -173,6 +174,14 @@ team
   .command("status")
   .description("Show team mode state and shared-path availability")
   .action(() => teamStatusCommand());
+
+// re-embed — bulk-update stale embeddings to the current version.
+// reEmbedCommand declares a trailing `ctx?` test seam, so arrow-wrap to drop
+// commander's trailing Command argument (NOTE above).
+program
+  .command("re-embed")
+  .description("Re-embed all memories with stale embedding versions")
+  .action(() => reEmbedCommand());
 
 // sync — push a local snapshot to the shared path and pull every
 // teammate snapshot back. syncCommand declares a trailing `ctx?` test seam, so
