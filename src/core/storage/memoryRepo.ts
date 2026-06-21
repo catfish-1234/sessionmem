@@ -11,6 +11,9 @@ interface MemoryRepoStatements {
   updateImportance: Statement;
   updateContent: Statement;
   selectForRecordUse: Statement;
+  incrementAccess: Statement;
+  resetAccess: Statement;
+  countBySession: Statement;
 }
 
 const stmtCache = new WeakMap<Database, MemoryRepoStatements>();
@@ -97,6 +100,23 @@ function getStatements(db: Database): MemoryRepoStatements {
         WHERE project_id = ? AND id = ?
         LIMIT 1
       `),
+    incrementAccess: db.prepare(`
+      UPDATE memories
+      SET
+        access_count = access_count + 1,
+        last_accessed = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      WHERE project_id = ? AND id = ?
+    `),
+    resetAccess: db.prepare(`
+      UPDATE memories
+      SET access_count = 0, last_accessed = NULL
+      WHERE project_id = ?
+    `),
+    countBySession: db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM memories
+      WHERE session_id = ?
+    `),
   };
 
   stmtCache.set(db, stmts);
@@ -209,16 +229,7 @@ export function countMemoriesBySession(
   db: Database,
   sessionId: string,
 ): number {
-  const row = db
-    .prepare(
-      `
-      SELECT COUNT(*) AS count
-      FROM memories
-      WHERE session_id = ?
-    `,
-    )
-    .get(sessionId) as { count: number };
-
+  const row = getStatements(db).countBySession.get(sessionId) as { count: number };
   return row.count;
 }
 
@@ -230,34 +241,12 @@ export function updateMemoryContent(
   newContent: string,
   newNormalizedContent?: string,
 ): void {
-<<<<<<< HEAD
-  // All values are bound parameters to prevent SQL injection.
-  // normalized_content is only overwritten when a new value is supplied.
-  const result = db
-    .prepare(
-      `
-      UPDATE memories
-      SET
-        content = ?,
-        normalized_content = COALESCE(?, normalized_content),
-        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-      WHERE project_id = ? AND id = ?
-    `,
-    )
-    .run(newContent, newNormalizedContent ?? null, projectId, memoryId);
-=======
-  // In-place content rewrite for the one-time redaction scrub. All
-  // values are bound parameters — projectId, memoryId, and content are never
-  // string-concatenated — mirroring updateMemoryImportance to prevent SQL
-  // injection. normalized_content is only overwritten when a new
-  // value is supplied so embeddings stay consistent with the redacted text.
   const result = getStatements(db).updateContent.run(
     newContent,
     newNormalizedContent ?? null,
     projectId,
     memoryId,
   );
->>>>>>> worktree-agent-ac22372c2a068f977
 
   if (result.changes === 0) {
     throw new Error(`Memory not found: ${memoryId}`);
@@ -266,29 +255,13 @@ export function updateMemoryContent(
 
 export function incrementAccessCounts(
   db: Database,
-<<<<<<< HEAD
   projectId: string,
   memoryIds: string[],
   accessedAt?: string,
 ): void {
   if (memoryIds.length === 0) return;
-=======
-  input: RecordMemoryUseInput,
-): RecordMemoryUseResult {
-  const transaction = db.transaction((txInput: RecordMemoryUseInput) => {
-    const stmts = getStatements(db);
-    const memory = stmts.selectForRecordUse.get(txInput.project_id, txInput.memory_id) as
-      | { id: string; importance: number }
-      | undefined;
->>>>>>> worktree-agent-ac22372c2a068f977
 
-  const stmt = db.prepare(`
-    UPDATE memories
-    SET
-      access_count = access_count + 1,
-      last_accessed = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-    WHERE project_id = ? AND id = ?
-  `);
+  const stmt = getStatements(db).incrementAccess;
 
   const run = db.transaction(() => {
     for (const id of memoryIds) {
@@ -303,16 +276,7 @@ export function resetAccessCounts(
   db: Database,
   projectId: string,
 ): number {
-  const result = db
-    .prepare(
-      `
-      UPDATE memories
-      SET access_count = 0, last_accessed = NULL
-      WHERE project_id = ?
-    `,
-    )
-    .run(projectId);
-
+  const result = getStatements(db).resetAccess.run(projectId);
   return result.changes;
 }
 
