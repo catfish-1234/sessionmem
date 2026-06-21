@@ -16,6 +16,7 @@ import {
 import { join } from "path";
 import { createCliContext } from "../cli/context.js";
 import { IDEInstaller } from "./ide/installer.js";
+import { FallbackToolRegistrar } from "./capabilities/fallbackTools.js";
 
 /**
  * Diagnostic logging sink for the stdio server. CRITICAL: the MCP protocol
@@ -252,6 +253,24 @@ export class GenericMCPAdapter implements HostAdapterContract {
               },
             ],
           };
+        },
+      );
+    }
+
+    // Register fallback tools for hosts that lack resource or prompt support.
+    // These provide fetch_memories and startup_inject_memories as tool-based
+    // alternatives, wired to the same service instance used by TOOL_DEFINITIONS.
+    const fallbackTools = FallbackToolRegistrar.getFallbackTools(this.capabilities, {
+      service,
+      projectId,
+    });
+    for (const fallback of fallbackTools) {
+      server.registerTool(
+        fallback.name,
+        { description: fallback.description, inputSchema: fallback.inputShape },
+        async (args: Record<string, unknown>) => {
+          const result = await fallback.execute(args);
+          return { content: [{ type: "text" as const, text: result }] };
         },
       );
     }
