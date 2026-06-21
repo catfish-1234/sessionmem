@@ -25,6 +25,7 @@ export interface ScoreMemoryCandidateInput {
   updated_at: string;
   importance: number;
   access_count?: number;
+  decayedImportance?: number;
 }
 
 export interface ScoreBreakdown {
@@ -46,8 +47,9 @@ export function scoreMemoryCandidate(
   now: Date = new Date(),
 ): ScoreBreakdown {
   const recency = getRecencyBandScore(candidate.updated_at, now);
+  const baseImportance = candidate.decayedImportance ?? candidate.importance;
   const effectiveImportance = computeEffectiveImportance(
-    candidate.importance,
+    baseImportance,
     candidate.access_count ?? 0,
   );
   const importance = normalizeImportance(effectiveImportance);
