@@ -8,7 +8,6 @@ import {
   getMemoryRequestSchema,
   listMemoriesRequestSchema,
   resetAccessCountsRequestSchema,
-  batchStoreMemoryRequestSchema,
   retrieveMemoriesRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
