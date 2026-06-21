@@ -6,5 +6,6 @@ export default defineConfig({
     // under parallel workers, which can exceed vitest's 5s default.
     testTimeout: 20000,
     hookTimeout: 20000,
+    exclude: ["**/node_modules/**", "**/.claude/worktrees/**"],
   },
 });
