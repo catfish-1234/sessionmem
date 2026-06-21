@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Database } from "better-sqlite3";
 
-export type MemoryFeedbackType = "auto_use" | "manual";
+export type MemoryFeedbackType = "auto_use" | "manual" | "manual_delete";
 
 export interface InsertMemoryFeedbackEventInput {
   id?: string;
