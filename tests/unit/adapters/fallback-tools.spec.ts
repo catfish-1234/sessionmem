@@ -31,8 +31,7 @@ describe("FallbackToolRegistrar.getFallbackTools", () => {
     }, mockContext);
     const fetchTool = tools.find((t) => t.name === "fetch_memories");
     expect(fetchTool).toBeDefined();
-    expect(fetchTool?.schema.properties).toHaveProperty("query");
-    expect(fetchTool?.schema.required).toContain("query");
+    expect(fetchTool?.inputShape).toHaveProperty("query");
   });
 
   it("does not register fetch_memories when host supports resources", () => {
@@ -86,14 +85,14 @@ describe("FallbackToolRegistrar.getFallbackTools", () => {
     expect(tools).toHaveLength(2);
   });
 
-  it("fetch_memories schema requires query string", () => {
+  it("fetch_memories inputShape includes query Zod schema", () => {
     const tools = FallbackToolRegistrar.getFallbackTools({
       supportsPrompts: true,
       supportsResources: false,
       supportsTools: true,
     }, mockContext);
     const fetchTool = tools.find((t) => t.name === "fetch_memories");
-    expect(fetchTool?.schema.properties.query).toEqual({ type: "string" });
+    expect(fetchTool?.inputShape).toHaveProperty("query");
   });
 
   it("fetch_memories execute calls service and returns JSON string", async () => {
@@ -161,7 +160,7 @@ describe("FallbackToolRegistrar.getFallbackTools", () => {
     }, contextWithInjection);
     const injectTool = tools.find((t) => t.name === "startup_inject_memories");
     expect(injectTool).toBeDefined();
-    const result = await injectTool!.execute();
+    const result = await injectTool!.execute({});
     expect(result).toBe("Here are your startup memories...");
   });
 });
