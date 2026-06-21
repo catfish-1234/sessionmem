@@ -20,6 +20,15 @@ export function countTokens(text: string): number {
   return encoding.encode(text).length;
 }
 
+export function capTokens(text: string, cap: number): string {
+  const tokens = encoding.encode(text);
+  if (tokens.length <= cap) {
+    return text;
+  }
+  const trimmed = encoding.decode(tokens.slice(0, cap)).trimEnd();
+  return `${trimmed} ...`;
+}
+
 export function trimLowestPriorityContent<T extends TokenBudgetEntry>(
   included: T[],
   options: TrimLowestPriorityContentOptions = {},
