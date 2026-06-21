@@ -63,7 +63,13 @@ describe("cloud opt-in policy", () => {
   it("uses cloud mode with explicit opt-in + key and emits cloud warning", async () => {
     const db = openDb();
     seedEvents(db, "project-2", "session-2");
-    const service = createSessionLifecycleService({ db });
+    const service = createSessionLifecycleService({
+      db,
+      summarizeCloud: async () => ({
+        summary: "cloud summary via mock",
+        warningCodes: [],
+      }),
+    });
 
     const result = await service.handleSessionEnd({
       projectId: "project-2",
