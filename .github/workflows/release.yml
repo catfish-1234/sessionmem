@@ -10,6 +10,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      otp:
+        description: "npm 2FA one-time password"
+        required: false
+        default: ""
 
 # Least-privilege at the workflow level (V4 access control / T-08-13):
 # do NOT grant id-token here. id-token: write is scoped to the publish job only
@@ -40,6 +45,7 @@ jobs:
       # OIDC trusted publishing is auto-detected when id-token: write is present;
       # provenance is emitted automatically, so no --provenance flag is needed.
       - name: Publish to npm
-        run: npm publish --access public
+        run: npm publish --access public ${NPM_OTP:+--otp="$NPM_OTP"}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_OTP: ${{ github.event.inputs.otp }}
