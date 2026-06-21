@@ -165,6 +165,14 @@ export function resolvePolicySettings(
  */
 export const MAX_SEMANTIC_CANDIDATES = 2000;
 
+/**
+ * Per-session write soft limit. When a session has stored at least this many
+ * memories, subsequent storeMemory calls still succeed but the response
+ * includes a "session_write_limit_warning" warningCode, giving the agent
+ * feedback to stop storing excessive memories in a single session.
+ */
+export const SESSION_WRITE_SOFT_LIMIT = 50;
+
 export type TeamConfig = PolicyConfig["team"];
 
 export interface ResolveTeamInput {

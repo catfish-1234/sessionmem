@@ -144,6 +144,56 @@ export function deleteMemoriesOlderThan(
   return result.changes;
 }
 
+export function updateMemoryImportance(
+  db: Database,
+  projectId: string,
+  memoryId: string,
+  nextImportance: number,
+  usedAt?: string,
+): void {
+  assertImportance(nextImportance);
+
+  const result = db
+    .prepare(
+      `
+      UPDATE memories
+      SET
+        importance = ?,
+        updated_at = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      WHERE project_id = ? AND id = ?
+    `,
+    )
+    .run(nextImportance, usedAt ?? null, projectId, memoryId);
+
+  if (result.changes === 0) {
+    throw new Error(`Memory not found: ${memoryId}`);
+  }
+}
+
+/**
+ * Count the number of memories stored under a given session_id across all
+ * projects. Used to enforce per-session write soft limits — the count is
+ * checked before each storeMemory call and a warning is surfaced when the
+ * threshold is reached.
+ */
+export function countMemoriesBySession(
+  db: Database,
+  sessionId: string,
+): number {
+  const row = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM memories
+      WHERE session_id = ?
+    `,
+    )
+    .get(sessionId) as { count: number };
+
+  return row.count;
+}
+
+
 export function updateMemoryContent(
   db: Database,
   projectId: string,
