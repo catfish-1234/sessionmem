@@ -8,6 +8,7 @@ import { formatStartupInjection } from "../injection/formatStartupInjection.js";
 import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
+  countMemoriesBySession,
   countMemoriesOlderThan,
   deleteMemoriesOlderThan,
   incrementAccessCounts,
@@ -18,6 +19,7 @@ import {
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
 import {
+  SESSION_WRITE_SOFT_LIMIT,
   configFilePath,
   DEEP_MODE_RETRIEVAL_CAP,
   readPolicyConfig,
@@ -319,6 +321,15 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       });
       const embedding = deterministicEmbed(redaction.text, dimension);
 
+      // Per-session write soft limit: warn the caller when the session has
+      // already accumulated SESSION_WRITE_SOFT_LIMIT memories so the agent
+      // gets feedback to stop storing excessively. The write still proceeds.
+      const warningCodes = [...redaction.warningCodes];
+      const sessionCount = countMemoriesBySession(db, parsed.sessionId);
+      if (sessionCount >= SESSION_WRITE_SOFT_LIMIT) {
+        warningCodes.push("session_write_limit_warning");
+      }
+
       insertMemory(db, {
         id: parsed.memoryId,
         project_id: parsed.projectId,
@@ -345,7 +356,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
         memory: toMemoryDto(inserted),
-        warningCodes: redaction.warningCodes,
+        warningCodes,
       };
     },
 
