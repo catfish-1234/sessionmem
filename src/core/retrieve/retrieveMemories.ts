@@ -8,6 +8,7 @@ import {
 } from "./score.js";
 import {
   searchMemoryCandidates,
+  searchMemoryCandidatesFTS,
   type MemorySearchCandidate,
 } from "../storage/memorySearchRepo.js";
 
@@ -92,7 +93,12 @@ export function retrieveMemories(
 
   const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
-  const candidates = searchMemoryCandidates(input.db, input.projectId);
+
+  // Use FTS5 pre-filtering when a semantic query is present to limit
+  // cosine similarity computation to ~50 candidates instead of all.
+  const candidates = queryText
+    ? searchMemoryCandidatesFTS(input.db, input.projectId, queryText)
+    : searchMemoryCandidates(input.db, input.projectId);
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
