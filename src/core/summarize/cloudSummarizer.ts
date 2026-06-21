@@ -1,8 +1,7 @@
 import type { SessionEventRecord } from "../storage/types.js";
 import type { LocalSummarizeInput, SummarizerResult } from "./localSummarizer.js";
 import { summarizeLocalSessionEvents } from "./localSummarizer.js";
-
-const DEFAULT_CLOUD_MODEL = "claude-sonnet-4-20250514";
+import { DEFAULT_SUMMARIZER_MODEL } from "../config/policyConfig.js";
 
 export interface CloudSummarizeInput
   extends Omit<LocalSummarizeInput, "events"> {
@@ -26,7 +25,7 @@ export async function summarizeWithCloud(
     redactionRules: input.redactionRules,
   });
 
-  const modelTag = input.model ?? DEFAULT_CLOUD_MODEL;
+  const modelTag = input.model ?? DEFAULT_SUMMARIZER_MODEL;
   return {
     summary: `[model:${modelTag}] ${result.summary}`,
     warningCodes: result.warningCodes,

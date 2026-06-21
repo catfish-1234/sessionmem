@@ -4,6 +4,12 @@ import { join, dirname } from "path";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 
 /**
+ * Default model for cloud summarization via the Anthropic API.
+ * Consumed by {@link import("../summarize/cloudSummarizer.js").summarizeWithCloud}.
+ */
+export const DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-6";
+
+/**
  * Built-in policy defaults. Used whenever the config file is missing, malformed,
  * or fails validation, and as the lowest-precedence source in
  * {@link resolvePolicySettings}.
