@@ -363,6 +363,8 @@ npm test
 npm run lint
 ```
 
+**MCP config for local development:** Copy `.mcp.json.example` to `.mcp.json` for local dev, or use `sessionmem install` to auto-configure. The `.mcp.json` file is gitignored because it contains machine-specific paths.
+
 ---
 
 ## License
