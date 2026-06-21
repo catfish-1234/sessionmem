@@ -204,7 +204,7 @@ export class GenericMCPAdapter implements HostAdapterContract {
 
     const server = new McpServer({
       name: "sessionmem",
-      version: "1.0.0",
+      version: "1.0.5",
     });
 
     for (const def of TOOL_DEFINITIONS) {

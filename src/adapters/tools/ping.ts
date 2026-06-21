@@ -1,3 +1,8 @@
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../../../package.json") as { version: string };
+
 export const pingTool = {
   name: "sessionmem_ping",
   description: "Ping the sessionmem MCP server to verify it is running correctly.",
@@ -8,7 +13,7 @@ export const pingTool = {
   execute: async () => {
     return {
       status: "ok",
-      version: "0.1.0",
+      version: pkg.version,
       message: "sessionmem MCP server is operational.",
     };
   }
