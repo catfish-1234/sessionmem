@@ -66,7 +66,18 @@ describe("run command startup", () => {
       supportsResources: false,
       supportsTools: true,
     };
-    const tools = FallbackToolRegistrar.getFallbackTools(cursorCaps);
+    const mockContext = {
+      service: {
+        call: async (_method: string, _args: unknown) => ({
+          ok: true as const,
+          memories: [],
+          total: 0,
+          startupInjection: "",
+        }),
+      } as any,
+      projectId: "test-project",
+    };
+    const tools = FallbackToolRegistrar.getFallbackTools(cursorCaps, mockContext);
     const toolNames = tools.map((t) => t.name);
     expect(toolNames).toContain("fetch_memories");
     expect(toolNames).toContain("startup_inject_memories");
