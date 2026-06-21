@@ -80,7 +80,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(7);
+    expect(countRow.count).toBe(8);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -93,6 +93,7 @@ describe("schema migrations", () => {
       "005_team_provenance.sql",
       "006_access_pattern_boosting.sql",
       "007_feedback_manual_delete.sql",
+      "008_fts5_search.sql",
     ]);
 
     db.close();
