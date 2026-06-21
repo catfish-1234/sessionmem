@@ -1,4 +1,5 @@
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
+import { CRITICAL_WARNING_IMPORTANCE_THRESHOLD } from "../config/policyConfig.js";
 import { countTokens, trimLowestPriorityContent } from "./tokenBudget.js";
 
 const DEFAULT_TOKEN_CAP = 450;
@@ -23,7 +24,7 @@ function kindRank(kind: string): number {
 }
 
 function isCriticalWarning(memory: RetrievedMemoryCandidate): boolean {
-  return memory.kind === "warning" && memory.importance >= 9;
+  return memory.kind === "warning" && memory.importance >= CRITICAL_WARNING_IMPORTANCE_THRESHOLD;
 }
 
 function sortMemories(
