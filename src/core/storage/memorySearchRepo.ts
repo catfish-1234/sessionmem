@@ -1,6 +1,5 @@
 import type { Database, Statement } from "better-sqlite3";
 
-import { MAX_SEMANTIC_CANDIDATES } from "../config/policyConfig.js";
 import { EMBEDDING_VERSION } from "../embed/embeddingVersion.js";
 
 export interface MemorySearchCandidate {
@@ -56,7 +55,6 @@ function getSearchStatements(db: Database): SearchRepoStatements {
   if (stmts) return stmts;
 
   stmts = {
-    // TODO: Opt 3 will replace this LIMIT with importance/date WHERE clause
     searchCandidates: db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
@@ -64,8 +62,10 @@ function getSearchStatements(db: Database): SearchRepoStatements {
       embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = ?
-    ORDER BY importance DESC, updated_at DESC
-    LIMIT ?
+      AND (
+        importance >= 8
+        OR updated_at > datetime('now', '-90 days')
+      )
   `),
     searchCandidatesFTS: db.prepare(`
     SELECT
@@ -107,8 +107,6 @@ function parseEmbedding(value: string | null): number[] | null {
 function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
   return rows.map((row) => {
     const parsed = parseEmbedding(row.embedding);
-    // Nullify embedding when the stored version doesn't match the current
-    // model version — stale embeddings produce meaningless cosine similarity.
     const versionMatch = row.embedding_version === EMBEDDING_VERSION;
     return {
       ...row,
@@ -121,7 +119,7 @@ export function searchMemoryCandidates(
   db: Database,
   projectId: string,
 ): MemorySearchCandidate[] {
-  const rows = getSearchStatements(db).searchCandidates.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
+  const rows = getSearchStatements(db).searchCandidates.all(projectId) as MemorySearchRow[];
   return mapRows(rows);
 }
 
