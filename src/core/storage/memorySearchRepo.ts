@@ -1,4 +1,4 @@
-import type { Database } from "better-sqlite3";
+import type { Database, Statement } from "better-sqlite3";
 
 import { MAX_SEMANTIC_CANDIDATES } from "../config/policyConfig.js";
 import { EMBEDDING_VERSION } from "../embed/embeddingVersion.js";
@@ -41,6 +41,34 @@ interface MemorySearchRow {
   embedding_version: string | null;
 }
 
+interface SearchRepoStatements {
+  searchCandidates: Statement;
+}
+
+const searchStmtCache = new WeakMap<Database, SearchRepoStatements>();
+
+function getSearchStatements(db: Database): SearchRepoStatements {
+  let stmts = searchStmtCache.get(db);
+  if (stmts) return stmts;
+
+  stmts = {
+    // TODO: Opt 3 will replace this LIMIT with importance/date WHERE clause
+    searchCandidates: db.prepare(`
+    SELECT
+      id, project_id, session_id, source_adapter, kind, content, normalized_content,
+      importance, author, origin_project_id, access_count, created_at, updated_at,
+      embedding, embedding_dim, embedding_version
+    FROM memories
+    WHERE project_id = ?
+    ORDER BY importance DESC, updated_at DESC
+    LIMIT ?
+  `),
+  };
+
+  searchStmtCache.set(db, stmts);
+  return stmts;
+}
+
 function parseEmbedding(value: string | null): number[] | null {
   if (!value) {
     return null;
@@ -63,19 +91,7 @@ export function searchMemoryCandidates(
   db: Database,
   projectId: string,
 ): MemorySearchCandidate[] {
-  // TODO: Opt 3 will replace this LIMIT with importance/date WHERE clause
-  const stmt = db.prepare(`
-    SELECT
-      id, project_id, session_id, source_adapter, kind, content, normalized_content,
-      importance, author, origin_project_id, access_count, created_at, updated_at,
-      embedding, embedding_dim, embedding_version
-    FROM memories
-    WHERE project_id = ?
-    ORDER BY importance DESC, updated_at DESC
-    LIMIT ?
-  `);
-
-  const rows = stmt.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
+  const rows = getSearchStatements(db).searchCandidates.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
 
   return rows.map((row) => {
     const parsed = parseEmbedding(row.embedding);
