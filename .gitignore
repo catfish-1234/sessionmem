@@ -2,6 +2,10 @@ node_modules/
 *.log
 dist/
 
+# SQLite WAL mode auxiliary files
+*.db-wal
+*.db-shm
+
 # Local development/process artifacts: kept on disk, not published to GitHub.
 .planning/
 .agents/
