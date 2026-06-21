@@ -1,4 +1,4 @@
-interface MemoryTableRow {
+export interface MemoryTableRow {
   id: string;
   importance: number;
   accessCount: number;
