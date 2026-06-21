@@ -174,6 +174,29 @@ export function updateMemoryImportance(
   }
 }
 
+/**
+ * Count the number of memories stored under a given session_id across all
+ * projects. Used to enforce per-session write soft limits — the count is
+ * checked before each storeMemory call and a warning is surfaced when the
+ * threshold is reached.
+ */
+export function countMemoriesBySession(
+  db: Database,
+  sessionId: string,
+): number {
+  const row = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS count
+      FROM memories
+      WHERE session_id = ?
+    `,
+    )
+    .get(sessionId) as { count: number };
+
+  return row.count;
+}
+
 export function updateMemoryContent(
   db: Database,
   projectId: string,
