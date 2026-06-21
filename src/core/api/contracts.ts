@@ -298,6 +298,36 @@ export const pullMemoriesResponseSchema = z.object({
   warningCodes: z.array(z.string()),
 });
 
+export const batchStoreMemoryItemSchema = z.object({
+  memoryId: z.string().min(1),
+  sessionId: z.string().min(1),
+  sourceAdapter: z.string().min(1),
+  kind: z.string().min(1),
+  content: z.string().min(1),
+  importance: z.number().int().min(1).max(10),
+  redactionEnabled: z.boolean().optional(),
+});
+
+export const batchStoreMemoryRequestSchema = z.object({
+  projectId: z.string().min(1),
+  memories: z.array(batchStoreMemoryItemSchema).min(1),
+});
+
+export const batchStoreMemoryResultSchema = z.object({
+  memoryId: z.string().min(1),
+  ok: z.boolean(),
+  memory: memorySchema.optional(),
+  warningCodes: z.array(z.string()).optional(),
+  error: z.string().optional(),
+});
+
+export const batchStoreMemoryResponseSchema = z.object({
+  ok: z.literal(true),
+  results: z.array(batchStoreMemoryResultSchema),
+  stored: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+
 export interface ErrorResponseEnvelope {
   ok: false;
   error: {
@@ -356,6 +386,8 @@ export type RedactExistingResponse = z.infer<
   typeof redactExistingResponseSchema
 >;
 export type ResetAccessCountsResponse = z.infer<typeof resetAccessCountsResponseSchema>;
+export type BatchStoreMemoryRequest = z.infer<typeof batchStoreMemoryRequestSchema>;
+export type BatchStoreMemoryResponse = z.infer<typeof batchStoreMemoryResponseSchema>;
 
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
@@ -373,6 +405,7 @@ export interface MemoryCoreRequestMap {
   pruneMemories: PruneMemoriesRequest;
   redactExisting: RedactExistingRequest;
   resetAccessCounts: ResetAccessCountsRequest;
+  batchStoreMemory: BatchStoreMemoryRequest;
 }
 
 export interface MemoryCoreResponseMap {
@@ -391,6 +424,7 @@ export interface MemoryCoreResponseMap {
   pruneMemories: PruneMemoriesResponse;
   redactExisting: RedactExistingResponse;
   resetAccessCounts: ResetAccessCountsResponse;
+  batchStoreMemory: BatchStoreMemoryResponse;
 }
 
 export type MemoryCoreMethod = keyof MemoryCoreRequestMap;
