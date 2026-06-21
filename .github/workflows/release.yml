@@ -40,14 +40,5 @@ jobs:
       # provenance is emitted automatically, so no --provenance flag is needed.
       - name: Publish to npm
         run: npm publish --access public
-        # ---------------------------------------------------------------------
-        # NPM_TOKEN FALLBACK (D-18): use this ONLY if the npmjs.com trusted
-        # publisher (OIDC) UI setup is not configured for kavishdua/sessionmem.
-        # Uncomment the env block below, add an NPM_TOKEN secret in GitHub
-        # Actions secrets (Settings -> Secrets and variables -> Actions), and
-        # optionally append `--provenance` to the publish command above.
-        # NEVER commit a token value; the secret lives in GitHub Actions only.
-        #
-        # env:
-        #   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # ---------------------------------------------------------------------
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
