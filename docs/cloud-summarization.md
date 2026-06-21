@@ -13,6 +13,29 @@ Cloud mode activates only when both conditions are true:
 
 If either condition is missing, execution stays local.
 
+## How It Works
+
+Cloud summarization uses a two-phase pipeline:
+
+1. **Local preprocessing** -- the local summarizer runs first to extract, redact, and structure
+   session events into a compact transcript. This ensures sensitive content is redacted before
+   any data leaves the machine.
+
+2. **Cloud compression** -- the preprocessed summary is sent to the Anthropic Messages API
+   with a system prompt tuned for memory compression. Claude returns a compact, high-signal
+   list of facts, decisions, and context.
+
+### Model Configuration
+
+The default model is `claude-sonnet-4-6`, defined as `DEFAULT_SUMMARIZER_MODEL` in
+`src/core/config/policyConfig.ts`. Callers can override the model via the `model` field
+in `CloudSummarizeInput`.
+
+### Token Limits
+
+The `max_tokens` parameter sent to the API is `summaryTokenCap * 2`, giving the model
+headroom to produce a compressed summary within the configured cap.
+
 ## Runtime Warning Signals
 
 When cloud mode is active, lifecycle responses include:
