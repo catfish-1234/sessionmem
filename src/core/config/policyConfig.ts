@@ -3,6 +3,18 @@ import { homedir } from "os";
 import { join, dirname } from "path";
 import { mkdirSync, readFileSync, writeFileSync } from "fs";
 
+/** Lower bound of the 1-10 importance scale. */
+export const MIN_IMPORTANCE = 1;
+
+/** Upper bound of the 1-10 importance scale. */
+export const MAX_IMPORTANCE = 10;
+
+/** Importance threshold at or above which a warning is considered critical. */
+export const CRITICAL_WARNING_IMPORTANCE_THRESHOLD = 9;
+
+/** Maximum number of memories returned by a "deep" retrieval. */
+export const DEEP_MODE_RETRIEVAL_CAP = 100;
+
 /**
  * Built-in policy defaults. Used whenever the config file is missing, malformed,
  * or fails validation, and as the lowest-precedence source in
