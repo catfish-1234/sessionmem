@@ -27,7 +27,8 @@
     "test:schema": "vitest run tests/integration/storage/schema.spec.ts --reporter=dot",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "benchmark": "node scripts/benchmark.mjs"
+    "benchmark": "node scripts/benchmark.mjs",
+    "postversion": "node -e \"const v=require('./package.json').version; ['package/package.json','.claude-plugin/plugin.json','server.json'].forEach(f=>{const o=require('./'+f);o.version=v;if(o.packages&&o.packages[0])o.packages[0].version=v;require('fs').writeFileSync('./'+f,JSON.stringify(o,null,2)+'\\n')})\""
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
