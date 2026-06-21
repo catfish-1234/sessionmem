@@ -41,8 +41,12 @@ interface MemorySearchRow {
   embedding_version: string | null;
 }
 
+const FTS_CANDIDATE_LIMIT = 50;
+const FTS_FALLBACK_THRESHOLD = 5;
+
 interface SearchRepoStatements {
   searchCandidates: Statement;
+  searchCandidatesFTS: Statement;
 }
 
 const searchStmtCache = new WeakMap<Database, SearchRepoStatements>();
@@ -61,6 +65,19 @@ function getSearchStatements(db: Database): SearchRepoStatements {
     FROM memories
     WHERE project_id = ?
     ORDER BY importance DESC, updated_at DESC
+    LIMIT ?
+  `),
+    searchCandidatesFTS: db.prepare(`
+    SELECT
+      m.id, m.project_id, m.session_id, m.source_adapter, m.kind, m.content,
+      m.normalized_content, m.importance, m.author, m.origin_project_id,
+      m.access_count, m.created_at, m.updated_at,
+      m.embedding, m.embedding_dim, m.embedding_version
+    FROM memories_fts
+    JOIN memories m ON m.rowid = memories_fts.rowid
+    WHERE memories_fts MATCH ?
+      AND m.project_id = ?
+    ORDER BY rank
     LIMIT ?
   `),
   };
@@ -87,12 +104,7 @@ function parseEmbedding(value: string | null): number[] | null {
   }
 }
 
-export function searchMemoryCandidates(
-  db: Database,
-  projectId: string,
-): MemorySearchCandidate[] {
-  const rows = getSearchStatements(db).searchCandidates.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
-
+function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
   return rows.map((row) => {
     const parsed = parseEmbedding(row.embedding);
     // Nullify embedding when the stored version doesn't match the current
@@ -103,4 +115,61 @@ export function searchMemoryCandidates(
       embedding: versionMatch ? parsed : null,
     };
   });
+}
+
+export function searchMemoryCandidates(
+  db: Database,
+  projectId: string,
+): MemorySearchCandidate[] {
+  const rows = getSearchStatements(db).searchCandidates.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
+  return mapRows(rows);
+}
+
+/**
+ * Sanitize query text for FTS5 MATCH syntax.
+ * Wraps each non-empty token in double quotes so special characters
+ * (colons, hyphens, parentheses, etc.) are treated as literals.
+ * Tokens are joined with implicit AND.
+ */
+function sanitizeFtsQuery(queryText: string): string {
+  return queryText
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+    .map((token) => `"${token.replace(/"/g, '""')}"`)
+    .join(" ");
+}
+
+/**
+ * Pre-filter candidates using FTS5 full-text search before cosine similarity.
+ * Returns top-50 candidates by FTS rank. Falls back to full
+ * searchMemoryCandidates when FTS returns fewer than 5 results
+ * (poor keyword overlap).
+ */
+export function searchMemoryCandidatesFTS(
+  db: Database,
+  projectId: string,
+  queryText: string,
+): MemorySearchCandidate[] {
+  const sanitized = sanitizeFtsQuery(queryText);
+  if (!sanitized) {
+    return searchMemoryCandidates(db, projectId);
+  }
+
+  let rows: MemorySearchRow[];
+  try {
+    rows = getSearchStatements(db).searchCandidatesFTS.all(
+      sanitized,
+      projectId,
+      FTS_CANDIDATE_LIMIT,
+    ) as MemorySearchRow[];
+  } catch {
+    // FTS5 MATCH can throw on malformed queries — fall back to full scan
+    return searchMemoryCandidates(db, projectId);
+  }
+
+  if (rows.length < FTS_FALLBACK_THRESHOLD) {
+    return searchMemoryCandidates(db, projectId);
+  }
+
+  return mapRows(rows);
 }
