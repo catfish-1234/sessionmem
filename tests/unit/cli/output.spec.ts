@@ -1,16 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { formatTable, formatKeyValue } from "../../../src/cli/output.js";
+import type { MemoryTableRow } from "../../../src/cli/output.js";
 
-const sampleRows = [
+const sampleRows: MemoryTableRow[] = [
   {
     id: "mem-0000-0000-0001",
     importance: 8,
+    accessCount: 3,
+    effectiveImportance: 8,
     createdAt: "2026-05-24T12:00:00Z",
     content: "User prefers short answers and concise explanations.",
   },
   {
     id: "mem-0000-0000-0002",
     importance: 5,
+    accessCount: 0,
+    effectiveImportance: 5,
     createdAt: "2026-05-25T09:30:00Z",
     content: "The project uses TypeScript with NodeNext module resolution.",
   },
@@ -48,12 +53,14 @@ describe("formatTable", () => {
     expect(lines).toHaveLength(3);
   });
 
-  it("truncates content preview to 60 characters", () => {
+  it("truncates content preview to 50 characters", () => {
     const longContent = "A".repeat(100);
-    const rows = [{ id: "x", importance: 1, createdAt: "2026-01-01T00:00:00Z", content: longContent }];
+    const rows: MemoryTableRow[] = [
+      { id: "x", importance: 1, accessCount: 0, effectiveImportance: 1, createdAt: "2026-01-01T00:00:00Z", content: longContent },
+    ];
     const output = formatTable(rows);
-    const previewPart = output.split(" | ")[3];
-    expect(previewPart.trimEnd().length).toBeLessThanOrEqual(60);
+    const previewPart = output.split(" | ")[4];
+    expect(previewPart.trimEnd().length).toBeLessThanOrEqual(50);
   });
 
   it("formats date as YYYY-MM-DD (10 chars)", () => {
@@ -70,6 +77,24 @@ describe("formatTable", () => {
     const output = formatTable([]);
     expect(output).not.toBe("");
     expect(output.split("\n")).toHaveLength(1);
+  });
+
+  it("renders effective importance with parenthetical when different from importance", () => {
+    const rows: MemoryTableRow[] = [
+      { id: "mem-test", importance: 8, accessCount: 5, effectiveImportance: 10, createdAt: "2026-01-01T00:00:00Z", content: "test" },
+    ];
+    const output = formatTable(rows);
+    expect(output).toContain("8(10)");
+  });
+
+  it("renders importance without parenthetical when effectiveImportance equals importance", () => {
+    const rows: MemoryTableRow[] = [
+      { id: "mem-test", importance: 7, accessCount: 0, effectiveImportance: 7, createdAt: "2026-01-01T00:00:00Z", content: "test" },
+    ];
+    const output = formatTable(rows);
+    const dataLine = output.split("\n")[1];
+    expect(dataLine).toContain(" | 7");
+    expect(dataLine).not.toContain("7(");
   });
 });
 
