@@ -72,9 +72,10 @@ describe("summarization retry failure behavior", () => {
 
   it("records failure with attempt_count when fallback fails", async () => {
     const db = openDb();
+    let failureSeq = 0;
     const service = createSessionLifecycleService({
       db,
-      createFailureId: () => "failure-1",
+      createFailureId: () => `failure-${++failureSeq}`,
       summarizeCloud: async () => {
         throw new Error("cloud down");
       },
@@ -127,14 +128,25 @@ describe("summarization retry failure behavior", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.failureRecordId).toBe("failure-1");
+    expect(result.failureRecordId).toBe("failure-2");
 
-    const failure = db
+    // Cloud failure recorded first with attempt_count = retries + 1 = 3
+    const cloudFailure = db
       .prepare(
-        "SELECT attempt_count FROM summarization_failures WHERE id = ? LIMIT 1",
+        "SELECT attempt_count, reason FROM summarization_failures WHERE id = ? LIMIT 1",
       )
-      .get("failure-1") as { attempt_count: number };
-    expect(failure.attempt_count).toBe(4);
+      .get("failure-1") as { attempt_count: number; reason: string };
+    expect(cloudFailure.attempt_count).toBe(3);
+    expect(cloudFailure.reason).toBe("cloud_failed");
+
+    // Combined failure recorded second with attempt_count = retries + 2 = 4
+    const combinedFailure = db
+      .prepare(
+        "SELECT attempt_count, reason FROM summarization_failures WHERE id = ? LIMIT 1",
+      )
+      .get("failure-2") as { attempt_count: number; reason: string };
+    expect(combinedFailure.attempt_count).toBe(4);
+    expect(combinedFailure.reason).toBe("cloud_and_local_failed");
 
     db.close();
   });

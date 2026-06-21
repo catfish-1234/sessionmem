@@ -277,8 +277,18 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           warningMessages: [CLOUD_ENABLED_MESSAGE],
           memoryId,
         };
-      } catch {
-        // fall back to local summarizer
+      } catch (cloudError) {
+        const failureRecordId = createFailureId();
+        insertSummarizationFailure(deps.db, {
+          id: failureRecordId,
+          project_id: request.projectId,
+          session_id: request.sessionId,
+          source_adapter: request.sourceAdapter,
+          reason: "cloud_failed",
+          attempt_count: CLOUD_RETRY_CONFIG.retries + 1,
+          last_error_json: toErrorJson(cloudError),
+        });
+        // fall through to local summarizer
       }
 
       try {
