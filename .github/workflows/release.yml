@@ -9,6 +9,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 # Least-privilege at the workflow level (V4 access control / T-08-13):
 # do NOT grant id-token here. id-token: write is scoped to the publish job only
