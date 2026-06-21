@@ -1,10 +1,13 @@
 FROM node:20-slim
 
-# Create the data directory sessionmem uses for local SQLite storage
-RUN mkdir -p /root/.sessionmem
+RUN addgroup --system sessionmem && adduser --system --ingroup sessionmem sessionmem
 
-# Install sessionmem globally from npm
-RUN npm install -g sessionmem
+RUN mkdir -p /home/sessionmem/.sessionmem && \
+    chown -R sessionmem:sessionmem /home/sessionmem/.sessionmem
 
-# Start the MCP server via stdio
+RUN npm install -g sessionmem@1.0.5
+
+USER sessionmem
+
+ENV HOME=/home/sessionmem
 ENTRYPOINT ["sessionmem"]
