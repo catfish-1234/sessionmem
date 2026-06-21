@@ -154,7 +154,6 @@ describe("access-pattern boosting", () => {
 
   it("retrieveMemories increments access_count and sets last_accessed", () => {
     const db = openDb();
-    const now = new Date("2026-06-19T12:00:00.000Z");
     const query = "increment tracking test";
 
     seedMemory(db, "mem-track", "proj-4", 5, query, "2026-06-19T11:00:00.000Z");
