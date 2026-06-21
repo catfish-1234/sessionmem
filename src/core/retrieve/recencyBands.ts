@@ -10,18 +10,7 @@ export function getRecencyBandScore(
 ): number {
   const updatedDate = toDate(updatedAt);
   const ageDays = Math.max(0, (now.getTime() - updatedDate.getTime()) / DAY_IN_MS);
-
-  if (ageDays <= 1) {
-    return 1.0;
-  }
-
-  if (ageDays <= 7) {
-    return 0.75;
-  }
-
-  if (ageDays <= 30) {
-    return 0.5;
-  }
-
-  return 0.25;
+  const HALF_LIFE_DAYS = 14;
+  const lambda = Math.LN2 / HALF_LIFE_DAYS;
+  return Math.max(0.05, Math.exp(-lambda * ageDays));
 }
