@@ -300,6 +300,40 @@ export const recordMemoryUsedResponseSchema = z.object({
   newImportance: z.number().int().min(1).max(10),
 });
 
+/** Input for a single item in a batch store request (same fields as storeMemory minus projectId). */
+export const batchStoreMemoryItemSchema = z.object({
+  memoryId: z.string().min(1),
+  sessionId: z.string().min(1),
+  sourceAdapter: z.string().min(1),
+  kind: z.string().min(1),
+  content: z.string().min(1),
+  importance: z.number().int().min(1).max(10),
+  redactionEnabled: z.boolean().optional(),
+});
+
+export const batchStoreMemoryRequestSchema = z.object({
+  projectId: z.string().min(1),
+  memories: z.array(batchStoreMemoryItemSchema).min(1),
+});
+
+export const batchStoreMemoryResultSchema = z.object({
+  memoryId: z.string().min(1),
+  ok: z.boolean(),
+  /** Present when ok=true */
+  memory: memorySchema.optional(),
+  /** Present when ok=true */
+  warningCodes: z.array(z.string()).optional(),
+  /** Present when ok=false */
+  error: z.string().optional(),
+});
+
+export const batchStoreMemoryResponseSchema = z.object({
+  ok: z.literal(true),
+  results: z.array(batchStoreMemoryResultSchema),
+  stored: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+
 export interface ErrorResponseEnvelope {
   ok: false;
   error: {
@@ -362,6 +396,8 @@ export type PruneMemoriesResponse = z.infer<
 export type RedactExistingResponse = z.infer<
   typeof redactExistingResponseSchema
 >;
+export type BatchStoreMemoryRequest = z.infer<typeof batchStoreMemoryRequestSchema>;
+export type BatchStoreMemoryResponse = z.infer<typeof batchStoreMemoryResponseSchema>;
 
 export interface MemoryCoreRequestMap {
   ingestSessionEvents: IngestSessionEventsRequest;
@@ -379,6 +415,7 @@ export interface MemoryCoreRequestMap {
   stats: StatsRequest;
   pruneMemories: PruneMemoriesRequest;
   redactExisting: RedactExistingRequest;
+  batchStoreMemory: BatchStoreMemoryRequest;
 }
 
 export interface MemoryCoreResponseMap {
@@ -397,6 +434,7 @@ export interface MemoryCoreResponseMap {
   stats: StatsResponse;
   pruneMemories: PruneMemoriesResponse;
   redactExisting: RedactExistingResponse;
+  batchStoreMemory: BatchStoreMemoryResponse;
 }
 
 export type MemoryCoreMethod = keyof MemoryCoreRequestMap;

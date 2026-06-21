@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import type { ZodRawShape } from "zod";
 import type { HostAdapterContract, HostCapabilities, HostAdapterResult } from "./contract/hostAdapterContract.js";
 import {
+  batchStoreMemoryRequestSchema,
   forgetMemoryRequestSchema,
   getMemoryRequestSchema,
   listMemoriesRequestSchema,
@@ -154,6 +155,20 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
       "WHEN NOT TO CALL: As part of normal context loading. stats returns counts only, not content; use retrieveMemories to load actual context.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     inputShape: shapeWithoutProjectId(statsRequestSchema.shape),
+  },
+  {
+    method: "batchStoreMemory",
+    description:
+      "Persist multiple memory units in a single atomic SQLite transaction. Significantly faster than calling storeMemory repeatedly for session-end writes of 10-20 memories.\n\n" +
+      "WHEN TO CALL: At session end or whenever you have multiple memories to store at once. Reduces overhead from per-insert fsync by wrapping all writes in one transaction.\n\n" +
+      "WHEN NOT TO CALL: For a single memory — use storeMemory instead. For imports from external files — use importMemories.\n\n" +
+      "Each item in the `memories` array follows the same schema as storeMemory (memoryId, sessionId, sourceAdapter, kind, content, importance). Invalid items are reported individually; valid items are still stored atomically.",
+    annotations: { destructiveHint: false, idempotentHint: false },
+    inputShape: {
+      memories: batchStoreMemoryRequestSchema.shape.memories.describe(
+        "Array of memory objects to store. Each must include: memoryId (unique UUID), sessionId, sourceAdapter, kind, content (self-contained text), importance (1-10). Minimum 1 item."
+      ),
+    },
   },
 ];
 

@@ -1,6 +1,6 @@
 import { userInfo } from "node:os";
 import type { Database } from "better-sqlite3";
-import { ZodError, type ZodType } from "zod";
+import { type z, ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
 import { formatStartupInjection } from "../injection/formatStartupInjection.js";
@@ -23,6 +23,8 @@ import {
 import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
+  batchStoreMemoryItemSchema,
+  batchStoreMemoryRequestSchema,
   exportMemoriesRequestSchema,
   forgetMemoryRequestSchema,
   getMemoryRequestSchema,
@@ -754,6 +756,114 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         updated,
         skipped,
         previews,
+      };
+    },
+
+    async batchStoreMemory(request) {
+      const parsed = parseRequest(batchStoreMemoryRequestSchema, request);
+
+      interface BatchResult {
+        memoryId: string;
+        ok: boolean;
+        memory?: ReturnType<typeof toMemoryDto>;
+        warningCodes?: string[];
+        error?: string;
+      }
+
+      const results: BatchResult[] = [];
+      let stored = 0;
+      let failed = 0;
+
+      // Validate each item individually before entering the transaction so
+      // validation errors are reported per-item without aborting the whole batch.
+      const validatedItems: {
+        index: number;
+        item: z.infer<typeof batchStoreMemoryItemSchema>;
+      }[] = [];
+
+      for (let i = 0; i < parsed.memories.length; i++) {
+        const raw = parsed.memories[i];
+        try {
+          // The array items were already parsed by batchStoreMemoryRequestSchema,
+          // but we re-validate with the item schema so per-item errors are
+          // captured individually (e.g. if a caller bypasses the outer schema).
+          const item = batchStoreMemoryItemSchema.parse(raw);
+          validatedItems.push({ index: i, item });
+        } catch (err) {
+          results.push({
+            memoryId: raw.memoryId ?? `<index-${i}>`,
+            ok: false,
+            error:
+              err instanceof ZodError
+                ? err.issues.map((issue) => issue.message).join("; ")
+                : String(err),
+          });
+          failed += 1;
+        }
+      }
+
+      // Wrap all valid inserts in a single SQLite transaction for atomicity
+      // and performance (better-sqlite3 transactions avoid per-statement
+      // fsync, making batch inserts significantly faster).
+      if (validatedItems.length > 0) {
+        const runTransaction = db.transaction(() => {
+          for (const { item } of validatedItems) {
+            const redaction = applyRedaction(item.content, {
+              redactionEnabled: resolveRedactionEnabled(item.redactionEnabled),
+            });
+            const embedding = deterministicEmbed(redaction.text, dimension);
+
+            insertMemory(db, {
+              id: item.memoryId,
+              project_id: parsed.projectId,
+              session_id: item.sessionId,
+              source_adapter: item.sourceAdapter,
+              kind: item.kind,
+              content: redaction.text,
+              normalized_content: embedding.normalizedText,
+              importance: item.importance,
+              embedding: JSON.stringify(embedding.vector),
+              embedding_dim: embedding.dimension,
+              embedding_version: embedding.embeddingVersion,
+              author: localAuthor,
+              origin_project_id: null,
+            });
+
+            const inserted = getMemoryById(db, parsed.projectId, item.memoryId);
+            if (!inserted) {
+              throw new DomainError("INTERNAL", `Memory insert did not persist: ${item.memoryId}`);
+            }
+
+            results.push({
+              memoryId: item.memoryId,
+              ok: true,
+              memory: toMemoryDto(inserted),
+              warningCodes: redaction.warningCodes,
+            });
+            stored += 1;
+          }
+        });
+
+        runTransaction();
+      }
+
+      // Sort results back into original input order: validated items were
+      // processed in order but failed items were pushed first. Re-sort by
+      // the memoryId to maintain a predictable output. Since memoryIds are
+      // unique, use the input array order as the canonical sort key.
+      const inputOrder = new Map(
+        parsed.memories.map((m, i) => [m.memoryId, i]),
+      );
+      results.sort(
+        (a, b) =>
+          (inputOrder.get(a.memoryId) ?? 0) - (inputOrder.get(b.memoryId) ?? 0),
+      );
+
+      return {
+        ok: true as const,
+        results,
+        stored,
+        failed,
       };
     },
 
