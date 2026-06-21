@@ -17,6 +17,7 @@ import {
 } from "../storage/memoryRepo.js";
 import {
   configFilePath,
+  DEEP_MODE_RETRIEVAL_CAP,
   readPolicyConfig,
   resolvePolicySettings,
 } from "../config/policyConfig.js";
@@ -340,7 +341,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     async retrieveMemories(request) {
       const parsed = parseRequest(retrieveMemoriesRequestSchema, request);
       const limit =
-        parsed.depth === "deep" ? Math.min(parsed.limit * 2, 100) : parsed.limit;
+        parsed.depth === "deep" ? Math.min(parsed.limit * 2, DEEP_MODE_RETRIEVAL_CAP) : parsed.limit;
       const ranked = retrieveMemories({
         db,
         projectId: parsed.projectId,
