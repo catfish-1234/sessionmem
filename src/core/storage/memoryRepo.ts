@@ -1,29 +1,26 @@
-import type { Database } from "better-sqlite3";
+import type { Database, Statement } from "better-sqlite3";
 import type { InsertMemoryInput, MemoryRecord } from "./types.js";
 
-function assertImportance(importance: number): void {
-  if (importance < 1 || importance > 10) {
-    throw new Error("importance must be between 1 and 10");
-  }
+interface MemoryRepoStatements {
+  insertMemory: Statement;
+  upsertSessionSummary: Statement;
+  listByProject: Statement;
+  listAllIds: Statement;
+  countOlderThan: Statement;
+  deleteOlderThan: Statement;
+  updateImportance: Statement;
+  updateContent: Statement;
+  selectForRecordUse: Statement;
 }
 
-function toParams(input: InsertMemoryInput) {
-  return {
-    ...input,
-    embedding: input.embedding ?? null,
-    embedding_dim: input.embedding_dim ?? null,
-    embedding_version: input.embedding_version ?? null,
-    author: input.author ?? "",
-    origin_project_id: input.origin_project_id ?? null,
-    created_at: input.created_at ?? null,
-    updated_at: input.updated_at ?? null,
-  };
-}
+const stmtCache = new WeakMap<Database, MemoryRepoStatements>();
 
-export function insertMemory(db: Database, input: InsertMemoryInput): void {
-  assertImportance(input.importance);
+function getStatements(db: Database): MemoryRepoStatements {
+  let stmts = stmtCache.get(db);
+  if (stmts) return stmts;
 
-  const stmt = db.prepare(`
+  stmts = {
+    insertMemory: db.prepare(`
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
@@ -34,18 +31,8 @@ export function insertMemory(db: Database, input: InsertMemoryInput): void {
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
-  `);
-
-  stmt.run(toParams(input));
-}
-
-export function upsertSessionSummaryMemory(
-  db: Database,
-  input: InsertMemoryInput,
-): void {
-  assertImportance(input.importance);
-
-  const stmt = db.prepare(`
+  `),
+    upsertSessionSummary: db.prepare(`
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
@@ -69,16 +56,8 @@ export function upsertSessionSummaryMemory(
       author = excluded.author,
       origin_project_id = excluded.origin_project_id,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-  `);
-
-  stmt.run(toParams({ ...input, kind: "summary" }));
-}
-
-export function listMemoriesByProject(
-  db: Database,
-  projectId: string,
-): MemoryRecord[] {
-  const stmt = db.prepare(`
+  `),
+    listByProject: db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
@@ -86,9 +65,81 @@ export function listMemoriesByProject(
     FROM memories
     WHERE project_id = ?
     ORDER BY updated_at DESC
-  `);
+  `),
+    listAllIds: db.prepare("SELECT id FROM memories"),
+    countOlderThan: db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM memories
+      WHERE project_id = ? AND created_at < ?
+    `),
+    deleteOlderThan: db.prepare(`
+      DELETE FROM memories
+      WHERE project_id = ? AND created_at < ?
+    `),
+    updateImportance: db.prepare(`
+      UPDATE memories
+      SET
+        importance = ?,
+        updated_at = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      WHERE project_id = ? AND id = ?
+    `),
+    updateContent: db.prepare(`
+      UPDATE memories
+      SET
+        content = ?,
+        normalized_content = COALESCE(?, normalized_content),
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE project_id = ? AND id = ?
+    `),
+    selectForRecordUse: db.prepare(`
+        SELECT id, importance
+        FROM memories
+        WHERE project_id = ? AND id = ?
+        LIMIT 1
+      `),
+  };
 
-  return stmt.all(projectId) as MemoryRecord[];
+  stmtCache.set(db, stmts);
+  return stmts;
+}
+
+function assertImportance(importance: number): void {
+  if (importance < 1 || importance > 10) {
+    throw new Error("importance must be between 1 and 10");
+  }
+}
+
+function toParams(input: InsertMemoryInput) {
+  return {
+    ...input,
+    embedding: input.embedding ?? null,
+    embedding_dim: input.embedding_dim ?? null,
+    embedding_version: input.embedding_version ?? null,
+    author: input.author ?? "",
+    origin_project_id: input.origin_project_id ?? null,
+    created_at: input.created_at ?? null,
+    updated_at: input.updated_at ?? null,
+  };
+}
+
+export function insertMemory(db: Database, input: InsertMemoryInput): void {
+  assertImportance(input.importance);
+  getStatements(db).insertMemory.run(toParams(input));
+}
+
+export function upsertSessionSummaryMemory(
+  db: Database,
+  input: InsertMemoryInput,
+): void {
+  assertImportance(input.importance);
+  getStatements(db).upsertSessionSummary.run(toParams({ ...input, kind: "summary" }));
+}
+
+export function listMemoriesByProject(
+  db: Database,
+  projectId: string,
+): MemoryRecord[] {
+  return getStatements(db).listByProject.all(projectId) as MemoryRecord[];
 }
 
 /**
@@ -98,7 +149,7 @@ export function listMemoriesByProject(
  * collisions as "skipped" rather than silently importing them.
  */
 export function listAllMemoryIds(db: Database): Set<string> {
-  const rows = db.prepare("SELECT id FROM memories").all() as Array<{
+  const rows = getStatements(db).listAllIds.all() as Array<{
     id: string;
   }>;
   return new Set(rows.map((r) => r.id));
@@ -111,16 +162,7 @@ export function countMemoriesOlderThan(
 ): number {
   // created_at is stored as strftime('%Y-%m-%dT%H:%M:%fZ') text; lexicographic
   // comparison against an ISO-8601 UTC cutoff is correct for this fixed format.
-  const row = db
-    .prepare(
-      `
-      SELECT COUNT(*) AS count
-      FROM memories
-      WHERE project_id = ? AND created_at < ?
-    `,
-    )
-    .get(projectId, cutoffIso) as { count: number };
-
+  const row = getStatements(db).countOlderThan.get(projectId, cutoffIso) as { count: number };
   return row.count;
 }
 
@@ -132,15 +174,7 @@ export function deleteMemoriesOlderThan(
   // Hard-delete scoped to the memories table only; never touches
   // session_events or memory_feedback. project_id and cutoff are bound, never
   // string-concatenated, to prevent SQL injection.
-  const result = db
-    .prepare(
-      `
-      DELETE FROM memories
-      WHERE project_id = ? AND created_at < ?
-    `,
-    )
-    .run(projectId, cutoffIso);
-
+  const result = getStatements(db).deleteOlderThan.run(projectId, cutoffIso);
   return result.changes;
 }
 
@@ -153,17 +187,12 @@ export function updateMemoryImportance(
 ): void {
   assertImportance(nextImportance);
 
-  const result = db
-    .prepare(
-      `
-      UPDATE memories
-      SET
-        importance = ?,
-        updated_at = COALESCE(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-      WHERE project_id = ? AND id = ?
-    `,
-    )
-    .run(nextImportance, usedAt ?? null, projectId, memoryId);
+  const result = getStatements(db).updateImportance.run(
+    nextImportance,
+    usedAt ?? null,
+    projectId,
+    memoryId,
+  );
 
   if (result.changes === 0) {
     throw new Error(`Memory not found: ${memoryId}`);
@@ -201,6 +230,7 @@ export function updateMemoryContent(
   newContent: string,
   newNormalizedContent?: string,
 ): void {
+<<<<<<< HEAD
   // All values are bound parameters to prevent SQL injection.
   // normalized_content is only overwritten when a new value is supplied.
   const result = db
@@ -215,6 +245,19 @@ export function updateMemoryContent(
     `,
     )
     .run(newContent, newNormalizedContent ?? null, projectId, memoryId);
+=======
+  // In-place content rewrite for the one-time redaction scrub. All
+  // values are bound parameters — projectId, memoryId, and content are never
+  // string-concatenated — mirroring updateMemoryImportance to prevent SQL
+  // injection. normalized_content is only overwritten when a new
+  // value is supplied so embeddings stay consistent with the redacted text.
+  const result = getStatements(db).updateContent.run(
+    newContent,
+    newNormalizedContent ?? null,
+    projectId,
+    memoryId,
+  );
+>>>>>>> worktree-agent-ac22372c2a068f977
 
   if (result.changes === 0) {
     throw new Error(`Memory not found: ${memoryId}`);
@@ -223,11 +266,21 @@ export function updateMemoryContent(
 
 export function incrementAccessCounts(
   db: Database,
+<<<<<<< HEAD
   projectId: string,
   memoryIds: string[],
   accessedAt?: string,
 ): void {
   if (memoryIds.length === 0) return;
+=======
+  input: RecordMemoryUseInput,
+): RecordMemoryUseResult {
+  const transaction = db.transaction((txInput: RecordMemoryUseInput) => {
+    const stmts = getStatements(db);
+    const memory = stmts.selectForRecordUse.get(txInput.project_id, txInput.memory_id) as
+      | { id: string; importance: number }
+      | undefined;
+>>>>>>> worktree-agent-ac22372c2a068f977
 
   const stmt = db.prepare(`
     UPDATE memories
