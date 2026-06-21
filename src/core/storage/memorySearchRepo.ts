@@ -1,5 +1,7 @@
 import type { Database } from "better-sqlite3";
 
+import { MAX_SEMANTIC_CANDIDATES } from "../config/policyConfig.js";
+
 export interface MemorySearchCandidate {
   id: string;
   project_id: string;
@@ -58,6 +60,7 @@ export function searchMemoryCandidates(
   db: Database,
   projectId: string,
 ): MemorySearchCandidate[] {
+  // TODO: Opt 3 will replace this LIMIT with importance/date WHERE clause
   const stmt = db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
@@ -65,9 +68,11 @@ export function searchMemoryCandidates(
       embedding_dim, embedding_version
     FROM memories
     WHERE project_id = ?
+    ORDER BY importance DESC, updated_at DESC
+    LIMIT ?
   `);
 
-  const rows = stmt.all(projectId) as MemorySearchRow[];
+  const rows = stmt.all(projectId, MAX_SEMANTIC_CANDIDATES) as MemorySearchRow[];
 
   return rows.map((row) => ({
     ...row,
