@@ -257,9 +257,9 @@ export class GenericMCPAdapter implements HostAdapterContract {
     for (const fallback of fallbackTools) {
       server.registerTool(
         fallback.name,
-        { description: fallback.description, inputSchema: fallback.schema },
-        async (args) => {
-          const result = await fallback.execute(args as any);
+        { description: fallback.description, inputSchema: fallback.inputShape },
+        async (args: Record<string, unknown>) => {
+          const result = await fallback.execute(args);
           return { content: [{ type: "text" as const, text: result }] };
         },
       );
