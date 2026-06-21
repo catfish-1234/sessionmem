@@ -168,6 +168,15 @@ describe("schema migrations", () => {
     db.close();
   });
 
+  it("opens database in WAL journal mode", () => {
+    const db = openDb({ dbPath: createTempDbPath() });
+
+    const result = db.pragma("journal_mode") as Array<{ journal_mode: string }>;
+    expect(result[0].journal_mode).toBe("wal");
+
+    db.close();
+  });
+
   it("exposes string author and string|null origin_project_id on stored rows", () => {
     const db = openDb({ dbPath: createTempDbPath() });
 
