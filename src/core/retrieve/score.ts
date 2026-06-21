@@ -11,6 +11,7 @@ export interface ScoreMemoryCandidateInput {
   semantic: number;
   updated_at: string;
   importance: number;
+  decayedImportance?: number;
 }
 
 export interface ScoreBreakdown {
@@ -32,7 +33,8 @@ export function scoreMemoryCandidate(
   now: Date = new Date(),
 ): ScoreBreakdown {
   const recency = getRecencyBandScore(candidate.updated_at, now);
-  const importance = normalizeImportance(candidate.importance);
+  const effectiveImportance = candidate.decayedImportance ?? candidate.importance;
+  const importance = normalizeImportance(effectiveImportance);
 
   const weighted = {
     semantic: candidate.semantic * SCORING_WEIGHTS.semantic,
