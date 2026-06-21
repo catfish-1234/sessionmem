@@ -10,3 +10,4 @@ dist/
 .planning/
 .agents/
 skills-lock.json
+.mcp.json
