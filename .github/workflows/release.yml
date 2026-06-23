@@ -29,7 +29,7 @@ jobs:
       contents: read
       id-token: write # REQUIRED for OIDC trusted publishing + automatic provenance (scoped to this job only)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v5
         with:
