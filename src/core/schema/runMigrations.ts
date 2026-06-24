@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Database } from "better-sqlite3";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(
-  process.cwd(),
-  "src/core/schema/migrations",
+  path.dirname(fileURLToPath(import.meta.url)),
+  "migrations",
 );
 
 function ensureMigrationsTable(db: Database): void {
