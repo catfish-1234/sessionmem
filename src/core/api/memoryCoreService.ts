@@ -429,7 +429,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       }
 
       // Record the explicit user deletion as feedback. The FK on
-      // memory_feedback no longer cascades (migration 006), so this row
+      // memory_feedback no longer cascades (migration 007), so this row
       // survives the memory deletion and serves as an analytics signal.
       insertMemoryFeedbackEvent(db, {
         memory_id: parsed.memoryId,
