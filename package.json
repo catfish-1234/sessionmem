@@ -1,6 +1,6 @@
 {
   "name": "sessionmem",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "private": false,
   "type": "module",
   "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
@@ -28,7 +28,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "benchmark": "node scripts/benchmark.mjs",
-    "postversion": "node -e \"const v=require('./package.json').version; ['package/package.json','.claude-plugin/plugin.json','server.json'].forEach(f=>{const o=require('./'+f);o.version=v;if(o.packages&&o.packages[0])o.packages[0].version=v;require('fs').writeFileSync('./'+f,JSON.stringify(o,null,2)+'\\n')})\""
+    "postversion": "node -e \"const v=require('./package.json').version; ['package/package.json','.claude-plugin/plugin.json','server.json'].forEach(f=>{const o=require('./'+f);o.version=v;if(o.packages&&o.packages[0])o.packages[0].version=v;require('fs').writeFileSync('./'+f,JSON.stringify(o,null,2)+'\\n')})\" && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",
