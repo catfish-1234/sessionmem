@@ -53,6 +53,8 @@ export class ClineAdapter extends GenericMCPAdapter {
     // "Code" is VS Code stable, but Cline also installs into Insiders, VSCodium,
     // and Cursor. Pick the first variant whose globalStorage dir already exists;
     // fall back to stable "Code" when none is found (fresh install).
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+    // `name` is from the hardcoded VSCODE_EDITOR_VARIANTS constant above — not user input.
     const editorName =
       VSCODE_EDITOR_VARIANTS.find((name) =>
         existsSync(join(base, name, "User", "globalStorage")),
