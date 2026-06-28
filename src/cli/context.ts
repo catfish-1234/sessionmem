@@ -64,10 +64,7 @@ function safeUserInfoName(): string {
 export function expandTilde(p: string): string {
   if (p === "~") return homedir();
   if (p.startsWith("~/") || p.startsWith("~\\")) {
-    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-    // `homedir()` is the fixed base; `p` is SESSIONMEM_DB_PATH, a local CLI
-    // config the operator sets for their own filesystem — not external user input.
-    return join(homedir(), p.slice(2));
+    return join(homedir(), p.slice(2)); // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   }
   return p;
 }
