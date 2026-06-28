@@ -1,6 +1,6 @@
 import { createCliContext, type CliContext } from "../context.js";
 import { countTokens } from "../../core/injection/tokenBudget.js";
-import { listMemoriesByProject } from "../../core/storage/memoryRepo.js";
+import { listMemoryContentsByProject } from "../../core/storage/memoryRepo.js";
 import {
   countDistinctSessions,
   listEventPayloads,
@@ -27,8 +27,8 @@ export function savingsCommand(
   const { db, projectId } = context;
 
   // --- gather raw numbers ---
-  const memoryTokens = listMemoriesByProject(db, projectId).reduce(
-    (sum, m) => sum + countTokens(m.content),
+  const memoryTokens = listMemoryContentsByProject(db, projectId).reduce(
+    (sum, content) => sum + countTokens(content),
     0,
   );
 
@@ -40,15 +40,17 @@ export function savingsCommand(
   const sessions = countDistinctSessions(db, projectId);
 
   // Read the injection cap from policy config if it exists; fall back to 450.
-  const _config = readPolicyConfig(
+  const policyConfig = readPolicyConfig(
     options?.configPath ?? configFilePath(),
   );
-  const injectionCap =
-    ((_config as Record<string, unknown>).injectionCap as number | undefined) ??
-    DEFAULT_INJECTION_CAP;
+  const injectionCap = policyConfig.injectionCap ?? DEFAULT_INJECTION_CAP;
 
   // --- calculations ---
   const tokensSaved = rawEventTokens - memoryTokens;
+  // Clamp for display. When memories exist but no session events were ingested
+  // (rawEventTokens === 0), the raw subtraction goes negative, which is
+  // misleading. Never present a negative "tokens saved" to the user.
+  const displayedTokensSaved = Math.max(0, tokensSaved);
   const savingsPct =
     rawEventTokens > 0 ? (tokensSaved / rawEventTokens) * 100 : 0;
 
@@ -56,29 +58,29 @@ export function savingsCommand(
   const injectionSavings =
     estimatedReexplainTokens - sessions * injectionCap;
   const overallSaved = tokensSaved + Math.max(0, injectionSavings);
+  const displayedOverallSaved = Math.max(0, overallSaved);
   const overallPct =
     rawEventTokens + estimatedReexplainTokens > 0
       ? (overallSaved / (rawEventTokens + estimatedReexplainTokens)) * 100
       : 0;
+  const displayedOverallPct = displayedOverallSaved > 0 ? overallPct : 0;
 
-  const avgInjectionCost =
-    sessions > 0
-      ? Math.round((sessions * injectionCap) / sessions)
-      : 0;
+  // per-session injection overhead (fixed cap, not a measured average)
+  const avgInjectionCost = sessions > 0 ? injectionCap : 0;
 
   // --- JSON output ---
   if (options?.json) {
     const payload = {
       memoryTokens,
       rawEventTokens,
-      tokensSaved,
+      tokensSaved: displayedTokensSaved,
       savingsPct: Math.round(savingsPct * 10) / 10,
       sessions,
       injectionCap,
       estimatedReexplainTokens,
       injectionSavings,
-      overallSaved,
-      overallPct: Math.round(overallPct * 10) / 10,
+      overallSaved: displayedOverallSaved,
+      overallPct: Math.round(displayedOverallPct * 10) / 10,
     };
     process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
     return;
@@ -95,13 +97,27 @@ export function savingsCommand(
   // --- formatted report ---
   const fmt = (n: number) => n.toLocaleString("en-US");
 
+  // When no session events have been ingested, the storage-compression numbers
+  // are meaningless (and "tokens saved" would be negative). Show a helpful note
+  // instead of misleading figures.
+  const storageLines =
+    rawEventTokens === 0
+      ? [
+          "Storage compression:",
+          "  No session data ingested yet.",
+          "  Tip: call ingestSessionEvents during sessions to track token usage.",
+        ]
+      : [
+          "Storage compression:",
+          `  Raw session tokens:  ${fmt(rawEventTokens).padStart(10)}`,
+          `  Memory tokens:       ${fmt(memoryTokens).padStart(10)}`,
+          `  Tokens saved:        ${fmt(displayedTokensSaved).padStart(10)} (${(Math.round(savingsPct * 10) / 10).toFixed(1)}%)`,
+        ];
+
   const lines = [
     "sessionmem token savings",
     "",
-    "Storage compression:",
-    `  Raw session tokens:  ${fmt(rawEventTokens).padStart(10)}`,
-    `  Memory tokens:       ${fmt(memoryTokens).padStart(10)}`,
-    `  Tokens saved:        ${fmt(tokensSaved).padStart(10)} (${(Math.round(savingsPct * 10) / 10).toFixed(1)}%)`,
+    ...storageLines,
     "",
     "Session injection:",
     `  Total sessions:      ${fmt(sessions).padStart(10)}`,
@@ -110,8 +126,8 @@ export function savingsCommand(
     `  Injection savings:   ${fmt(Math.max(0, injectionSavings)).padStart(10)} tokens across ${fmt(sessions)} sessions`,
     "",
     "Overall:",
-    `  Total tokens saved:  ${fmt(overallSaved).padStart(10)}`,
-    `  Efficiency:          ${(Math.round(overallPct * 10) / 10).toFixed(1)}%`,
+    `  Total tokens saved:  ${fmt(displayedOverallSaved).padStart(10)}`,
+    `  Efficiency:          ${(Math.round(displayedOverallPct * 10) / 10).toFixed(1)}%`,
     "",
   ];
 

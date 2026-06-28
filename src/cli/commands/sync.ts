@@ -4,6 +4,7 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  statSync,
   writeFileSync,
 } from "fs";
 import {
@@ -18,6 +19,22 @@ interface SyncOptions {
   /** Test seam: point at a temp config file instead of ~/.sessionmem/config.json. */
   configPath?: string;
 }
+
+/**
+ * Skip any teammate file larger than this. A network/shared drive can host an
+ * arbitrarily large (or maliciously huge) file; reading it whole with
+ * `readFileSync` would balloon memory. Skip-and-warn instead, matching the
+ * resilient pull semantics for unreadable/non-array files.
+ */
+const MAX_TEAMMATE_FILE_BYTES = 10 * 1024 * 1024; // 10MB
+
+/**
+ * `pullMemoriesRequestSchema` rejects any batch over MAX_IMPORT_SIZE (1000)
+ * records, so accumulating every teammate's memories into one array would let a
+ * large team blow the cap and discard the whole pull. Send in chunks of this
+ * size instead.
+ */
+const MAX_BATCH = 1000;
 
 /**
  * `sessionmem sync` — push a full snapshot of local project memories to the
@@ -99,14 +116,30 @@ export async function syncCommand(
   const memories: Array<z.infer<typeof importMemoryRecordSchema>> = [];
 
   for (const file of teammateFiles) {
+    // file comes from readdirSync(dir) filtered to *.json entries, so it is a
+    // plain filename with no path separators, not user input.
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
+    const filePath = join(dir, file);
+
+    // Guard against an oversized teammate file before reading it whole.
+    try {
+      const stat = statSync(filePath);
+      if (stat.size > MAX_TEAMMATE_FILE_BYTES) {
+        console.warn(
+          `sessionmem: skipping ${file} (${stat.size} bytes exceeds 10MB limit)`,
+        );
+        continue;
+      }
+    } catch {
+      console.error(`Skipping unreadable teammate file: ${file}`);
+      continue;
+    }
+
     let parsed: unknown;
     try {
       // A truncated/corrupt teammate file is skipped-and-warned, never
       // aborting the rest of the pull.
-      // file comes from readdirSync(dir) filtered to *.json entries, so it is
-      // a plain filename with no path separators, not user input.
-      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-      parsed = JSON.parse(readFileSync(join(dir, file), "utf8"));
+      parsed = JSON.parse(readFileSync(filePath, "utf8"));
     } catch {
       console.error(`Skipping unreadable teammate file: ${file}`);
       continue;
@@ -133,18 +166,21 @@ export async function syncCommand(
   let pulledNew = 0;
   let pulledUpdated = 0;
 
-  if (memories.length > 0) {
+  // Split into batches of MAX_BATCH (1000) so a large team never trips
+  // pullMemoriesRequestSchema's max(MAX_IMPORT_SIZE) and discards the whole pull.
+  for (let i = 0; i < memories.length; i += MAX_BATCH) {
+    const batch = memories.slice(i, i + MAX_BATCH);
     const pullRes = await context.service.call("pullMemories", {
       projectId: context.projectId,
-      memories,
+      memories: batch,
     });
     if (!pullRes.ok) {
       console.error(pullRes.error.message);
       process.exit(1);
       return;
     }
-    pulledNew = pullRes.pulledNew;
-    pulledUpdated = pullRes.pulledUpdated;
+    pulledNew += pullRes.pulledNew;
+    pulledUpdated += pullRes.pulledUpdated;
   }
 
   // The exact summary string.

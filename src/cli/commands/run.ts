@@ -2,6 +2,8 @@ import { AdapterFactory } from "../../adapters/factory.js";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { deriveProjectId } from "../projectId.js";
+import { expandTilde } from "../context.js";
 
 export async function runMcpServer() {
   const adapter = AdapterFactory.detectAdapter();
@@ -14,24 +16,13 @@ export async function runMcpServer() {
   const envDbPath = process.env.SESSIONMEM_DB_PATH;
   const dbPath =
     envDbPath && envDbPath.trim() !== ""
-      ? envDbPath
+      ? expandTilde(envDbPath)
       : join(homedir(), ".sessionmem", "memories.db");
 
-  // Derive project ID for diagnostics (mirrors context.ts deriveProjectId)
-  const envProjectId = process.env.SESSIONMEM_PROJECT_ID;
-  let projectId: string;
-  if (envProjectId && envProjectId.trim() !== "") {
-    projectId = envProjectId;
-  } else {
-    const cwd = process.cwd();
-    const parts = cwd.replace(/\\/g, "/").split("/");
-    const raw = parts[parts.length - 1] || "default";
-    const sanitized = raw.replace(/[^A-Za-z0-9._-]/g, "_");
-    projectId =
-      sanitized === "" || sanitized === "." || sanitized === ".."
-        ? "default"
-        : sanitized;
-  }
+  // Derive project ID for diagnostics. Shares the exact derivation the server
+  // uses (createCliContext → deriveProjectId) so the logged id never diverges
+  // from the bucket the server actually serves.
+  const projectId = deriveProjectId();
 
   const adapterName = adapter.name;
   const logMessage = `[${new Date().toISOString()}] Started sessionmem | adapter=${adapterName} db=${dbPath} project=${projectId}\n`;

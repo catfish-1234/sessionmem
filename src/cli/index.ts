@@ -2,6 +2,8 @@
 import { Command } from "commander";
 import { createRequire } from "node:module";
 import { runMcpServer } from "./commands/run.js";
+import { sessionStartCommand } from "./commands/sessionStart.js";
+import { sessionEndCommand } from "./commands/sessionEnd.js";
 import { installCommand } from "./commands/install.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { pingCommand } from "./commands/ping.js";
@@ -41,20 +43,42 @@ program
   .action(runMcpServer);
 
 program
+  .command("session-start")
+  .description(
+    "Print prior memory context for the current project as Claude Code SessionStart hook output (invoked automatically by the hook installed during `sessionmem install`)",
+  )
+  .action(() => sessionStartCommand());
+
+program
+  .command("session-end")
+  .description(
+    "Run the session-end pipeline (auto-summarize ingested session events + light retention prune) for the current project (invoked automatically by the SessionEnd hook installed during `sessionmem install`)",
+  )
+  .action(() => sessionEndCommand());
+
+program
   .command("install")
   .description("Install sessionmem into the current MCP host")
-  .action(installCommand);
+  .option(
+    "--adapter <name>",
+    "Force a host adapter instead of auto-detecting (claude-code, cursor, windsurf, cline, codex, antigravity, qcoder, generic)",
+  )
+  .action((options) => installCommand(options));
 
 program
   .command("uninstall")
   .description("Remove sessionmem from the current MCP host")
   .option("--purge", "Also delete the local memories database")
-  .action(uninstallCommand);
+  .option(
+    "--adapter <name>",
+    "Force a host adapter instead of auto-detecting (claude-code, cursor, windsurf, cline, codex, antigravity, qcoder, generic)",
+  )
+  .action((options) => uninstallCommand(options));
 
 program
   .command("ping")
-  .description("Check sessionmem server connectivity")
-  .action(pingCommand);
+  .description("Check sessionmem version and local database reachability")
+  .action(() => pingCommand());
 
 // NOTE: commander always appends its own Command instance as the final
 // argument to .action() callbacks. The search/list/show/forget/export/import/

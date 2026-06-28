@@ -19,17 +19,18 @@ const DEFAULT_EMBEDDING_DIMENSION = 32;
  */
 export async function reEmbedCommand(ctx?: CliContext): Promise<void> {
   const context = ctx ?? createCliContext();
-  const { db } = context;
+  const { db, projectId } = context;
 
   const stale = db
     .prepare(
       `
       SELECT id, content, embedding_dim
       FROM memories
-      WHERE embedding_version IS NULL OR embedding_version != ?
+      WHERE project_id = ?
+        AND (embedding_version IS NULL OR embedding_version != ?)
     `,
     )
-    .all(EMBEDDING_VERSION) as StaleMemoryRow[];
+    .all(projectId, EMBEDDING_VERSION) as StaleMemoryRow[];
 
   const total = stale.length;
 

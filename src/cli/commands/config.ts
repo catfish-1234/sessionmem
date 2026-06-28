@@ -48,6 +48,14 @@ function coerceRetentionDays(raw: string): number {
   return n;
 }
 
+function coerceInjectionCap(raw: string): number {
+  const n = coerceInt(raw);
+  if (n < 100 || n > 10000) {
+    throw new Error(`injectionCap must be an integer between 100 and 10000, got "${raw}"`);
+  }
+  return n;
+}
+
 function coerceBool(raw: string): boolean {
   const v = raw.trim().toLowerCase();
   if (v === "true") return true;
@@ -61,6 +69,7 @@ const CONFIG_KEYS: Record<string, ConfigKeyDef> = {
   "retention.days": { field: "retentionDays", coerce: coerceRetentionDays },
   retentionDays: { field: "retentionDays", coerce: coerceRetentionDays },
   redactionEnabled: { field: "redactionEnabled", coerce: coerceBool },
+  injectionCap: { field: "injectionCap", coerce: coerceInjectionCap },
 };
 
 function resolvePath(options?: ConfigCommandOptions): string {
@@ -85,7 +94,8 @@ export function configGetCommand(
   }
 
   const config = readPolicyConfig(resolvePath(options));
-  console.log(String(config[def.field]));
+  const val = config[def.field];
+  console.log(val === undefined ? "(not set)" : String(val));
 }
 
 /**

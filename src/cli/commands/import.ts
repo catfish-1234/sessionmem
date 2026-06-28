@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 import { listAllMemoryIds } from "../../core/storage/memoryRepo.js";
 import { createCliContext, type CliContext } from "../context.js";
 import { importMemoryRecordSchema } from "../../core/api/contracts.js";
+import type { z } from "zod";
 
 export async function importCommand(
   pathArg: string,
@@ -78,7 +79,7 @@ export async function importCommand(
   // records (consistent with the duplicate-skip UX) instead of aborting the
   // entire import on the first invalid record, which would discard earlier
   // valid records with no partial import.
-  const validMemories: Array<(typeof mapped)[number]> = [];
+  const validMemories: Array<z.infer<typeof importMemoryRecordSchema>> = [];
   let invalidCount = 0;
   for (let i = 0; i < mapped.length; i++) {
     const check = importMemoryRecordSchema.safeParse(mapped[i]);
@@ -87,7 +88,9 @@ export async function importCommand(
       invalidCount += 1;
       continue;
     }
-    validMemories.push(mapped[i]);
+    // Use the parsed/transformed record so `kind` is narrowed to the
+    // canonical enum (memoryKindSchema maps legacy values like `architecture`).
+    validMemories.push(check.data);
   }
 
   if (validMemories.length === 0) {
@@ -118,6 +121,9 @@ export async function importCommand(
     result.skippedCrossProject > 0
       ? ` (${result.skippedCrossProject} skipped: id belongs to another project)`
       : "";
+  if (result.skippedExisting > 0) {
+    suffix += ` (${result.skippedExisting} skipped: id already exists in this project)`;
+  }
   if (invalidCount > 0) {
     suffix += ` (${invalidCount} invalid record(s) skipped)`;
   }
