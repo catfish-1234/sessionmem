@@ -1,6 +1,6 @@
 {
   "name": "sessionmem",
-  "version": "1.0.6",
+  "version": "1.1.0",
   "private": false,
   "type": "module",
   "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
@@ -30,6 +30,7 @@
     "benchmark": "node scripts/benchmark.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.4.1",
     "commander": "^15.0.0",

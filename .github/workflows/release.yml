@@ -36,14 +36,25 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
+      # node 22 ships npm 10.x, which does NOT support OIDC trusted publishing
+      # (introduced in npm 11.5.1). Without this upgrade the "Publish to npm" step
+      # below silently falls through to token auth and fails with ENEEDAUTH when
+      # NPM_TOKEN is unset — the root cause of releases not auto-publishing. Pin to
+      # a version new enough for trusted publishing + automatic provenance.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
       - run: npm ci
 
       - run: npm run build
 
       - run: npm test
 
-      # OIDC trusted publishing is auto-detected when id-token: write is present;
-      # provenance is emitted automatically, so no --provenance flag is needed.
+      # OIDC trusted publishing is auto-detected when id-token: write is present
+      # AND npm >= 11.5.1 (see the upgrade step above); provenance is emitted
+      # automatically, so no --provenance flag is needed. NODE_AUTH_TOKEN is a
+      # documented fallback for when the npmjs.com trusted-publisher UI setup has
+      # not been completed — set the NPM_TOKEN repo secret to use it.
       - name: Publish to npm
         run: npm publish --access public ${NPM_OTP:+--otp="$NPM_OTP"}
         env:
