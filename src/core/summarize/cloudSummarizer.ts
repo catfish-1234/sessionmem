@@ -36,16 +36,31 @@ export async function summarizeWithCloud(
 
   const response = await client.messages.create({
     model,
-    max_tokens: input.summaryTokenCap * 2,
+    // Cap the per-response token budget so a large summaryTokenCap cannot pass
+    // an out-of-range max_tokens to the API (which would error).
+    max_tokens: Math.min(Math.floor((input.summaryTokenCap ?? 4000) * 1.5), 8192),
     system: CLOUD_SYSTEM_PROMPT,
     messages: [{ role: "user", content: localResult.summary }],
   });
 
   // Extract text from response content blocks
-  const text = response.content
+  let text = response.content
     .filter((block): block is Anthropic.TextBlock => block.type === "text")
     .map((block) => block.text)
     .join("\n");
+
+  // Throw on an empty response rather than storing an empty memory; the
+  // session-lifecycle retry/fallback-to-local path handles the failure.
+  if (!text || text.trim().length === 0) {
+    throw new Error("Cloud summarizer returned empty response");
+  }
+
+  // Cap cloud output to summaryTokenCap (rough token→char ratio) for parity
+  // with the local summarizer, so a verbose cloud response cannot blow past the
+  // configured budget.
+  if (input.summaryTokenCap && text.length > input.summaryTokenCap * 4) {
+    text = text.slice(0, input.summaryTokenCap * 4);
+  }
 
   return {
     summary: text,

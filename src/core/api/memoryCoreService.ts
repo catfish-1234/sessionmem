@@ -8,14 +8,20 @@ import { formatStartupInjection } from "../injection/formatStartupInjection.js";
 import { applyRedaction } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
+  countAllMemoriesByProject,
   countMemoriesBySession,
   countMemoriesOlderThan,
   deleteMemoriesOlderThan,
+  deleteMemoryById,
+  getMemoryOwnerProjectId,
+  getMemoryRecordById,
   incrementAccessCounts,
   insertMemory,
   listMemoriesByProject,
   resetAccessCounts,
   updateMemoryContent,
+  upsertImportedMemory,
+  upsertPulledMemory,
   upsertSessionSummaryMemory,
 } from "../storage/memoryRepo.js";
 import {
@@ -26,7 +32,7 @@ import {
   resolvePolicySettings,
 } from "../config/policyConfig.js";
 import { insertMemoryFeedbackEvent } from "../storage/memoryFeedbackRepo.js";
-import { insertSessionEvent } from "../storage/sessionEventsRepo.js";
+import { countAllSessionEvents, insertSessionEvent } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
   batchStoreMemoryItemSchema,
@@ -38,6 +44,7 @@ import {
   importMemoriesRequestSchema,
   pullMemoriesRequestSchema,
   ingestSessionEventsRequestSchema,
+  LIST_MEMORIES_DEFAULT_LIMIT,
   listMemoriesRequestSchema,
   pruneMemoriesRequestSchema,
   redactExistingRequestSchema,
@@ -136,6 +143,28 @@ type MethodResult<M extends MemoryCoreMethod> =
   | MemoryCoreResponse<M>
   | ErrorResponseEnvelope;
 
+// Maximum content length serialized into an MCP retrieve response. The full
+// content remains in the DB; this only caps what is returned to the tool caller
+// so a large result set cannot overflow the agent context (100 rows × 10k chars
+// ≈ 1MB JSON).
+const RETRIEVE_CONTENT_MAX_LENGTH = 2000;
+
+/**
+ * Clamp an imported/pulled timestamp to server time. A record carrying a future
+ * createdAt/updatedAt would otherwise be immune to retention pruning (its age
+ * never crosses the cutoff), so any value past `serverNow` is pulled back to it.
+ */
+function clampDateToNow(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const epochMs = Date.parse(date);
+  if (isNaN(epochMs)) return null; // invalid date → discard
+  const nowMs = Date.now();
+  // Parse to epoch (handles timezone offsets correctly), clamp future dates to
+  // now, and normalize to a canonical UTC ISO string (no timezone offset) so
+  // lexicographic comparison in the retention prune stays consistent.
+  return new Date(Math.min(epochMs, nowMs)).toISOString();
+}
+
 function toMemoryDto(record: MemoryRecord): MemoryDto {
   return {
     id: record.id,
@@ -143,10 +172,10 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
     sessionId: record.session_id,
     sourceAdapter: record.source_adapter,
     kind: record.kind,
-    content: record.content,
-    normalizedContent: record.normalized_content,
+    content: record.content.slice(0, RETRIEVE_CONTENT_MAX_LENGTH),
+    normalizedContent: record.normalized_content?.slice(0, RETRIEVE_CONTENT_MAX_LENGTH) ?? null,
     importance: record.importance,
-    embedding: record.embedding,
+    embedding: null,
     embeddingDim: record.embedding_dim,
     embeddingVersion: record.embedding_version,
     author: record.author,
@@ -159,6 +188,22 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
   };
 }
 
+/**
+ * Export/sync DTO: preserves FULL content and normalized_content, unlike
+ * toMemoryDto which caps both at RETRIEVE_CONTENT_MAX_LENGTH (2000) to bound MCP
+ * tool responses against context overflow. Export and team-push must round-trip
+ * losslessly — importMemories/pullMemories re-embed from the exported `content`,
+ * so truncating here would permanently lose any memory body over 2000 chars
+ * (stored content can be up to MAX_CONTENT_LENGTH = 10000) on re-import.
+ */
+function toExportMemoryDto(record: MemoryRecord): MemoryDto {
+  return {
+    ...toMemoryDto(record),
+    content: record.content,
+    normalizedContent: record.normalized_content,
+  };
+}
+
 function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemoryDto {
   return {
     id: record.id,
@@ -166,8 +211,10 @@ function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemory
     sessionId: record.session_id,
     sourceAdapter: record.source_adapter,
     kind: record.kind,
-    content: record.content,
-    normalizedContent: record.normalized_content,
+    // Cap content for the MCP tool response to prevent context overflow; the
+    // full content stays in the DB and is reachable via getMemory.
+    content: record.content.slice(0, RETRIEVE_CONTENT_MAX_LENGTH),
+    normalizedContent: record.normalized_content?.slice(0, RETRIEVE_CONTENT_MAX_LENGTH) ?? null,
     importance: record.importance,
     embedding: null,
     embeddingDim: record.embedding_dim,
@@ -182,28 +229,6 @@ function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemory
     semantic: record.semantic,
     score: record.score,
   };
-}
-
-function getMemoryById(
-  db: Database,
-  projectId: string,
-  memoryId: string,
-): MemoryRecord | undefined {
-  const row = db
-    .prepare(
-      `
-      SELECT
-        id, project_id, session_id, source_adapter, kind, content, normalized_content,
-        importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-        access_count, last_accessed, created_at, updated_at
-      FROM memories
-      WHERE project_id = ? AND id = ?
-      LIMIT 1
-    `,
-    )
-    .get(projectId, memoryId) as MemoryRecord | undefined;
-
-  return row;
 }
 
 function parseRequest<T>(schema: ZodType<T>, request: unknown): T {
@@ -264,27 +289,53 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     async ingestSessionEvents(request) {
       const parsed = parseRequest(ingestSessionEventsRequestSchema, request);
 
-      for (const event of parsed.events) {
-        insertSessionEvent(db, {
-          id: event.id,
-          project_id: parsed.projectId,
-          session_id: parsed.sessionId,
-          event_index: event.eventIndex,
-          event_type: event.eventType,
-          payload_json: event.payloadJson,
-          created_at: event.createdAt,
-        });
-      }
+      // Wrap the whole batch in a single transaction so a mid-loop failure rolls
+      // back every insert (no partial ingestion). Inserts use INSERT OR IGNORE
+      // on the (project_id, session_id, event_index) UNIQUE index, so the count
+      // reflects rows actually written and re-ingestion is a no-op.
+      // Redact each event's payload_json before persisting so secrets in tool
+      // inputs/outputs never reach storage — same write-path guarantee as
+      // storeMemory. Events carry no explicit redactionEnabled flag, so resolve
+      // it from the policy config.
+      const redactionEnabled = resolveRedactionEnabled(undefined);
+      const ingest = db.transaction(() => {
+        let written = 0;
+        for (const event of parsed.events) {
+          const redactedPayload = applyRedaction(event.payloadJson, {
+            redactionEnabled,
+          }).text;
+          written += insertSessionEvent(db, {
+            id: event.id,
+            project_id: parsed.projectId,
+            session_id: parsed.sessionId,
+            event_index: event.eventIndex,
+            event_type: event.eventType,
+            payload_json: redactedPayload,
+            created_at: event.createdAt,
+          });
+        }
+        return written;
+      });
+
+      const ingested = ingest();
 
       return {
         ok: true,
-        ingested: parsed.events.length,
+        ingested,
       };
     },
 
     async summarizeSessionToMemory(request) {
       const parsed = parseRequest(summarizeSessionToMemoryRequestSchema, request);
-      const embedding = deterministicEmbed(parsed.summary, dimension);
+
+      // Redact before embedding/persisting so secrets in the summary text never
+      // reach storage and the embedding is computed on the redacted text — same
+      // write-path guarantee as storeMemory. The request carries no explicit
+      // redactionEnabled flag, so resolve it from the policy config.
+      const redaction = applyRedaction(parsed.summary, {
+        redactionEnabled: resolveRedactionEnabled(undefined),
+      });
+      const embedding = deterministicEmbed(redaction.text, dimension);
 
       upsertSessionSummaryMemory(db, {
         id: parsed.memoryId,
@@ -292,7 +343,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         session_id: parsed.sessionId,
         source_adapter: parsed.sourceAdapter,
         kind: "summary",
-        content: parsed.summary,
+        content: redaction.text,
         normalized_content: embedding.normalizedText,
         importance: parsed.importance,
         embedding: JSON.stringify(embedding.vector),
@@ -328,7 +379,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // already accumulated SESSION_WRITE_SOFT_LIMIT memories so the agent
       // gets feedback to stop storing excessively. The write still proceeds.
       const warningCodes = [...redaction.warningCodes];
-      const sessionCount = countMemoriesBySession(db, parsed.sessionId);
+      const sessionCount = countMemoriesBySession(db, parsed.sessionId, parsed.projectId);
       if (sessionCount >= SESSION_WRITE_SOFT_LIMIT) {
         warningCodes.push("session_write_limit_warning");
       }
@@ -351,14 +402,20 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         origin_project_id: null,
       });
 
-      const inserted = getMemoryById(db, parsed.projectId, parsed.memoryId);
+      const inserted = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
       if (!inserted) {
         throw new DomainError("INTERNAL", "Memory insert did not persist");
       }
 
       return {
         ok: true,
-        memory: toMemoryDto(inserted),
+        // Single-record write echo-back: return the FULL stored body (uncapped),
+        // mirroring getMemory's single-record read. A store response carries one
+        // row bounded by MAX_CONTENT_LENGTH (10000), so it cannot overflow the
+        // agent context the way a multi-row list can, and the caller may want to
+        // verify the actual persisted (post-redaction) content. Contrast with
+        // batchStoreMemory below, which keeps the cap because it returns many rows.
+        memory: toExportMemoryDto(inserted),
         warningCodes,
       };
     },
@@ -374,9 +431,16 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         limit,
       });
 
-      if (ranked.length > 0) {
+      if (ranked.length > 0 && parsed.mode !== "on-demand") {
+        // Only boost access counts for startup injection (mode='auto'), not for
+        // explicit on-demand retrieval, so a mid-session lookup does not inflate
+        // recall-frequency ranking.
         incrementAccessCounts(db, parsed.projectId, ranked.map((m) => m.id));
       }
+
+      // Honor a user-configured injectionCap when present; otherwise
+      // formatStartupInjection falls back to its built-in default cap.
+      const injectionCap = readPolicyConfig(policyConfigPath).injectionCap;
 
       return {
         ok: true,
@@ -384,24 +448,30 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         total: ranked.length,
         startupInjection: formatStartupInjection(ranked, {
           localUsername: localAuthor,
+          tokenCap: injectionCap,
         }),
       };
     },
 
     async listMemories(request) {
       const parsed = parseRequest(listMemoriesRequestSchema, request);
-      const memories = listMemoriesByProject(db, parsed.projectId);
+      const all = listMemoriesByProject(db, parsed.projectId);
+      // Rows arrive ordered by updated_at DESC, so slicing keeps the most
+      // recently touched memories. `total` reports the full count; a shorter
+      // `memories` array signals the caller that the list was truncated.
+      const limit = parsed.limit ?? LIST_MEMORIES_DEFAULT_LIMIT;
+      const memories = all.slice(0, limit);
 
       return {
         ok: true,
         memories: memories.map(toMemoryDto),
-        total: memories.length,
+        total: all.length,
       };
     },
 
     async getMemory(request) {
       const parsed = parseRequest(getMemoryRequestSchema, request);
-      const memory = getMemoryById(db, parsed.projectId, parsed.memoryId);
+      const memory = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
 
       if (!memory) {
         throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
@@ -409,7 +479,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       return {
         ok: true,
-        memory: toMemoryDto(memory),
+        memory: toExportMemoryDto(memory),
       };
     },
 
@@ -418,13 +488,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       // Capture the memory's importance before deletion so we can record
       // it in the feedback table as an analytics signal.
-      const existing = getMemoryById(db, parsed.projectId, parsed.memoryId);
+      const existing = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
 
-      const result = db
-        .prepare("DELETE FROM memories WHERE project_id = ? AND id = ?")
-        .run(parsed.projectId, parsed.memoryId);
+      const deleted = deleteMemoryById(db, parsed.projectId, parsed.memoryId);
 
-      if (result.changes === 0) {
+      if (deleted === 0) {
         throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
       }
 
@@ -449,50 +517,18 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       return {
         ok: true,
-        memories: memories.map(toMemoryDto),
+        memories: memories.map(toExportMemoryDto),
       };
     },
 
     async importMemories(request) {
       const parsed = parseRequest(importMemoriesRequestSchema, request);
 
-      const stmt = db.prepare(`
-        INSERT INTO memories (
-          id, project_id, session_id, source_adapter, kind, content, normalized_content,
-          importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-          created_at, updated_at
-        ) VALUES (
-          @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
-          @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
-          COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-          COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-        )
-        ON CONFLICT(id) DO UPDATE SET
-          project_id = excluded.project_id,
-          session_id = excluded.session_id,
-          source_adapter = excluded.source_adapter,
-          kind = excluded.kind,
-          content = excluded.content,
-          normalized_content = excluded.normalized_content,
-          importance = excluded.importance,
-          embedding = excluded.embedding,
-          embedding_dim = excluded.embedding_dim,
-          embedding_version = excluded.embedding_version,
-          author = excluded.author,
-          origin_project_id = excluded.origin_project_id,
-          created_at = excluded.created_at,
-          updated_at = excluded.updated_at
-      `);
-
-      // `id` is a globally-unique PRIMARY KEY (not scoped by
-      // project_id). The upsert above reassigns `project_id = excluded.project_id`
-      // on conflict, which would let an imported record silently overwrite and
-      // relocate another project's memory if its `id` happens to collide.
-      // Look up existing ownership per id and skip (rather than upsert) any
-      // record whose id already belongs to a *different* project.
-      const ownerStmt = db.prepare(
-        "SELECT project_id FROM memories WHERE id = ?",
-      );
+      // The upsert (upsertImportedMemory) reassigns project_id on ON CONFLICT(id).
+      // Because `id` is a globally-unique PRIMARY KEY (not scoped by project_id),
+      // a colliding id owned by a *different* project would otherwise be silently
+      // overwritten and relocated. getMemoryOwnerProjectId resolves ownership per
+      // id so we skip those rather than upsert them.
 
       // Aggregate redaction warnings across all imported records. A
       // Set de-duplicates the redaction_partial_failure code so the envelope
@@ -504,59 +540,71 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
       let imported = 0;
       let skippedCrossProject = 0;
+      let skippedExisting = 0;
 
-      for (const memory of parsed.memories) {
-        const owner = ownerStmt.get(memory.id) as
-          | { project_id: string }
-          | undefined;
-        if (owner && owner.project_id !== parsed.projectId) {
-          // Another project already owns this id: skip rather than overwrite
-          // and reassign ownership via ON CONFLICT(id).
-          skippedCrossProject += 1;
-          continue;
+      // Wrap the whole batch in a single transaction so a mid-loop failure rolls
+      // back every upsert (no partial import).
+      const runImport = db.transaction(() => {
+        for (const memory of parsed.memories) {
+          const ownerProjectId = getMemoryOwnerProjectId(db, memory.id);
+          if (ownerProjectId !== undefined) {
+            if (ownerProjectId !== parsed.projectId) {
+              // Another project already owns this id: skip rather than overwrite
+              // and reassign ownership via ON CONFLICT(id).
+              skippedCrossProject += 1;
+            } else {
+              // This project already owns this id: skip rather than overwrite the
+              // existing memory's content/timestamps. Only brand-new ids import.
+              skippedExisting += 1;
+            }
+            continue;
+          }
+
+          // Redact each record before embedding/upsert so secrets never persist
+          // and the embedding reflects the redacted text.
+          const redaction = applyRedaction(memory.content, {
+            redactionEnabled: effectiveRedactionEnabled,
+          });
+          for (const code of redaction.warningCodes) {
+            warningCodeSet.add(code);
+          }
+
+          const embedding = deterministicEmbed(redaction.text, dimension);
+          upsertImportedMemory(db, {
+            id: memory.id,
+            project_id: parsed.projectId,
+            session_id: memory.sessionId,
+            source_adapter: memory.sourceAdapter,
+            kind: memory.kind,
+            content: redaction.text,
+            normalized_content: embedding.normalizedText,
+            importance: memory.importance,
+            embedding: JSON.stringify(embedding.vector),
+            embedding_dim: embedding.dimension,
+            embedding_version: embedding.embeddingVersion,
+            // Plain import (not a team pull): preserve an incoming author when
+            // the export carried one, else stamp the local username so the row
+            // is never left with an empty author. origin_project_id is carried
+            // through when present, else null for locally-originating rows.
+            author:
+              memory.author && memory.author.trim() !== ""
+                ? memory.author
+                : localAuthor,
+            origin_project_id: memory.originProjectId ?? null,
+            created_at: clampDateToNow(memory.createdAt) ?? undefined,
+            updated_at: clampDateToNow(memory.updatedAt) ?? undefined,
+          });
+          imported += 1;
         }
+      });
 
-        // Redact each record before embedding/upsert so secrets never persist
-        // and the embedding reflects the redacted text.
-        const redaction = applyRedaction(memory.content, {
-          redactionEnabled: effectiveRedactionEnabled,
-        });
-        for (const code of redaction.warningCodes) {
-          warningCodeSet.add(code);
-        }
-
-        const embedding = deterministicEmbed(redaction.text, dimension);
-        stmt.run({
-          id: memory.id,
-          project_id: parsed.projectId,
-          session_id: memory.sessionId,
-          source_adapter: memory.sourceAdapter,
-          kind: memory.kind,
-          content: redaction.text,
-          normalized_content: embedding.normalizedText,
-          importance: memory.importance,
-          embedding: JSON.stringify(embedding.vector),
-          embedding_dim: embedding.dimension,
-          embedding_version: embedding.embeddingVersion,
-          // Plain import (not a team pull): preserve an incoming author when the
-          // export carried one, else stamp the local username so the row is
-          // never left with an empty author. origin_project_id is carried
-          // through when present, else null for locally-originating rows.
-          author:
-            memory.author && memory.author.trim() !== ""
-              ? memory.author
-              : localAuthor,
-          origin_project_id: memory.originProjectId ?? null,
-          created_at: memory.createdAt,
-          updated_at: memory.updatedAt,
-        });
-        imported += 1;
-      }
+      runImport();
 
       return {
         ok: true,
         imported,
         skippedCrossProject,
+        skippedExisting,
         warningCodes: [...warningCodeSet],
       };
     },
@@ -567,47 +615,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // Structural twin of importMemories with three team-pull changes:
       //  - importance uses MAX(local, incoming) so a teammate can never lower a
       //    locally-boosted importance (last-write-wins on content but
-      //    importance-preserving).
+      //    importance-preserving). upsertPulledMemory carries that merge.
       //  - author/origin_project_id are stamped from the incoming record's
       //    provenance so pulled rows carry the teammate's identity and
       //    their source project_id.
       //  - cross-project id collisions are skipped, exactly as import.
-      const stmt = db.prepare(`
-        INSERT INTO memories (
-          id, project_id, session_id, source_adapter, kind, content, normalized_content,
-          importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-          created_at, updated_at
-        ) VALUES (
-          @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
-          @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
-          COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-          COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-        )
-        ON CONFLICT(id) DO UPDATE SET
-          project_id = excluded.project_id,
-          session_id = excluded.session_id,
-          source_adapter = excluded.source_adapter,
-          kind = excluded.kind,
-          content = excluded.content,
-          normalized_content = excluded.normalized_content,
-          -- Importance-preserving merge. better-sqlite3@12 bundles a
-          -- SQLite that accepts the two-arg scalar MAX() inside DO UPDATE; the
-          -- pull-merge importance-preserve test verifies both directions.
-          importance = MAX(memories.importance, excluded.importance),
-          embedding = excluded.embedding,
-          embedding_dim = excluded.embedding_dim,
-          embedding_version = excluded.embedding_version,
-          author = excluded.author,
-          origin_project_id = excluded.origin_project_id,
-          created_at = excluded.created_at,
-          updated_at = excluded.updated_at
-      `);
-
-      // Same cross-project ownership skip as importMemories. A colliding
-      // id owned by a different project is skipped, never overwritten/relocated.
-      const ownerStmt = db.prepare(
-        "SELECT project_id FROM memories WHERE id = ?",
-      );
 
       const warningCodeSet = new Set<string>();
       const effectiveRedactionEnabled = resolveRedactionEnabled(
@@ -618,65 +630,69 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       let pulledUpdated = 0;
       let skippedCrossProject = 0;
 
-      for (const memory of parsed.memories) {
-        const owner = ownerStmt.get(memory.id) as
-          | { project_id: string }
-          | undefined;
-        if (owner && owner.project_id !== parsed.projectId) {
-          skippedCrossProject += 1;
-          continue;
+      // Wrap the whole batch in a single transaction so a mid-loop failure rolls
+      // back every upsert (no partial pull).
+      const runPull = db.transaction(() => {
+        for (const memory of parsed.memories) {
+          const ownerProjectId = getMemoryOwnerProjectId(db, memory.id);
+          if (ownerProjectId !== undefined && ownerProjectId !== parsed.projectId) {
+            skippedCrossProject += 1;
+            continue;
+          }
+
+          // An id already owned by THIS project is an update; otherwise a
+          // brand-new insert. Snapshotting per-id keeps the count correct even
+          // when the same id appears across multiple teammate files.
+          const isUpdate = ownerProjectId !== undefined;
+
+          // Re-run redaction on every pulled record regardless of the
+          // teammate's redaction setting (4th write path), then re-embed the
+          // redacted text so secrets never persist and the embedding matches.
+          const redaction = applyRedaction(memory.content, {
+            redactionEnabled: effectiveRedactionEnabled,
+          });
+          for (const code of redaction.warningCodes) {
+            warningCodeSet.add(code);
+          }
+
+          const embedding = deterministicEmbed(redaction.text, dimension);
+          upsertPulledMemory(db, {
+            id: memory.id,
+            // LOCAL project_id so merged rows are retrievable in the pulling
+            // user's project (Open Q4).
+            project_id: parsed.projectId,
+            session_id: memory.sessionId,
+            source_adapter: memory.sourceAdapter,
+            kind: memory.kind,
+            content: redaction.text,
+            normalized_content: embedding.normalizedText,
+            importance: memory.importance,
+            embedding: JSON.stringify(embedding.vector),
+            embedding_dim: embedding.dimension,
+            embedding_version: embedding.embeddingVersion,
+            // Stamp the teammate's provenance. author falls back to the
+            // local username only when the incoming record carries none.
+            author:
+              memory.author && memory.author.trim() !== ""
+                ? memory.author
+                : localAuthor,
+            // origin_project_id records the record's source-machine project_id:
+            // its explicit originProjectId if present, else the record's own
+            // incoming projectId (Open Q4).
+            origin_project_id: memory.originProjectId ?? memory.projectId,
+            created_at: clampDateToNow(memory.createdAt) ?? undefined,
+            updated_at: clampDateToNow(memory.updatedAt) ?? undefined,
+          });
+
+          if (isUpdate) {
+            pulledUpdated += 1;
+          } else {
+            pulledNew += 1;
+          }
         }
+      });
 
-        // An id already owned by THIS project is an update; otherwise a
-        // brand-new insert. Snapshotting per-id via ownerStmt keeps the count
-        // correct even when the same id appears across multiple teammate files.
-        const isUpdate = owner !== undefined;
-
-        // Re-run redaction on every pulled record regardless of the
-        // teammate's redaction setting (4th write path), then re-embed the
-        // redacted text so secrets never persist and the embedding matches.
-        const redaction = applyRedaction(memory.content, {
-          redactionEnabled: effectiveRedactionEnabled,
-        });
-        for (const code of redaction.warningCodes) {
-          warningCodeSet.add(code);
-        }
-
-        const embedding = deterministicEmbed(redaction.text, dimension);
-        stmt.run({
-          id: memory.id,
-          // LOCAL project_id so merged rows are retrievable in the pulling
-          // user's project (Open Q4).
-          project_id: parsed.projectId,
-          session_id: memory.sessionId,
-          source_adapter: memory.sourceAdapter,
-          kind: memory.kind,
-          content: redaction.text,
-          normalized_content: embedding.normalizedText,
-          importance: memory.importance,
-          embedding: JSON.stringify(embedding.vector),
-          embedding_dim: embedding.dimension,
-          embedding_version: embedding.embeddingVersion,
-          // Stamp the teammate's provenance. author falls back to the
-          // local username only when the incoming record carries none.
-          author:
-            memory.author && memory.author.trim() !== ""
-              ? memory.author
-              : localAuthor,
-          // origin_project_id records the record's source-machine project_id:
-          // its explicit originProjectId if present, else the record's own
-          // incoming projectId (Open Q4).
-          origin_project_id: memory.originProjectId ?? memory.projectId,
-          created_at: memory.createdAt,
-          updated_at: memory.updatedAt,
-        });
-
-        if (isUpdate) {
-          pulledUpdated += 1;
-        } else {
-          pulledNew += 1;
-        }
-      }
+      runPull();
 
       return {
         ok: true,
@@ -747,8 +763,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         );
 
         if (parsed.apply) {
-          // Recompute the embedding-normalized text on the redacted content so
-          // the stored normalized_content stays consistent with the scrub.
+          // Recompute the embedding on the redacted content so BOTH the stored
+          // normalized_content AND the embedding vector track the scrub. Without
+          // re-embedding, the vector would remain a hash of the pre-redaction
+          // (secret-bearing) text — inconsistent with normalized_content and
+          // still ranking against the un-redacted body in semantic retrieval,
+          // defeating the purpose of the scrub.
           const embedding = deterministicEmbed(redaction.text, dimension);
           // A single row that was deleted concurrently between the
           // initial listMemoriesByProject snapshot and this update would
@@ -764,6 +784,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
               memory.id,
               redaction.text,
               embedding.normalizedText,
+              {
+                vector: embedding.vector,
+                dimension: embedding.dimension,
+                embeddingVersion: embedding.embeddingVersion,
+              },
             );
             updated += 1;
           } catch {
@@ -784,6 +809,15 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async batchStoreMemory(request) {
       const parsed = parseRequest(batchStoreMemoryRequestSchema, request);
+
+      const uniqueSessions = new Set(parsed.memories.map((m) => m.sessionId));
+      const sessionOverLimit = new Set<string>();
+      for (const sid of uniqueSessions) {
+        const count = countMemoriesBySession(db, sid, parsed.projectId);
+        if (count >= SESSION_WRITE_SOFT_LIMIT) {
+          sessionOverLimit.add(sid);
+        }
+      }
 
       interface BatchResult {
         memoryId: string;
@@ -831,39 +865,73 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       if (validatedItems.length > 0) {
         const runTransaction = db.transaction(() => {
           for (const { item } of validatedItems) {
-            const redaction = applyRedaction(item.content, {
-              redactionEnabled: resolveRedactionEnabled(item.redactionEnabled),
-            });
-            const embedding = deterministicEmbed(redaction.text, dimension);
+            // Each insert is guarded individually so a duplicate-id (or other
+            // constraint) collision fails only that item instead of aborting the
+            // whole batch. A SQLite constraint violation rolls back only the
+            // current statement, not the surrounding transaction, so the loop can
+            // continue and the transaction still commits the successful inserts.
+            try {
+              const redaction = applyRedaction(item.content, {
+                redactionEnabled: resolveRedactionEnabled(item.redactionEnabled),
+              });
+              const embedding = deterministicEmbed(redaction.text, dimension);
 
-            insertMemory(db, {
-              id: item.memoryId,
-              project_id: parsed.projectId,
-              session_id: item.sessionId,
-              source_adapter: item.sourceAdapter,
-              kind: item.kind,
-              content: redaction.text,
-              normalized_content: embedding.normalizedText,
-              importance: item.importance,
-              embedding: JSON.stringify(embedding.vector),
-              embedding_dim: embedding.dimension,
-              embedding_version: embedding.embeddingVersion,
-              author: localAuthor,
-              origin_project_id: null,
-            });
+              insertMemory(db, {
+                id: item.memoryId,
+                project_id: parsed.projectId,
+                session_id: item.sessionId,
+                source_adapter: item.sourceAdapter,
+                kind: item.kind,
+                content: redaction.text,
+                normalized_content: embedding.normalizedText,
+                importance: item.importance,
+                embedding: JSON.stringify(embedding.vector),
+                embedding_dim: embedding.dimension,
+                embedding_version: embedding.embeddingVersion,
+                author: localAuthor,
+                origin_project_id: null,
+              });
 
-            const inserted = getMemoryById(db, parsed.projectId, item.memoryId);
-            if (!inserted) {
-              throw new DomainError("INTERNAL", `Memory insert did not persist: ${item.memoryId}`);
+              const inserted = getMemoryRecordById(db, parsed.projectId, item.memoryId);
+              if (!inserted) {
+                throw new DomainError("INTERNAL", `Memory insert did not persist: ${item.memoryId}`);
+              }
+
+              const itemWarningCodes = [...redaction.warningCodes];
+              if (sessionOverLimit.has(item.sessionId)) {
+                itemWarningCodes.push("session_write_limit_warning");
+              }
+
+              results.push({
+                memoryId: item.memoryId,
+                ok: true,
+                // Capped echo-back (unlike single-record storeMemory): a batch
+                // returns up to MAX_BATCH_SIZE rows, so returning full content per
+                // row could overflow the agent context (parallel to listMemories).
+                // The caller already holds each original body; full content stays
+                // in the DB and is reachable via getMemory.
+                memory: toMemoryDto(inserted),
+                warningCodes: itemWarningCodes,
+              });
+              stored += 1;
+            } catch (err) {
+              const code = (err as { code?: string }).code ?? "";
+              const message = err instanceof Error ? err.message : String(err);
+              const isConstraint =
+                code.startsWith("SQLITE_CONSTRAINT") ||
+                /constraint failed/i.test(message);
+              if (!isConstraint) {
+                // Unexpected (non-constraint) failure — abort the whole
+                // transaction so we don't silently commit a corrupt partial batch.
+                throw err;
+              }
+              results.push({
+                memoryId: item.memoryId,
+                ok: false,
+                error: "duplicate id",
+              });
+              failed += 1;
             }
-
-            results.push({
-              memoryId: item.memoryId,
-              ok: true,
-              memory: toMemoryDto(inserted),
-              warningCodes: redaction.warningCodes,
-            });
-            stored += 1;
           }
         });
 
@@ -892,17 +960,13 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async stats(request) {
       const parsed = parseRequest(statsRequestSchema, request);
-      const memoryCount = db
-        .prepare("SELECT COUNT(*) AS count FROM memories WHERE project_id = ?")
-        .get(parsed.projectId) as { count: number };
-      const sessionEventCount = db
-        .prepare("SELECT COUNT(*) AS count FROM session_events WHERE project_id = ?")
-        .get(parsed.projectId) as { count: number };
+      const totalMemories = countAllMemoriesByProject(db, parsed.projectId);
+      const totalSessionEvents = countAllSessionEvents(db, parsed.projectId);
 
       return {
         ok: true,
-        totalMemories: memoryCount.count,
-        totalSessionEvents: sessionEventCount.count,
+        totalMemories,
+        totalSessionEvents,
       };
     },
 

@@ -4,6 +4,31 @@ import { countTokens, trimLowestPriorityContent } from "./tokenBudget.js";
 
 const DEFAULT_TOKEN_CAP = 450;
 const HEADER = "Relevant prior context";
+// At most this many preserved (critical-warning) entries may bypass trimming.
+// Critical warnings rarely need more, and an unbounded count would let
+// preserved entries dominate the injection block past the token cap.
+const MAX_PRESERVED = 5;
+
+// Strip control characters and hard-cap per-entry content before it is rendered
+// into the injection block. Prevents a single memory from breaking out of the
+// block (newlines/control chars) or dominating it (length). The full content
+// remains retrievable via retrieveMemories — this only affects startup display.
+const safeContent = (content: string) =>
+  // eslint-disable-next-line no-control-regex -- intentional control-char strip
+  content.replace(/[\n\r\x00-\x08\x0e-\x1f\x7f]/g, " ").slice(0, 500);
+
+// Sanitize source_adapter before it is rendered verbatim onto the metadata
+// line. Like `author`, a malformed row could otherwise smuggle newlines/control
+// chars (and thus a prompt-injection payload) into the injection block.
+const safeSourceAdapter = (s: string | null | undefined) =>
+  // eslint-disable-next-line no-control-regex -- intentional control-char strip
+  (s ?? "").replace(/[\n\r\x00-\x08\x0e-\x1f\x7f]/g, "").slice(0, 100);
+// Allow-list of known kinds. Any unrecognized kind renders as "memory" so a
+// malformed row cannot inject arbitrary text into the rendered `[kind]` label.
+const KNOWN_KINDS = new Set(["fact", "decision", "preference", "warning", "summary", "memory", "context"]);
+function safeKind(kind: string): string {
+  return KNOWN_KINDS.has(kind) ? kind : "memory";
+}
 const KIND_ORDER = ["warning", "decision", "fact", "summary", "preference"] as const;
 const KIND_RANK = new Map(KIND_ORDER.map((kind, index) => [kind, index]));
 
@@ -67,7 +92,12 @@ function authorPrefix(
     localUsername &&
     memory.author !== localUsername
   ) {
-    return `${memory.author}: `;
+    // Defense in depth: even though `author` is constrained at the contract
+    // boundary, strip any control characters before rendering so a malformed
+    // row cannot break out of the injection block.
+    // eslint-disable-next-line no-control-regex -- intentional control-char strip
+    const safeAuthor = memory.author.replace(/[\n\r\x00-\x1f\x7f]/g, "");
+    return `${safeAuthor}: `;
   }
 
   return "";
@@ -79,8 +109,8 @@ function formatLine(entry: IncludedMemory, localUsername?: string): string {
   const prefix = authorPrefix(memory, localUsername);
 
   return [
-    `- [${memory.kind}] ${prefix}${entry.content}`,
-    `(score total=${formatScore(score.total)}, semantic=${formatScore(score.raw.semantic)}, recency=${formatScore(score.raw.recency)}, importance=${formatScore(score.raw.importance)}; source=${memory.source_adapter}; date=${memory.updated_at})`,
+    `- [${safeKind(memory.kind)}] ${prefix}${safeContent(entry.content)}`,
+    `(score total=${formatScore(score.total)}, semantic=${formatScore(score.raw.semantic)}, recency=${formatScore(score.raw.recency)}, importance=${formatScore(score.raw.importance)}; source=${safeSourceAdapter(memory.source_adapter)}; date=${memory.updated_at})`,
   ].join(" ");
 }
 
@@ -117,12 +147,27 @@ export function formatStartupInjection(
 ): string {
   const tokenCap = options.tokenCap ?? DEFAULT_TOKEN_CAP;
   const localUsername = options.localUsername;
-  let included = sortMemories(rankedMemories).map((memory) => ({
-    memory,
-    content: memory.content,
-    priority: KIND_ORDER.length - kindRank(memory.kind),
-    preserve: isCriticalWarning(memory),
-  }));
+  // Cap how many entries may be marked `preserve`. Excess critical warnings
+  // beyond MAX_PRESERVED become droppable so they cannot bypass the trim/drop
+  // loop and blow past the token cap. Sorting first keeps the highest-ranked
+  // warnings preserved.
+  let preservedCount = 0;
+  let included = sortMemories(rankedMemories).map((memory) => {
+    let preserve = isCriticalWarning(memory);
+    if (preserve) {
+      if (preservedCount >= MAX_PRESERVED) {
+        preserve = false;
+      } else {
+        preservedCount += 1;
+      }
+    }
+    return {
+      memory,
+      content: memory.content,
+      priority: KIND_ORDER.length - kindRank(memory.kind),
+      preserve,
+    };
+  });
   let output = render(included, localUsername);
 
   while (included.length > 0 && countTokens(output) > tokenCap) {

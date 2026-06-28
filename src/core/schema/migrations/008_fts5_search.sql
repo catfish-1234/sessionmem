@@ -8,9 +8,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
   content_rowid='rowid'
 );
 
--- Populate FTS index from existing rows
+-- Populate FTS index from existing rows. Guard against double-backfill: if this
+-- migration is re-run on a DB that already has FTS data (e.g. after the
+-- _migrations record was lost), re-inserting every row would duplicate the
+-- index entries. Only backfill when the FTS table is empty.
 INSERT INTO memories_fts(rowid, content, normalized_content)
-  SELECT rowid, content, normalized_content FROM memories;
+  SELECT rowid, content, normalized_content FROM memories
+  WHERE NOT EXISTS (SELECT 1 FROM memories_fts LIMIT 1);
 
 -- Keep FTS index in sync: INSERT trigger
 CREATE TRIGGER IF NOT EXISTS memories_fts_insert AFTER INSERT ON memories BEGIN

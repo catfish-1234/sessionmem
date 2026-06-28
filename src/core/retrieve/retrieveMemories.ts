@@ -7,7 +7,6 @@ import {
   type ScoreBreakdown,
 } from "./score.js";
 import {
-  searchMemoryCandidates,
   searchMemoryCandidatesFTS,
   type MemorySearchCandidate,
 } from "../storage/memorySearchRepo.js";
@@ -94,11 +93,9 @@ export function retrieveMemories(
   const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
 
-  // Use FTS5 pre-filtering when a semantic query is present to limit
-  // cosine similarity computation to ~50 candidates instead of all.
-  const candidates = queryText
-    ? searchMemoryCandidatesFTS(input.db, input.projectId, queryText)
-    : searchMemoryCandidates(input.db, input.projectId);
+  // Use FTS5 pre-filtering to limit cosine similarity computation to ~50 candidates.
+  // queryText is guaranteed non-empty by the Zod schema (z.string().min(1)) upstream.
+  const candidates = searchMemoryCandidatesFTS(input.db, input.projectId, queryText);
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
@@ -106,10 +103,15 @@ export function retrieveMemories(
   const ranked = decayedCandidates
     .map((candidate) => {
       // When embedding is null (version mismatch or missing), use a neutral
-      // score of 0.5 so the memory is neither penalized nor boosted.
-      const semantic = candidate.embedding === null
-        ? 0.5
-        : cosineSimilarity(queryVector, candidate.embedding);
+      // score of 0.5 so the memory is neither penalized nor boosted. A non-null
+      // embedding whose length differs from the query vector (a stored
+      // embedding from a different dimension) is treated the same way: passing
+      // it to cosineSimilarity would return 0 and actively penalize the row.
+      const semantic =
+        candidate.embedding === null ||
+        candidate.embedding.length !== queryVector.length
+          ? 0.5
+          : cosineSimilarity(queryVector, candidate.embedding);
       const score = scoreMemoryCandidate(
         {
           semantic,

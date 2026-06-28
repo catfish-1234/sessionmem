@@ -191,6 +191,14 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
    * Hard-deletes memories older than the effective retentionDays for this
    * project. retentionDays<=0 disables pruning. Any failure is swallowed
    * so it can never block or fail summarization.
+   *
+   * IMPORTANT: retention pruning fires INDEPENDENTLY of summarization. It runs
+   * on every handleSessionEnd path — including the `skipped_disabled`
+   * (autoSummarize=false) and `skipped_threshold` (too few events) early
+   * returns — because retention is a time-based policy that must apply whether
+   * or not a summary was produced this session. It is gated only by the
+   * retentionDays config (retentionDays<=0 disables it), not by whether the
+   * lifecycle proceeded past the summarization threshold.
    */
   function runLightPrune(projectId: string): void {
     try {
