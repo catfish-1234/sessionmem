@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createMemoryCoreService } from "../../../src/core/api/memoryCoreService.js";
 import { insertMemory } from "../../../src/core/storage/memoryRepo.js";
 import { openDb } from "../../../src/core/storage/db.js";
+import { deterministicEmbed } from "../../../src/core/embed/deterministicEmbed.js";
 
 const PROJECT_ID = "project-redact-existing";
 
@@ -67,6 +68,32 @@ describe("redactExisting core operation", () => {
     });
     expect(fetched.memory.content).toContain("[REDACTED_API_KEY]");
     expect(fetched.memory.content).not.toContain("sk-abcdefghijkl");
+
+    db.close();
+  });
+
+  it("apply re-embeds: the stored vector tracks the redacted text, not the secret", async () => {
+    const db = openDb();
+    const service = createMemoryCoreService({ db });
+    seedRaw(db, "secret-1", "key sk-abcdefghijkl");
+
+    const before = db
+      .prepare("SELECT embedding FROM memories WHERE id = ?")
+      .get("secret-1") as { embedding: string | null };
+
+    await service.call("redactExisting", { projectId: PROJECT_ID, apply: true });
+
+    const after = db
+      .prepare("SELECT embedding, content FROM memories WHERE id = ?")
+      .get("secret-1") as { embedding: string | null; content: string };
+
+    // The embedding must change (it was a hash of the pre-redaction body) and
+    // must now equal a fresh embedding of the redacted content — i.e. it tracks
+    // the scrubbed text rather than the original secret.
+    expect(after.content).not.toContain("sk-abcdefghijkl");
+    expect(after.embedding).not.toBe(before.embedding);
+    const expected = deterministicEmbed(after.content, 32);
+    expect(after.embedding).toBe(JSON.stringify(expected.vector));
 
     db.close();
   });

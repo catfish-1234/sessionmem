@@ -30,11 +30,20 @@ function withEnv(
 const CLEAR_ALL = {
   ANTIGRAVITY_APP_DATA_DIR: undefined,
   ANTIGRAVITY_SESSION_ID: undefined,
-  CLAUDE_CODE_SESSION: undefined,
+  // Real Claude Code env vars (the process running these tests may itself be a
+  // Claude Code session, so they must be cleared for the other-host cases).
+  CLAUDECODE: undefined,
+  CLAUDE_CODE_ENTRYPOINT: undefined,
+  CLAUDE_CODE_SESSION_ID: undefined,
   TERM_PROGRAM: undefined,
   CURSOR_APP_VERSION: undefined,
+  CURSOR_AGENT: undefined,
+  CURSOR_CLI: undefined,
+  CURSOR_TRACE_ID: undefined,
   CLINE_SESSION_ID: undefined,
   CODEX_SESSION_ID: undefined,
+  CODEX_HOME: undefined,
+  OPENAI_CODEX: undefined,
   QCODER_SESSION: undefined,
 };
 
@@ -53,50 +62,60 @@ describe("AdapterFactory.detectAdapter", () => {
     });
   });
 
-  it("returns ClaudeCodeAdapter when CLAUDE_CODE_SESSION is set", () => {
-    withEnv({ ...CLEAR_ALL, CLAUDE_CODE_SESSION: "1" }, () => {
+  it("returns ClaudeCodeAdapter when CLAUDECODE is 1", () => {
+    withEnv({ ...CLEAR_ALL, CLAUDECODE: "1" }, () => {
       const adapter = AdapterFactory.detectAdapter();
       expect(adapter.name).toBe("Claude Code");
     });
   });
 
-  it("returns ClaudeCodeAdapter when TERM_PROGRAM is claude-code", () => {
-    withEnv({ ...CLEAR_ALL, TERM_PROGRAM: "claude-code" }, () => {
+  it("returns ClaudeCodeAdapter when CLAUDE_CODE_ENTRYPOINT is set", () => {
+    withEnv({ ...CLEAR_ALL, CLAUDE_CODE_ENTRYPOINT: "cli" }, () => {
       const adapter = AdapterFactory.detectAdapter();
       expect(adapter.name).toBe("Claude Code");
     });
   });
 
-  it("returns CursorAdapter when CURSOR_APP_VERSION is set", () => {
-    withEnv({ ...CLEAR_ALL, CURSOR_APP_VERSION: "0.46.0" }, () => {
+  it("returns ClaudeCodeAdapter when CLAUDE_CODE_SESSION_ID is set (with VSCode TERM_PROGRAM)", () => {
+    withEnv(
+      { ...CLEAR_ALL, CLAUDE_CODE_SESSION_ID: "abc", TERM_PROGRAM: "vscode" },
+      () => {
+        const adapter = AdapterFactory.detectAdapter();
+        expect(adapter.name).toBe("Claude Code");
+      },
+    );
+  });
+
+  it("returns CursorAdapter when CURSOR_AGENT is set", () => {
+    withEnv({ ...CLEAR_ALL, CURSOR_AGENT: "1" }, () => {
       const adapter = AdapterFactory.detectAdapter();
       expect(adapter.name).toBe("Cursor");
     });
   });
 
-  it("returns CursorAdapter when TERM_PROGRAM is Cursor", () => {
-    withEnv({ ...CLEAR_ALL, TERM_PROGRAM: "Cursor" }, () => {
+  it("returns CursorAdapter when CURSOR_TRACE_ID is set", () => {
+    withEnv({ ...CLEAR_ALL, CURSOR_TRACE_ID: "trace-abc" }, () => {
       const adapter = AdapterFactory.detectAdapter();
       expect(adapter.name).toBe("Cursor");
     });
   });
 
-  it("returns WindsurfAdapter when TERM_PROGRAM is Windsurf", () => {
+  it("does NOT auto-detect Windsurf (VS Code fork, no unique env var)", () => {
     withEnv({ ...CLEAR_ALL, TERM_PROGRAM: "Windsurf" }, () => {
       const adapter = AdapterFactory.detectAdapter();
-      expect(adapter.name).toBe("Windsurf");
+      expect(adapter.name).toBe("Generic MCP");
     });
   });
 
-  it("returns ClineAdapter when CLINE_SESSION_ID is set", () => {
+  it("does NOT auto-detect Cline (VS Code extension, no env var)", () => {
     withEnv({ ...CLEAR_ALL, CLINE_SESSION_ID: "cline-123" }, () => {
       const adapter = AdapterFactory.detectAdapter();
-      expect(adapter.name).toBe("Cline");
+      expect(adapter.name).toBe("Generic MCP");
     });
   });
 
-  it("returns CodexAdapter when CODEX_SESSION_ID is set", () => {
-    withEnv({ ...CLEAR_ALL, CODEX_SESSION_ID: "codex-123" }, () => {
+  it("returns CodexAdapter when CODEX_HOME is set", () => {
+    withEnv({ ...CLEAR_ALL, CODEX_HOME: "/home/.codex" }, () => {
       const adapter = AdapterFactory.detectAdapter();
       expect(adapter.name).toBe("Codex");
     });
@@ -118,12 +137,22 @@ describe("AdapterFactory.detectAdapter", () => {
 
   it("Antigravity takes priority over Claude Code when both set", () => {
     withEnv(
-      { ...CLEAR_ALL, ANTIGRAVITY_SESSION_ID: "a", CLAUDE_CODE_SESSION: "b" },
+      { ...CLEAR_ALL, ANTIGRAVITY_SESSION_ID: "a", CLAUDECODE: "1" },
       () => {
         const adapter = AdapterFactory.detectAdapter();
         expect(adapter.name).toBe("Antigravity");
       },
     );
+  });
+
+  it("resolves an explicit adapter name via forName", () => {
+    expect(AdapterFactory.forName("claude-code").name).toBe("Claude Code");
+    expect(AdapterFactory.forName("cursor").name).toBe("Cursor");
+    expect(AdapterFactory.forName("generic").name).toBe("Generic MCP");
+  });
+
+  it("throws on an unknown adapter name", () => {
+    expect(() => AdapterFactory.forName("nope")).toThrow(/Unknown adapter/);
   });
 
   it("detected adapter implements startMcpServer", () => {

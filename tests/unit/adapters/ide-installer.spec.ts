@@ -19,6 +19,35 @@ describe("IDEInstaller.parseJsonc", () => {
     const parsed = IDEInstaller.parseJsonc(jsonc);
     expect((parsed.arr as number[]).length).toBe(3);
   });
+
+  it("preserves a URL inside a string value (does not treat // as a comment)", () => {
+    // FIX-05 regression guard: a naive // comment strip truncates URLs at the
+    // `//`. The state machine must keep the full URL intact.
+    const jsonc = `{ "url": "https://example.com/path" }`;
+    const parsed = IDEInstaller.parseJsonc(jsonc);
+    expect(parsed).toEqual({ url: "https://example.com/path" });
+  });
+
+  it("preserves a URL while still stripping a real trailing comment", () => {
+    const jsonc = `{\n  "url": "https://example.com/a//b" // trailing comment\n}`;
+    const parsed = IDEInstaller.parseJsonc(jsonc);
+    expect(parsed).toEqual({ url: "https://example.com/a//b" });
+  });
+
+  it("strips /* block comments */", () => {
+    const result = IDEInstaller.parseJsonc('{ /* comment */ "a": 1 }');
+    expect(result).toEqual({ a: 1 });
+  });
+
+  it("does not strip trailing comma inside string value", () => {
+    const result = IDEInstaller.parseJsonc('{"a":"x,]y","b":1}');
+    expect(result).toEqual({ a: "x,]y", b: 1 });
+  });
+
+  it("does not strip trailing comma inside string (obj-close variant)", () => {
+    const result = IDEInstaller.parseJsonc('{"a":"x,}y"}');
+    expect(result).toEqual({ a: "x,}y" });
+  });
 });
 
 describe("IDEInstaller.injectMcpBlock", () => {

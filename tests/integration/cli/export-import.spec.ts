@@ -95,6 +95,64 @@ describe("export/import round-trip", () => {
     }
   });
 
+  it("preserves full content over 2000 chars through export → import (no truncation)", async () => {
+    ctx = await createTestCliContext();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const outPath = makeTempFile();
+    let freshDb: ReturnType<typeof openDb> | undefined;
+
+    // Content longer than RETRIEVE_CONTENT_MAX_LENGTH (2000) but within
+    // MAX_CONTENT_LENGTH (10000). Regression guard: exportMemories must not
+    // reuse the 2000-char MCP-response cap, which would permanently truncate
+    // this body on the export → import round-trip.
+    const longContent = "decision: " + "x".repeat(5000);
+
+    try {
+      const storeRes = await ctx.service.call("storeMemory", {
+        memoryId: "long-mem-001",
+        projectId: ctx.projectId,
+        sessionId: "s-long",
+        sourceAdapter: "test",
+        kind: "decision",
+        content: longContent,
+        importance: 8,
+      });
+      expect(storeRes.ok).toBe(true);
+      if (!storeRes.ok) throw new Error("store failed");
+      // The single-record storeMemory response echoes the FULL stored body
+      // (toExportMemoryDto), not a 2000-char MCP-response slice — regression
+      // guard for the store echo-back path.
+      expect(storeRes.memory.content).toBe(longContent);
+      expect(storeRes.memory.content.length).toBeGreaterThan(2000);
+
+      await exportCommand(outPath, ctx);
+
+      // The raw export file must carry the full content, not a 2000-char slice.
+      const arr = JSON.parse(readFileSync(outPath, "utf8")) as Array<{
+        id: string;
+        content: string;
+      }>;
+      const exported = arr.find((r) => r.id === "long-mem-001");
+      expect(exported?.content).toBe(longContent);
+
+      // And the round-tripped record in a fresh DB keeps the full content.
+      freshDb = openDb();
+      const freshService = createMemoryCoreService({ db: freshDb });
+      const freshCtx = { db: freshDb, service: freshService, projectId: "test-project", dbPath: ":memory:" };
+      await importCommand(outPath, {}, freshCtx);
+
+      // Read the stored row directly: getMemory's DTO caps content at 2000 by
+      // design, so assert against the DB to confirm the full body persisted.
+      const row = freshDb
+        .prepare("SELECT content FROM memories WHERE id = ?")
+        .get("long-mem-001") as { content: string } | undefined;
+      expect(row?.content).toBe(longContent);
+    } finally {
+      if (existsSync(outPath)) unlinkSync(outPath);
+      freshDb?.close();
+    }
+  });
+
   it("importCommand without --merge skips duplicate IDs and prints correct counts", async () => {
     ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -122,7 +180,7 @@ describe("export/import round-trip", () => {
     }
   });
 
-  it("importCommand with --merge overwrites existing memories via upsert", async () => {
+  it("importCommand with --merge does NOT overwrite existing same-project memories (skipped)", async () => {
     ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const outPath = makeTempFile();
@@ -147,14 +205,15 @@ describe("export/import round-trip", () => {
       const logCalls = logSpy.mock.calls.map((c) => c.join(" "));
       expect(logCalls.some((msg) => msg.includes("Imported (merged)"))).toBe(true);
 
-      // Verify the record was overwritten with importance 3
+      // Security: existing same-project ids are skipped, not overwritten, so the
+      // record retains its original importance (7), not the modified 3.
       const getResult = await ctx.service.call("getMemory", {
         projectId: ctx.projectId,
         memoryId: "test-mem-001",
       });
       expect(getResult.ok).toBe(true);
       if (getResult.ok) {
-        expect(getResult.memory.importance).toBe(3);
+        expect(getResult.memory.importance).toBe(7);
       }
 
       if (existsSync(modifiedPath)) unlinkSync(modifiedPath);

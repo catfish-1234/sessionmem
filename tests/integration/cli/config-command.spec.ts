@@ -100,6 +100,45 @@ describe("config get/set commands", () => {
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
+  it("set injectionCap 600 then get prints 600", () => {
+    const path = freshPath();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    configSetCommand("injectionCap", "600", { configPath: path });
+    configGetCommand("injectionCap", { configPath: path });
+
+    const logs = logSpy.mock.calls.map((c) => c.join(" "));
+    expect(logs.some((m) => m.trim() === "600")).toBe(true);
+  });
+
+  it("set injectionCap 50 is rejected (below min 100) and exits 1 without writing", () => {
+    const path = freshPath();
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation((_code?: number) => {
+        throw new Error("process.exit called");
+      });
+
+    expect(() =>
+      configSetCommand("injectionCap", "50", { configPath: path }),
+    ).toThrow("process.exit called");
+
+    expect(existsSync(path)).toBe(false);
+    expect(errSpy).toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("get of injectionCap when unset prints (not set)", () => {
+    const path = freshPath();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    configGetCommand("injectionCap", { configPath: path });
+
+    const logs = logSpy.mock.calls.map((c) => c.join(" "));
+    expect(logs.some((m) => m.trim() === "(not set)")).toBe(true);
+  });
+
   it("set with an invalid value type errors and exits 1 without writing", () => {
     const path = freshPath();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});

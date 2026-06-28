@@ -78,6 +78,20 @@ describe("policyConfig", () => {
       });
       expect((cfg as Record<string, unknown>).somethingElse).toBeUndefined();
     });
+
+    it("salvages valid fields when one field is invalid", () => {
+      const path = join(dir, "config.json");
+      // injectionCap 50 is below the min of 100, so it must be dropped while the
+      // valid retentionDays is preserved (lenient salvage path).
+      writeFileSync(
+        path,
+        JSON.stringify({ retentionDays: 30, injectionCap: 50 }),
+        "utf8",
+      );
+      const cfg = readPolicyConfig(path);
+      expect(cfg.retentionDays).toBe(30); // preserved
+      expect(cfg.injectionCap).toBeUndefined(); // bad value dropped
+    });
   });
 
   describe("team config section", () => {
