@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { tmpdir } from "os";
+import { join } from "path";
+import { writeFileSync, rmSync } from "fs";
 import { savingsCommand } from "../../../src/cli/commands/savings.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
 import { insertSessionEvent } from "../../../src/core/storage/sessionEventsRepo.js";
@@ -6,11 +9,20 @@ import { randomUUID } from "crypto";
 
 describe("savingsCommand", () => {
   let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
+  let tmpConfigPath: string | undefined;
 
   afterEach(() => {
     vi.restoreAllMocks();
     ctx?.cleanup?.();
     ctx = undefined;
+    if (tmpConfigPath) {
+      try {
+        rmSync(tmpConfigPath, { force: true });
+      } catch {
+        /* ignore */
+      }
+      tmpConfigPath = undefined;
+    }
   });
 
   it("prints savings report with seeded data", async () => {
@@ -48,6 +60,74 @@ describe("savingsCommand", () => {
     expect(output).toContain("Tokens saved:");
     expect(output).toContain("Session injection:");
     expect(output).toContain("Overall:");
+  });
+
+  it("uses injectionCap from policy config (not the default 450)", async () => {
+    ctx = await createTestCliContext();
+
+    // Seed at least one event so sessions > 0 (avgInjectionCost is 0 otherwise).
+    insertSessionEvent(ctx.db, {
+      id: randomUUID(),
+      project_id: ctx.projectId,
+      session_id: "session-1",
+      event_index: 0,
+      event_type: "tool_use",
+      payload_json: JSON.stringify({
+        tool: "read_file",
+        content: "Some session event payload for the injectionCap test.",
+      }),
+      created_at: new Date().toISOString(),
+    });
+
+    // Write a temp policy config with a non-default injectionCap.
+    tmpConfigPath = join(tmpdir(), `sessionmem-savings-cfg-${randomUUID()}.json`);
+    writeFileSync(
+      tmpConfigPath,
+      JSON.stringify({ injectionCap: 600 }, null, 2),
+      "utf8",
+    );
+
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    // Text mode: assert the avgInjectionCost line reflects the configured 600.
+    savingsCommand(ctx, { configPath: tmpConfigPath });
+
+    const output = writeSpy.mock.calls.map((c) => c[0] as string).join("");
+    expect(output).toMatch(/Avg injection cost:\s+600 tokens\/session/);
+    expect(output).not.toContain("450 tokens/session");
+  });
+
+  it("reports the configured injectionCap in --json output", async () => {
+    ctx = await createTestCliContext();
+
+    insertSessionEvent(ctx.db, {
+      id: randomUUID(),
+      project_id: ctx.projectId,
+      session_id: "session-1",
+      event_index: 0,
+      event_type: "tool_use",
+      payload_json: JSON.stringify({ tool: "read_file", content: "payload" }),
+      created_at: new Date().toISOString(),
+    });
+
+    tmpConfigPath = join(tmpdir(), `sessionmem-savings-cfg-${randomUUID()}.json`);
+    writeFileSync(
+      tmpConfigPath,
+      JSON.stringify({ injectionCap: 600 }, null, 2),
+      "utf8",
+    );
+
+    const writeSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+
+    savingsCommand(ctx, { json: true, configPath: tmpConfigPath });
+
+    const output = writeSpy.mock.calls.map((c) => c[0] as string).join("");
+    const parsed = JSON.parse(output);
+    expect(parsed.injectionCap).toBe(600);
   });
 
   it("shows 'No session data yet' when DB is empty", async () => {

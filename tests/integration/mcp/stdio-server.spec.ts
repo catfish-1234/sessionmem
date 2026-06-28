@@ -192,6 +192,47 @@ describe("stdio MCP server (spawned dist/cli/index.js run)", () => {
         "stats",
       ]),
     );
+    // Session lifecycle tools (CRITICAL-4/5) must now be reachable over MCP.
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "ingestSessionEvents",
+        "summarizeSessionToMemory",
+        "handleSessionEnd",
+      ]),
+    );
+  });
+
+  it("round-trips ingestSessionEvents -> stats (session events become reachable)", async () => {
+    const client = startServer();
+    await handshake(client);
+
+    const ingested = await client.request("tools/call", {
+      name: "ingestSessionEvents",
+      arguments: {
+        sessionId: "mcp-events-session",
+        events: [
+          {
+            id: "mcp-evt-1",
+            eventIndex: 0,
+            eventType: "tool_use",
+            payloadJson: JSON.stringify({ tool: "read" }),
+          },
+        ],
+      },
+    });
+    expect(ingested.error).toBeUndefined();
+    expect((ingested.result as { isError?: boolean }).isError).not.toBe(true);
+
+    const stats = await client.request("tools/call", {
+      name: "stats",
+      arguments: {},
+    });
+    const statsText = (
+      stats.result as { content: { text: string }[] }
+    ).content
+      .map((c) => c.text)
+      .join("\n");
+    expect(statsText).toContain("\"totalSessionEvents\": 1");
   });
 
   it("round-trips storeMemory -> retrieveMemories through the core service", async () => {

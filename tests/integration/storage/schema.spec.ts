@@ -80,7 +80,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(8);
+    expect(countRow.count).toBe(9);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -94,6 +94,7 @@ describe("schema migrations", () => {
       "006_access_pattern_boosting.sql",
       "007_feedback_manual_delete.sql",
       "008_fts5_search.sql",
+      "009_session_events_unique.sql",
     ]);
 
     db.close();
@@ -195,6 +196,67 @@ describe("schema migrations", () => {
 
     expect(row.access_count).toBe(0);
     expect(row.last_accessed).toBeNull();
+
+    db.close();
+  });
+
+  it("migration 009 deduplicates session_events sharing a logical key", () => {
+    const dbPath = createTempDbPath();
+
+    // Simulate a pre-009 database: apply only migrations 001-008 (the index on
+    // (project_id, session_id, event_index) is NON-unique there) by pointing the
+    // runner at a temp dir holding only those files.
+    const baseMigrationsDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "sessionmem-mig009-"),
+    );
+    tempDirs.push(baseMigrationsDir);
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const sourceMigrationsDir = path.resolve(
+      here,
+      "../../../src/core/schema/migrations",
+    );
+    for (const name of [
+      "001_initial.sql",
+      "002_indexes.sql",
+      "003_summarization_failures.sql",
+      "004_memory_feedback.sql",
+      "005_team_provenance.sql",
+      "006_access_pattern_boosting.sql",
+      "007_feedback_manual_delete.sql",
+      "008_fts5_search.sql",
+    ]) {
+      fs.copyFileSync(
+        path.join(sourceMigrationsDir, name),
+        path.join(baseMigrationsDir, name),
+      );
+    }
+
+    const legacyDb = openDb({ dbPath, migrationsDir: baseMigrationsDir });
+    // Two rows with the SAME (project_id, session_id, event_index) but different
+    // ids — only possible before the 009 UNIQUE index existed.
+    legacyDb
+      .prepare(
+        `INSERT INTO session_events (
+          id, project_id, session_id, event_index, event_type, payload_json
+        ) VALUES
+          ('evt-1', 'proj-a', 'sess-1', 0, 'tool_use', '{"a":1}'),
+          ('evt-2', 'proj-a', 'sess-1', 0, 'tool_use', '{"a":2}')`,
+      )
+      .run();
+    legacyDb.close();
+
+    // Re-open with the full migration set (now including 009): must not throw,
+    // and exactly one row for the logical key must survive (smallest rowid).
+    const db = openDb({ dbPath });
+
+    const rows = db
+      .prepare(
+        "SELECT id FROM session_events WHERE project_id = 'proj-a' AND session_id = 'sess-1' AND event_index = 0",
+      )
+      .all() as Array<{ id: string }>;
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe("evt-1");
 
     db.close();
   });

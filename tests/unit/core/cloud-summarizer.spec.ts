@@ -56,7 +56,7 @@ describe("summarizeWithCloud", () => {
     // Verify messages.create was called with correct params
     expect(mockCreate).toHaveBeenCalledWith({
       model: DEFAULT_SUMMARIZER_MODEL,
-      max_tokens: 600, // summaryTokenCap * 2
+      max_tokens: 450, // min(floor(summaryTokenCap * 1.5), 8192)
       system: expect.stringContaining("memory compressor"),
       messages: [{ role: "user", content: "local preprocessed summary text" }],
     });
@@ -93,7 +93,7 @@ describe("summarizeWithCloud", () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "claude-opus-4-20250514",
-        max_tokens: 400,
+        max_tokens: 300, // min(floor(summaryTokenCap * 1.5), 8192)
       }),
     );
   });

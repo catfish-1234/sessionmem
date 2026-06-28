@@ -202,4 +202,70 @@ describe("importMemories redaction", () => {
 
     db.close();
   });
+
+  it("rolls back the whole batch when one record is invalid (atomicity)", async () => {
+    const db = openDb();
+    const service = createMemoryCoreService({ db });
+
+    // Record 1 is valid; record 2 has importance 99 which fails validation.
+    // The whole import must be rejected and NO rows from the batch committed.
+    const result = await service.call("importMemories", {
+      projectId: PROJECT_ID,
+      memories: [
+        {
+          id: "atomic-1",
+          projectId: PROJECT_ID,
+          sessionId: "session-1",
+          sourceAdapter: "codex",
+          kind: "fact",
+          content: "first record",
+          importance: 5,
+        },
+        {
+          id: "atomic-2",
+          projectId: PROJECT_ID,
+          sessionId: "session-1",
+          sourceAdapter: "codex",
+          kind: "fact",
+          content: "second record",
+          importance: 99,
+        },
+      ],
+    } as never);
+
+    expect(result.ok).toBe(false);
+
+    const list = await service.listMemories({ projectId: PROJECT_ID });
+    expect(list.memories.find((m) => m.id === "atomic-1")).toBeUndefined();
+    expect(list.memories.find((m) => m.id === "atomic-2")).toBeUndefined();
+
+    db.close();
+  });
+});
+
+describe("summarizeSessionToMemory redaction", () => {
+  it("redacts secrets in caller-supplied summary", async () => {
+    const db = openDb();
+    const service = createMemoryCoreService({ db });
+
+    const result = await service.summarizeSessionToMemory({
+      memoryId: "redact-test",
+      projectId: PROJECT_ID,
+      sessionId: "session-summary",
+      sourceAdapter: "codex",
+      summary: "The api key was sk-abcdefghijklmnopqrstuvwx",
+      importance: 7,
+    });
+
+    expect(result.ok).toBe(true);
+
+    const mem = await service.getMemory({
+      projectId: PROJECT_ID,
+      memoryId: "redact-test",
+    });
+    expect(mem.memory.content).not.toContain("sk-abcdef");
+    expect(mem.memory.content).toContain("[REDACTED");
+
+    db.close();
+  });
 });
