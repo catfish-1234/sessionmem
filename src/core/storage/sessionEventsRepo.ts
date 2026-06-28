@@ -7,6 +7,7 @@ import type {
 interface SessionEventsRepoStatements {
   insertEvent: Statement;
   listBySession: Statement;
+  countAll: Statement;
 }
 
 const sessionEventsStmtCache = new WeakMap<Database, SessionEventsRepoStatements>();
@@ -16,8 +17,11 @@ function getSessionEventsStatements(db: Database): SessionEventsRepoStatements {
   if (stmts) return stmts;
 
   stmts = {
+    // INSERT OR IGNORE so re-ingesting an event with the same logical key
+    // (project_id, session_id, event_index) — now a UNIQUE index, migration 009
+    // — is a no-op rather than a duplicate row or a PK error.
     insertEvent: db.prepare(`
-    INSERT INTO session_events (
+    INSERT OR IGNORE INTO session_events (
       id, project_id, session_id, event_index, event_type, payload_json, created_at
     ) VALUES (
       @id, @project_id, @session_id, @event_index, @event_type, @payload_json,
@@ -30,17 +34,28 @@ function getSessionEventsStatements(db: Database): SessionEventsRepoStatements {
     WHERE project_id = ? AND session_id = ?
     ORDER BY event_index ASC
   `),
+    countAll: db.prepare("SELECT COUNT(*) AS count FROM session_events WHERE project_id = ?"),
   };
 
   sessionEventsStmtCache.set(db, stmts);
   return stmts;
 }
 
+/**
+ * Insert a session event. Returns the number of rows written (1, or 0 when the
+ * (project_id, session_id, event_index) key already exists and the insert was
+ * ignored).
+ */
 export function insertSessionEvent(
   db: Database,
   input: InsertSessionEventInput,
-): void {
-  getSessionEventsStatements(db).insertEvent.run(input);
+): number {
+  return getSessionEventsStatements(db).insertEvent.run(input).changes;
+}
+
+export function countAllSessionEvents(db: Database, projectId: string): number {
+  const row = getSessionEventsStatements(db).countAll.get(projectId) as { count: number };
+  return row.count;
 }
 
 export function listSessionEventsBySession(

@@ -1,10 +1,66 @@
 import { z } from "zod";
 import type { DomainErrorCode } from "./errors.js";
 
+/**
+ * Canonical memory-kind taxonomy. This is the single source of truth — the
+ * storeMemory tool description, CLAUDE.md guidance block, and
+ * formatStartupInjection's KIND_ORDER all use exactly this set. The legacy
+ * `architecture` kind is mapped onto `decision` (it was never recognized by the
+ * formatter and scored at the bottom).
+ */
+export const MEMORY_KINDS = [
+  "decision",
+  "fact",
+  "warning",
+  "preference",
+  "summary",
+] as const;
+
+export type MemoryKind = (typeof MEMORY_KINDS)[number];
+
+/**
+ * Validate `kind` against {@link MEMORY_KINDS}, transparently mapping the legacy
+ * `architecture` value to `decision` so older callers/exports keep working.
+ */
+const memoryKindSchema = z.preprocess(
+  (value) => (value === "architecture" ? "decision" : value),
+  z.enum(MEMORY_KINDS),
+);
+
+/** Upper bound on stored memory content length (characters). */
+export const MAX_CONTENT_LENGTH = 10000;
+
+/** Maximum number of items accepted in a single batchStoreMemory call. */
+export const MAX_BATCH_SIZE = 100;
+
+/** Maximum number of records accepted in a single import/pull call. */
+export const MAX_IMPORT_SIZE = 1000;
+
+/**
+ * Maximum number of session events accepted in a single ingestSessionEvents
+ * call. Each event's payloadJson is capped at 50000 chars, so this bounds a
+ * single ingest request at ~25MB worst-case (500 × 50KB) rather than leaving
+ * the array unbounded — an agent looping ingestion could otherwise build a
+ * multi-MB JSON-RPC message that OOMs or times out the MCP stdio transport.
+ * Callers that need to ingest more than this should chunk across calls (the
+ * (project_id, session_id, event_index) UNIQUE index makes re-ingestion a
+ * no-op, so chunks never double-count).
+ */
+export const MAX_INGEST_EVENTS = 500;
+
+/**
+ * Default cap on the number of memories returned by listMemories when the caller
+ * omits an explicit `limit`. Bounds the MCP stdio response size for large
+ * projects; `total` still reports the full row count. Exported so the service
+ * layer and tests share a single source of truth — a change here is caught by
+ * the list-memories limit test rather than silently drifting.
+ */
+export const LIST_MEMORIES_DEFAULT_LIMIT = 200;
+
 export const memorySchema = z.object({
   id: z.string().min(1),
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
+  sessionId: z.string().min(1).max(200),
   sourceAdapter: z.string().min(1),
   kind: z.string().min(1),
   content: z.string().min(1),
@@ -21,25 +77,44 @@ export const memorySchema = z.object({
 });
 
 export const ingestSessionEventSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).max(200),
   eventIndex: z.number().int().nonnegative(),
-  eventType: z.string().min(1),
-  payloadJson: z.string().min(1),
+  eventType: z.string().min(1).max(100),
+  payloadJson: z
+    .string()
+    .min(1)
+    .max(50000)
+    .refine(
+      (v) => {
+        try {
+          JSON.parse(v);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "must be valid JSON" },
+    ),
   createdAt: z.string().min(1).optional(),
 });
 
 export const ingestSessionEventsRequestSchema = z.object({
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
-  events: z.array(ingestSessionEventSchema).min(1),
+  sessionId: z.string().min(1).max(200),
+  events: z.array(ingestSessionEventSchema).min(1).max(MAX_INGEST_EVENTS),
 });
 
 export const summarizeSessionToMemoryRequestSchema = z.object({
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
-  sourceAdapter: z.string().min(1),
-  summary: z.string().min(1),
+  sessionId: z.string().min(1).max(200),
+  sourceAdapter: z
+    .string()
+    .min(1)
+    .max(100)
+    // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+    .regex(/^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/, "sourceAdapter must not contain control characters"),
+  summary: z.string().min(1).max(50000),
   importance: z.number().int().min(1).max(10),
 });
 
@@ -52,7 +127,7 @@ export const factModeSchema = z.enum([
 export const handleSessionEndConfigSchema = z.object({
   autoSummarize: z.boolean().default(true),
   minimumEventThreshold: z.number().int().min(1).max(100).default(3),
-  summaryTokenCap: z.number().int().min(1).default(300),
+  summaryTokenCap: z.number().int().min(1).max(200000).default(300),
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
   // setting (override > config.json > default precedence).
@@ -64,19 +139,29 @@ export const handleSessionEndConfigSchema = z.object({
 
 export const handleSessionEndRequestSchema = z.object({
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
-  sourceAdapter: z.string().min(1),
-  memoryId: z.string().min(1).optional(),
+  sessionId: z.string().min(1).max(200),
+  sourceAdapter: z
+    .string()
+    .min(1)
+    .max(100)
+    // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+    .regex(/^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/, "sourceAdapter must not contain control characters"),
+  memoryId: z.string().min(1).max(200).optional(),
   config: handleSessionEndConfigSchema.default(() => handleSessionEndConfigSchema.parse({})),
 });
 
 export const storeMemoryRequestSchema = z.object({
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
-  sourceAdapter: z.string().min(1),
-  kind: z.string().min(1),
-  content: z.string().min(1),
+  sessionId: z.string().min(1).max(200),
+  sourceAdapter: z
+    .string()
+    .min(1)
+    .max(100)
+    // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+    .regex(/^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/, "sourceAdapter must not contain control characters"),
+  kind: memoryKindSchema,
+  content: z.string().min(1).max(MAX_CONTENT_LENGTH),
   importance: z.number().int().min(1).max(10),
   // No `.default()`: omission must be distinguishable from an explicit value so
   // the service layer can fall back to the policy-config redactionEnabled
@@ -86,7 +171,7 @@ export const storeMemoryRequestSchema = z.object({
 
 export const retrieveMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
-  query: z.string().min(1),
+  query: z.string().min(1).max(1000),
   limit: z.number().int().min(1).max(100).default(20),
   mode: z.enum(["auto", "on-demand"]).default("auto"),
   depth: z.enum(["default", "deep"]).default("default"),
@@ -94,16 +179,22 @@ export const retrieveMemoriesRequestSchema = z.object({
 
 export const listMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
+  // Maximum number of memories to return. Bounds the response size so a large
+  // project (10k+ memories) cannot produce a multi-MB payload that OOMs or
+  // times out the MCP stdio client. `total` always reports the full count, so a
+  // returned array shorter than `total` signals truncation. Defaults to 200 in
+  // the service layer when omitted.
+  limit: z.number().int().positive().max(1000).optional(),
 });
 
 export const getMemoryRequestSchema = z.object({
   projectId: z.string().min(1),
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
 });
 
 export const forgetMemoryRequestSchema = z.object({
   projectId: z.string().min(1),
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
 });
 
 export const exportMemoriesRequestSchema = z.object({
@@ -111,12 +202,17 @@ export const exportMemoriesRequestSchema = z.object({
 });
 
 export const importMemoryRecordSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).max(200),
   projectId: z.string().min(1),
-  sessionId: z.string().min(1),
-  sourceAdapter: z.string().min(1),
-  kind: z.string().min(1),
-  content: z.string().min(1),
+  sessionId: z.string().min(1).max(200),
+  sourceAdapter: z
+    .string()
+    .min(1)
+    .max(100)
+    // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+    .regex(/^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/, "sourceAdapter must not contain control characters"),
+  kind: memoryKindSchema,
+  content: z.string().min(1).max(MAX_CONTENT_LENGTH),
   importance: z.number().int().min(1).max(10),
   // OPTIONAL for backward-compat with exports predating team provenance (A3):
   // older exports lack author/originProjectId, so the service stamps the local
@@ -124,10 +220,40 @@ export const importMemoryRecordSchema = z.object({
   // `originProjectId: null` (and `author: ""`) for locally-authored rows — a
   // team sync round-trips those exported snapshots verbatim, so the schema must
   // accept the null the DTO carries rather than skip-and-warn every local row.
-  author: z.string().nullable().optional(),
-  originProjectId: z.string().nullable().optional(),
-  createdAt: z.string().min(1).optional(),
-  updatedAt: z.string().min(1).optional(),
+  // `author` is rendered directly into the per-session startup injection
+  // context, so it is bounded and stripped of control characters (newlines/CR/
+  // C0/DEL) that could break out of the injection block or smuggle in
+  // prompt-injection payloads.
+  author: z
+    .string()
+    .max(200)
+    .regex(
+      // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+      /^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/,
+      "author must not contain control characters",
+    )
+    .nullable()
+    .optional(),
+  // Bounded like the other id-bearing fields (memoryId/author max 200): an
+  // import file or team-pull payload is externally-supplied, so an unbounded
+  // originProjectId would let a single record carry a multi-MB string. It is
+  // stored only (never rendered into the startup injection), so unlike `author`
+  // it needs no control-character stripping — just a length cap.
+  originProjectId: z.string().max(200).nullable().optional(),
+  createdAt: z
+    .string()
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
+      "must be UTC ISO timestamp",
+    )
+    .optional(),
+  updatedAt: z
+    .string()
+    .regex(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/,
+      "must be UTC ISO timestamp",
+    )
+    .optional(),
 });
 
 export const importMemoriesRequestSchema = z.object({
@@ -136,7 +262,7 @@ export const importMemoriesRequestSchema = z.object({
   // the service layer can fall back to the policy-config redactionEnabled
   // setting (override > config.json > default precedence).
   redactionEnabled: z.boolean().optional(),
-  memories: z.array(importMemoryRecordSchema),
+  memories: z.array(importMemoryRecordSchema).max(MAX_IMPORT_SIZE),
 });
 
 // Team pull. Mirrors importMemoriesRequestSchema — the pull
@@ -147,7 +273,7 @@ export const importMemoriesRequestSchema = z.object({
 export const pullMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
   redactionEnabled: z.boolean().optional(),
-  memories: z.array(importMemoryRecordSchema),
+  memories: z.array(importMemoryRecordSchema).max(MAX_IMPORT_SIZE),
 });
 
 export const statsRequestSchema = z.object({
@@ -264,7 +390,7 @@ export const ingestSessionEventsResponseSchema = z.object({
 
 export const summarizeSessionToMemoryResponseSchema = z.object({
   ok: z.literal(true),
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
 });
 
 export const handleSessionEndResponseSchema = z.object({
@@ -274,7 +400,7 @@ export const handleSessionEndResponseSchema = z.object({
   warningCodes: z.array(z.string()),
   warningMessages: z.array(z.string()),
   failureRecordId: z.string().min(1).optional(),
-  memoryId: z.string().min(1).optional(),
+  memoryId: z.string().min(1).max(200).optional(),
 });
 
 export const importMemoriesResponseSchema = z.object({
@@ -284,6 +410,10 @@ export const importMemoriesResponseSchema = z.object({
   // different project's memory. These are never upserted, preventing
   // cross-project overwrite/reassignment via ON CONFLICT(id).
   skippedCrossProject: z.number().int().nonnegative().default(0),
+  // Count of records skipped because their `id` already exists in THIS project.
+  // Imports never overwrite an existing same-project memory; only brand-new ids
+  // are upserted.
+  skippedExisting: z.number().int().nonnegative().default(0),
   warningCodes: z.array(z.string()),
 });
 
@@ -299,22 +429,27 @@ export const pullMemoriesResponseSchema = z.object({
 });
 
 export const batchStoreMemoryItemSchema = z.object({
-  memoryId: z.string().min(1),
-  sessionId: z.string().min(1),
-  sourceAdapter: z.string().min(1),
-  kind: z.string().min(1),
-  content: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
+  sessionId: z.string().min(1).max(200),
+  sourceAdapter: z
+    .string()
+    .min(1)
+    .max(100)
+    // eslint-disable-next-line no-control-regex -- intentionally rejects control chars
+    .regex(/^[^\n\r\x00-\x08\x0e-\x1f\x7f]*$/, "sourceAdapter must not contain control characters"),
+  kind: memoryKindSchema,
+  content: z.string().min(1).max(MAX_CONTENT_LENGTH),
   importance: z.number().int().min(1).max(10),
   redactionEnabled: z.boolean().optional(),
 });
 
 export const batchStoreMemoryRequestSchema = z.object({
   projectId: z.string().min(1),
-  memories: z.array(batchStoreMemoryItemSchema).min(1),
+  memories: z.array(batchStoreMemoryItemSchema).min(1).max(MAX_BATCH_SIZE),
 });
 
 export const batchStoreMemoryResultSchema = z.object({
-  memoryId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
   ok: z.boolean(),
   memory: memorySchema.optional(),
   warningCodes: z.array(z.string()).optional(),

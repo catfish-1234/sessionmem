@@ -31,15 +31,13 @@ export function toErrorEnvelope(error: unknown): ErrorEnvelope {
     };
   }
 
-  if (error instanceof Error) {
-    return {
-      code: "INTERNAL",
-      message: error.message,
-    };
-  }
-
+  // Don't surface internal .message (may contain fs paths) to MCP client.
+  // Log the real message to stderr; return a static string to the caller.
+  process.stderr.write(
+    `[sessionmem] internal error: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   return {
     code: "INTERNAL",
-    message: "Unexpected error",
+    message: "Internal error",
   };
 }

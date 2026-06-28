@@ -64,7 +64,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
     WHERE project_id = ?
       AND (
         importance >= 8
-        OR updated_at > datetime('now', '-90 days')
+        OR updated_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')
       )
   `),
     searchCandidatesFTS: db.prepare(`
@@ -104,6 +104,17 @@ function parseEmbedding(value: string | null): number[] | null {
   }
 }
 
+function dedupById(candidates: MemorySearchCandidate[]): MemorySearchCandidate[] {
+  // Defensive — FTS should not emit duplicates, but this guards backfill
+  // corruption (e.g. a double-run 008 migration) from inflating results.
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    if (seen.has(candidate.id)) return false;
+    seen.add(candidate.id);
+    return true;
+  });
+}
+
 function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
   return rows.map((row) => {
     const parsed = parseEmbedding(row.embedding);
@@ -139,9 +150,19 @@ function sanitizeFtsQuery(queryText: string): string {
 
 /**
  * Pre-filter candidates using FTS5 full-text search before cosine similarity.
- * Returns top-50 candidates by FTS rank. Falls back to full
- * searchMemoryCandidates when FTS returns fewer than 5 results
- * (poor keyword overlap).
+ * Returns up to FTS_CANDIDATE_LIMIT candidates.
+ *
+ * FTS keyword overlap can be sparse, so the fallback recency/importance scan is
+ * UNIONed with (never substituted for) the FTS hits:
+ *  - >= FTS_FALLBACK_THRESHOLD FTS hits: use the FTS hits as-is (well-matched).
+ *  - 0 FTS hits: use the fallback scan only.
+ *  - 1..threshold-1 FTS hits: UNION the FTS hits with the fallback scan,
+ *    deduplicated by id (FTS hits first), capped at FTS_CANDIDATE_LIMIT.
+ *
+ * The previous behavior REPLACED a small FTS hit set with the fallback scan,
+ * which silently dropped genuine matches that were old (>90d) and low-importance
+ * (<8) — exactly the rows the fallback's filter excludes — returning zero
+ * candidates for a query that matched only such rows.
  */
 export function searchMemoryCandidatesFTS(
   db: Database,
@@ -165,9 +186,25 @@ export function searchMemoryCandidatesFTS(
     return searchMemoryCandidates(db, projectId);
   }
 
-  if (rows.length < FTS_FALLBACK_THRESHOLD) {
-    return searchMemoryCandidates(db, projectId);
+  if (rows.length >= FTS_FALLBACK_THRESHOLD) {
+    return dedupById(mapRows(rows));
   }
 
-  return mapRows(rows);
+  const fallback = searchMemoryCandidates(db, projectId);
+  if (rows.length === 0) {
+    return fallback;
+  }
+
+  // UNION FTS hits (first) with the fallback scan, deduplicated by id and
+  // capped at the same total limit FTS would have returned.
+  const ftsHits = mapRows(rows);
+  const seen = new Set<string>(ftsHits.map((candidate) => candidate.id));
+  const merged = [...ftsHits];
+  for (const candidate of fallback) {
+    if (merged.length >= FTS_CANDIDATE_LIMIT) break;
+    if (seen.has(candidate.id)) continue;
+    seen.add(candidate.id);
+    merged.push(candidate);
+  }
+  return merged;
 }

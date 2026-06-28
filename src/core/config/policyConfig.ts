@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { homedir } from "os";
 import { join, dirname } from "path";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync, renameSync } from "fs";
 
 /** Lower bound of the 1-10 importance scale. */
 export const MIN_IMPORTANCE = 1;
@@ -55,8 +55,12 @@ const teamConfigShape = z
  * built-in defaults.
  */
 const policyConfigShape = {
-  retentionDays: z.number().int().default(DEFAULT_POLICY_CONFIG.retentionDays),
+  retentionDays: z.number().int().min(0).default(DEFAULT_POLICY_CONFIG.retentionDays),
   redactionEnabled: z.boolean().default(DEFAULT_POLICY_CONFIG.redactionEnabled),
+  // Optional per-session startup-injection token cap. When set, it overrides the
+  // built-in DEFAULT_INJECTION_CAP used by formatStartupInjection and the
+  // `savings` analytics. Omitted by default so existing configs keep the default.
+  injectionCap: z.number().int().min(100).max(10000).optional(),
   team: teamConfigShape.default({ enabled: false }),
 };
 
@@ -94,13 +98,30 @@ export function configFilePath(): string {
  * are merged over defaults via the schema's per-field `.default()`.
  */
 export function readPolicyConfig(filePath: string): PolicyConfig {
+  let raw: string;
+  let obj: Record<string, unknown>;
   try {
-    const raw = readFileSync(filePath, "utf8");
-    const parsed: unknown = JSON.parse(raw);
-    return policyConfigReadSchema.parse(parsed);
+    raw = readFileSync(filePath, "utf8");
+    obj = JSON.parse(raw) as Record<string, unknown>;
   } catch {
     return { ...DEFAULT_POLICY_CONFIG };
   }
+  // Fast path: strict parse succeeds (the common case).
+  const strict = policyConfigReadSchema.safeParse(obj);
+  if (strict.success) return strict.data;
+  // Lenient fallback: salvage valid individual fields so a single bad value
+  // (e.g. injectionCap: 50, below min 100) doesn't wipe out retentionDays etc.
+  const s = policyConfigShape;
+  const rd = s.retentionDays.safeParse(obj.retentionDays);
+  const re = s.redactionEnabled.safeParse(obj.redactionEnabled);
+  const ic = s.injectionCap.safeParse(obj.injectionCap);
+  const tm = s.team.safeParse(obj.team);
+  return {
+    retentionDays: rd.success ? rd.data : DEFAULT_POLICY_CONFIG.retentionDays,
+    redactionEnabled: re.success ? re.data : DEFAULT_POLICY_CONFIG.redactionEnabled,
+    injectionCap: ic.success ? ic.data : undefined,
+    team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
+  };
 }
 
 /**
@@ -123,7 +144,12 @@ export function writePolicyConfig(
   const merged = policyConfigSchema.parse({ ...current, ...validatedPartial });
 
   mkdirSync(dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
+  // Atomic write: write to a temp file then rename over the target so a crash
+  // mid-write can't leave a truncated/corrupt config. On Windows, renameSync
+  // over an existing file works (Node wraps it via MoveFileExW).
+  const tmpPath = `${filePath}.tmp`;
+  writeFileSync(tmpPath, `${JSON.stringify(merged, null, 2)}\n`, "utf8");
+  renameSync(tmpPath, filePath);
   return merged;
 }
 
