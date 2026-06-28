@@ -5,6 +5,7 @@ import { mkdirSync } from "fs";
 import type { Database } from "better-sqlite3";
 import { openDb } from "../core/storage/db.js";
 import { createMemoryCoreService } from "../core/api/memoryCoreService.js";
+import { deriveProjectId } from "./projectId.js";
 
 export interface CliContext {
   db: Database;
@@ -55,29 +56,23 @@ function safeUserInfoName(): string {
   }
 }
 
-function deriveProjectId(): string {
-  // Env override is a test-injection seam (mirrors Plan 01's override pattern):
-  // it lets a spawned binary target a deterministic projectId without touching
-  // the real ~/.sessionmem. No privilege boundary is crossed — the CLI runs as
-  // the invoking user and the env var is operator-controlled.
-  const envProjectId = process.env.SESSIONMEM_PROJECT_ID;
-  if (envProjectId && envProjectId.trim() !== "") return envProjectId;
-
-  const cwd = process.cwd();
-  const parts = cwd.replace(/\\/g, "/").split("/");
-  const raw = parts[parts.length - 1] || "default";
-  // Sanitize to a filename-safe token (mirrors localUsername) so it can be
-  // embedded in shared-path join()s without path traversal.
-  const sanitized = raw.replace(/[^A-Za-z0-9._-]/g, "_");
-  return sanitized === "" || sanitized === "." || sanitized === ".."
-    ? "default"
-    : sanitized;
+/**
+ * Expand a leading `~/` (or bare `~`) to the user's home directory. Shells do
+ * this before a value reaches the process, but env vars set programmatically or
+ * in config files are passed through verbatim, so we expand here too.
+ */
+export function expandTilde(p: string): string {
+  if (p === "~") return homedir();
+  if (p.startsWith("~/") || p.startsWith("~\\")) {
+    return join(homedir(), p.slice(2));
+  }
+  return p;
 }
 
 function defaultDbPath(dir: string): string {
   // Env override seam (see deriveProjectId). Defaults to ~/.sessionmem/memories.db.
   const envDbPath = process.env.SESSIONMEM_DB_PATH;
-  if (envDbPath && envDbPath.trim() !== "") return envDbPath;
+  if (envDbPath && envDbPath.trim() !== "") return expandTilde(envDbPath);
   // `dir` is the fixed ~/.sessionmem dir computed above, not user input.
   // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   return join(dir, "memories.db");

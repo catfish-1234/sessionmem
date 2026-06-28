@@ -6,33 +6,23 @@ import { IDEInstaller } from "./installer.js";
 export class WindsurfAdapter extends GenericMCPAdapter {
   name = "Windsurf";
 
-  capabilities = {
-    supportsPrompts: true,
-    supportsResources: true,
-    supportsTools: true,
-  };
+  // Capabilities inherited from GenericMCPAdapter (tools only).
 
+  /** Windsurf reads global rules from ~/.codeium/windsurf/memories/global_rules.md. */
+  guidanceTargets(): string[] {
+    return [
+      join(homedir(), ".codeium", "windsurf", "memories", "global_rules.md"),
+    ];
+  }
+
+  /**
+   * Windsurf reads MCP servers from `~/.codeium/windsurf/mcp_config.json` — NOT
+   * from the VS Code-style `Windsurf/User/settings.json`. Same path on every
+   * platform (mirrors the `.codeium/windsurf` root the guidance file already
+   * uses).
+   */
   private get configPath(): string {
-    const home = homedir();
-    if (process.platform === "win32") {
-      return join(
-        process.env.APPDATA ?? home,
-        "Windsurf",
-        "User",
-        "settings.json",
-      );
-    }
-    if (process.platform === "darwin") {
-      return join(
-        home,
-        "Library",
-        "Application Support",
-        "Windsurf",
-        "User",
-        "settings.json",
-      );
-    }
-    return join(home, ".config", "Windsurf", "User", "settings.json");
+    return join(homedir(), ".codeium", "windsurf", "mcp_config.json");
   }
 
   async install(): Promise<boolean> {

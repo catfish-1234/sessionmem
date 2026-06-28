@@ -7,7 +7,19 @@ export const SESSIONMEM_BLOCK_END = "<!-- sessionmem:end -->";
 const BLOCK_CONTENT = `
 ## sessionmem — Persistent Memory
 
-sessionmem is an MCP memory layer that persists context across sessions. Use its tools to store important decisions, facts, and context so they're available in future sessions without the user re-explaining.
+sessionmem is an MCP memory layer that persists context across sessions. It is installed and active via the \`sessionmem\` MCP server. Use its tools to recall prior context and to store important decisions, facts, and context so they're available in future sessions without the user re-explaining. The user should never have to ask you to do this — it is part of how you work in this project.
+
+### Startup
+On Claude Code, prior context is injected automatically at session start by the
+sessionmem \`SessionStart\` hook — you do not need to fetch it yourself. Do NOT
+call \`startup_inject_memories\` on Claude Code: the hook already provides the
+injection, so calling the tool would duplicate the context (it is not even
+registered on Claude Code for this reason). If you do NOT see a "Relevant prior
+context" block at the start of the session AND the \`startup_inject_memories\`
+tool is available (e.g. the hook is not installed, or you are on a host without
+hook support), call it once before any task work, or call \`retrieveMemories\`
+with the current task as the query. Never inject twice if context was already
+provided.
 
 ### When to store memories (storeMemory)
 - User makes an architectural or design decision
@@ -16,29 +28,35 @@ sessionmem is an MCP memory layer that persists context across sessions. Use its
 - User states a preference about how they want things done
 - A warning or pitfall is discovered that future sessions should know about
 
-### When to retrieve memories (retrieveMemories)
-- At the start of a session or task to check for relevant prior context
+### When to retrieve memories mid-session (retrieveMemories)
 - Before making architectural decisions (check if prior decisions exist)
 - When the user references something from a previous session
 - When working in an area of the codebase that may have stored warnings or decisions
+
+### At session end (RECOMMENDED — do this without being asked)
+Before the session ends, persist what was accomplished so the next session starts
+informed. Store a concise \`summary\` memory (importance 7) of the key outcomes, plus
+any new decisions, facts, or warnings. Use \`batchStoreMemory\` to write several at
+once. This is what makes context survive across sessions and saves tokens later.
 
 ### Memory kinds
 - \`decision\` — architectural or design choices (importance: 7-9)
 - \`fact\` — project constraints, conventions, patterns (importance: 5-7)
 - \`warning\` — pitfalls, gotchas, things that broke before (importance: 8-10)
 - \`preference\` — how the user likes things done (importance: 5-7)
-- \`summary\` — session summaries (auto-generated, importance: 3-5)
+- \`summary\` — session summaries (importance: 7)
 
 ### Other tools
 - \`listMemories\` — browse all stored memories for this project
 - \`getMemory\` — fetch a specific memory by ID
 - \`forgetMemory\` — delete an outdated or incorrect memory
+- \`batchStoreMemory\` — store multiple memories in one call (use at session end)
 - \`stats\` — check memory count and health
 
 ### Guidelines
 - Don't store trivial or easily re-derivable information
 - Don't retrieve memories every single turn — retrieve at task boundaries
-- Keep memory content concise (1-3 sentences)
+- Keep memory content concise (1-3 sentences) and self-contained
 - Use appropriate importance scores (see kinds above)
 `;
 
@@ -78,6 +96,36 @@ export function injectClaudeMdBlock(filePath: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Inject the sessionmem guidance block into an arbitrary host-guidance file
+ * (CLAUDE.md, AGENTS.md, Windsurf global_rules.md, a Cursor `.mdc` rule, …).
+ *
+ * The block is the same markdown for every host. The only host-specific concern
+ * is Cursor's `.mdc` rule format: a newly-created rule file needs an
+ * `alwaysApply: true` frontmatter header for Cursor to apply it on every
+ * request, so we seed that header before appending the block. Existing files
+ * (and all non-`.mdc` targets) are handled exactly like CLAUDE.md.
+ */
+export function injectGuidanceBlock(filePath: string): boolean {
+  try {
+    if (filePath.endsWith(".mdc") && !existsSync(filePath)) {
+      const dir = dirname(filePath);
+      if (!existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+      }
+      writeFileSync(
+        filePath,
+        "---\ndescription: sessionmem persistent memory guidance\nalwaysApply: true\n---\n",
+        "utf8",
+      );
+    }
+  } catch {
+    // Best-effort frontmatter seeding; fall through to block injection which
+    // creates the file itself if the seeding failed.
+  }
+  return injectClaudeMdBlock(filePath);
 }
 
 export function removeClaudeMdBlock(filePath: string): boolean {

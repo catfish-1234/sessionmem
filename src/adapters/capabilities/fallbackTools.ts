@@ -23,7 +23,7 @@ export class FallbackToolRegistrar {
           "WHEN TO CALL: At session start and mid-session when you need to retrieve context and the host does not support MCP resources. Do not call if the host supports MCP resources — use the sessionmem:// resource URI or retrieveMemories tool instead.\n\n" +
           "Parameter `query`: natural-language description of what context you need to recall (e.g. 'API design decisions', 'database schema choices').",
         inputShape: {
-          query: z.string().describe(
+          query: z.string().min(1).max(1000).describe(
             "Natural-language description of what context you need to recall."
           ),
         },
@@ -47,7 +47,7 @@ export class FallbackToolRegistrar {
         description:
           "Fallback startup-injection for hosts that do not support MCP prompts. Call this once at the very start of a session instead of relying on the automatic sessionmem startup prompt when the host lacks prompt support. Injects the top relevant memories for the current project into the working context. No parameters required.\n\n" +
           "WHEN TO CALL: Once per session start, before any user task work begins, when the host does not surface MCP prompts automatically. Do not call if the host already surfaces the sessionmem startup prompt — calling both duplicates injected context.\n\n" +
-          "Read-only; no side effects.",
+          "Note: access counts are incremented on retrieval.",
         inputShape: {},
         execute: async () => {
           const result = await context.service.call("retrieveMemories", {

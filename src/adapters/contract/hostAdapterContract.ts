@@ -25,6 +25,14 @@ export interface HostAdapterContract {
   install?(): Promise<boolean>;
   uninstall?(): Promise<boolean>;
   startMcpServer?(): Promise<void>;
+  /**
+   * Absolute paths to the host's agent-guidance file(s) (CLAUDE.md, AGENTS.md,
+   * Cursor/Windsurf/Cline rule files, …) where the sessionmem instruction block
+   * should be injected at install time so the agent automatically learns the MCP
+   * exists and how to use it. Omit (or return []) to fall back to the global
+   * Claude Code memory file.
+   */
+  guidanceTargets?(): string[];
 }
 
 export type HostAdapterContractMap = {
