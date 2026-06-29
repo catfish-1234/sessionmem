@@ -50,7 +50,7 @@ All four checks (build, test, lint, typecheck) run in CI across Ubuntu, macOS, a
 
 ```
 src/
-  core/       # Memory engine — storage, retrieval, ranking, summarization
+  core/       # Memory engine: storage, retrieval, ranking, summarization
   adapters/   # MCP adapter layer (translates between MCP protocol and core)
   cli/        # CLI commands (sessionmem install, search, etc.)
 tests/        # Vitest test suite
@@ -60,10 +60,10 @@ docs/         # Architecture, benchmarks, and feature docs
 
 ## Code conventions
 
-- **TypeScript** — strict mode, ES2022 target, NodeNext module resolution.
-- **Unused vars** — prefix with underscore (`_unused`) to satisfy the lint rule.
-- **No explicit `any` in tests** — the lint rule is relaxed in `tests/`.
-- **Comments** — only when the "why" isn't obvious. No doc-block boilerplate.
+- **TypeScript**: strict mode, ES2022 target, NodeNext module resolution.
+- **Unused vars**: prefix with underscore (`_unused`) to satisfy the lint rule.
+- **No explicit `any` in tests**: the lint rule is relaxed in `tests/`.
+- **Comments**: only when the "why" isn't obvious. No doc-block boilerplate.
 
 ## Pre-commit hooks
 
@@ -76,9 +76,9 @@ pre-commit install
 
 ## Submitting changes
 
-1. **Fork and branch** — create a feature branch from `main`.
-2. **Keep PRs focused** — one feature or fix per PR.
-3. **All checks must pass** — build, test, lint, and typecheck.
+1. **Fork and branch**: create a feature branch from `main`.
+2. **Keep PRs focused**: one feature or fix per PR.
+3. **All checks must pass**: build, test, lint, and typecheck.
 4. **Write tests** for new functionality or bug fixes.
 5. **Update docs** if your change affects user-facing behavior or CLI commands.
 
@@ -104,7 +104,7 @@ Open an issue with:
 
 ## Feature requests
 
-Open an issue describing the use case. Explain what problem you're trying to solve — not just the solution you have in mind.
+Open an issue describing the use case. Explain the problem you're trying to solve, not just the solution you have in mind.
 
 ## Security
 

@@ -33,7 +33,7 @@ If redaction cannot be applied cleanly on a write path, the response envelope ca
 
 ### Disabling redaction
 
-Setting `redactionEnabled` to `false` turns redaction off across all write paths. This is not recommended — leaving it on is the safe default.
+Setting `redactionEnabled` to `false` turns redaction off across all write paths. This is not recommended. Leaving it on is the safe default.
 
 ## Retention Policy
 
@@ -51,7 +51,7 @@ Retention pruning deletes memories older than a configurable window so the local
 
 **Automatic (session-end):** a light, non-blocking prune check runs as part of the session-end lifecycle, alongside summarization. It never blocks or delays summarization.
 
-**Manual:** run the prune command on demand. It is **dry-run by default** — nothing is deleted unless you pass `--force`:
+**Manual:** run the prune command on demand. It is dry-run by default. Nothing is deleted unless you pass `--force`:
 
 ```bash
 sessionmem retention prune
