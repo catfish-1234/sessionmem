@@ -17,7 +17,7 @@ src/core/schema/migrations/
 
 ### How migrations run
 
-At startup the migration runner ensures a `_migrations` bookkeeping table exists, lists every `.sql` file in the migrations directory in sorted order, and applies — inside a transaction — only the ones not already recorded in `_migrations`. Migrations are therefore **idempotent across runs**: applying them again is a no-op, and the schema converges forward only (there are no down-migrations).
+At startup the migration runner ensures a `_migrations` bookkeeping table exists, lists every `.sql` file in the migrations directory in sorted order, and applies (inside a transaction) only the ones not already recorded in `_migrations`. Migrations are therefore **idempotent across runs**: applying them again is a no-op, and the schema converges forward only (there are no down-migrations).
 
 ### Build-time copy: `copy-migrations`
 
@@ -35,7 +35,7 @@ At runtime the migrations directory is resolved **package-relative** (relative t
 
 `sessionmem` follows **semantic versioning** (semver): `MAJOR.MINOR.PATCH`.
 
-- **Patch / minor upgrades** are safe in place. Schema changes ship as additive, forward-only migrations that run automatically the first time the upgraded version opens your existing database — no manual step is required, and your stored memories are preserved.
+- **Patch / minor upgrades** are safe in place. Schema changes ship as additive, forward-only migrations that run automatically the first time the upgraded version opens your existing database. No manual step is required and your stored memories are preserved.
 - **Major-version upgrades** may introduce breaking changes; any required manual migration step or behavior change will be called out in the release notes for that major version.
 - **No down-migrations.** Because migrations are forward-only, downgrading to an older `sessionmem` version after a newer one has migrated your database is not supported. Before a major upgrade, run `sessionmem export` to keep a portable JSON copy of your memories you can re-import if needed.
 

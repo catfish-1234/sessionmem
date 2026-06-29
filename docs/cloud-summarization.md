@@ -17,11 +17,11 @@ If either condition is missing, execution stays local.
 
 Cloud summarization uses a two-phase pipeline:
 
-1. **Local preprocessing** -- the local summarizer runs first to extract, redact, and structure
+1. **Local preprocessing** - the local summarizer runs first to extract, redact, and structure
    session events into a compact transcript. This ensures sensitive content is redacted before
    any data leaves the machine.
 
-2. **Cloud compression** -- the preprocessed summary is sent to the Anthropic Messages API
+2. **Cloud compression** - the preprocessed summary is sent to the Anthropic Messages API
    with a system prompt tuned for memory compression. Claude returns a compact, high-signal
    list of facts, decisions, and context.
 
@@ -47,9 +47,9 @@ These signals are emitted for observability and policy verification.
 
 ## Failure Fallback Behavior
 
-Cloud summarization retries 2 times. If retries fail, pipeline falls back to local summarization automatically.
+Cloud summarization retries 2 times. If retries fail, the pipeline falls back to local summarization automatically.
 
-If fallback succeeds, warning payload includes cloud fallback indicators.
+If fallback succeeds, the warning payload includes cloud fallback indicators.
 If fallback also fails, a durable failure record is written to `summarization_failures`.
 
 ## Manual Summarization When Auto Is Disabled

@@ -1,6 +1,6 @@
 # Architecture
 
-`sessionmem` is a local-first memory layer that sits between a coding agent's MCP host and a local SQLite database. This document is a high-level conceptual map of the four subsystems and the two flows that connect them — it is intentionally not a module-by-module reference. Everything runs on your machine and is governed by `~/.sessionmem/config.json`.
+`sessionmem` is a local-first memory layer that sits between a coding agent's MCP host and a local SQLite database. This document is a high-level conceptual map of the four subsystems and the two flows that connect them. It is not a module-by-module reference. Everything runs on your machine and is governed by `~/.sessionmem/config.json`.
 
 ## Subsystems
 
@@ -30,7 +30,7 @@
 
 ### Core engine
 
-The **core engine** is the heart of the system. It owns the memory lifecycle: capturing session events, summarizing them into durable memory records at session end, ranking stored memories, and selecting which to inject. It is host-agnostic — it never talks to a specific tool directly; everything tool-specific is pushed out to the adapter layer. Retrieval scoring blends semantic similarity, recency, and importance into a single relevance score.
+The **core engine** is the heart of the system. It owns the memory lifecycle: capturing session events, summarizing them into durable memory records at session end, ranking stored memories, and selecting which to inject. It is host-agnostic. It never talks to a specific tool directly; everything tool-specific is handled by the adapter layer. Retrieval scoring blends semantic similarity, recency, and importance into a single relevance score.
 
 ### Adapters
 
@@ -42,7 +42,7 @@ The **CLI** (`sessionmem`) is the operator-facing surface. It installs the serve
 
 ### SQLite storage
 
-The **SQLite** storage subsystem persists everything locally: the `memories` table (with embeddings for vector search), raw session events, and feedback history. It uses `better-sqlite3` and a forward-only migration system (see [migration](migration.md)). There is no hosted database — the store is a single local file.
+The **SQLite** storage subsystem persists everything locally: the `memories` table (with embeddings for vector search), raw session events, and feedback history. It uses `better-sqlite3` and a forward-only migration system (see [migration](migration.md)). There is no hosted database. The store is a single local file.
 
 ## Retrieval flow
 
@@ -50,4 +50,4 @@ Retrieval answers the question "which stored memories are relevant right now?" W
 
 ## Injection flow
 
-Injection is the retrieval flow applied automatically at session start. The engine retrieves the most relevant memories, then trims them to fit a small token budget (a few hundred tokens by default) — preserving critical warnings and high-importance decisions first, dropping lower-priority content as needed — and hands the compact result to the adapter for injection into the host's context. This is what lets the agent "remember" without the user re-explaining anything.
+Injection is the retrieval flow applied automatically at session start. The engine retrieves the most relevant memories, then trims them to fit a small token budget (a few hundred tokens by default), preserving critical warnings and high-importance decisions first and dropping lower-priority content as needed. The compact result is passed to the adapter for injection into the host's context. This is what lets the agent "remember" without the user re-explaining anything.
