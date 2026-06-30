@@ -80,7 +80,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(9);
+    expect(countRow.count).toBe(11);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -95,6 +95,8 @@ describe("schema migrations", () => {
       "007_feedback_manual_delete.sql",
       "008_fts5_search.sql",
       "009_session_events_unique.sql",
+      "010_memory_tags.sql",
+      "011_memory_expiry.sql",
     ]);
 
     db.close();

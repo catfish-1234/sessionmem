@@ -5,6 +5,8 @@ import {
   IDEInstaller,
   SESSIONMEM_HOOK_COMMAND,
   SESSIONMEM_SESSION_END_HOOK_COMMAND,
+  SESSIONMEM_POST_TOOL_HOOK_COMMAND,
+  SESSIONMEM_POST_TOOL_MATCHER,
 } from "../ide/installer.js";
 
 export class ClaudeCodeAdapter extends GenericMCPAdapter {
@@ -71,7 +73,17 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
       "SessionEnd",
     );
 
-    return mcpOk && startHookOk && endHookOk;
+    // Register a PostToolUse hook so high-signal tool uses (Bash/Edit/Write/
+    // MultiEdit) are captured as session events automatically, feeding the
+    // SessionEnd auto-summarizer without the agent calling ingestSessionEvents.
+    const postToolOk = await IDEInstaller.injectClaudeHook(
+      this.settingsPath(),
+      SESSIONMEM_POST_TOOL_HOOK_COMMAND,
+      "PostToolUse",
+      SESSIONMEM_POST_TOOL_MATCHER,
+    );
+
+    return mcpOk && startHookOk && endHookOk && postToolOk;
   }
 
   async uninstall(): Promise<boolean> {
@@ -88,6 +100,11 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
       SESSIONMEM_SESSION_END_HOOK_COMMAND,
       "SessionEnd",
     );
-    return mcpOk && startOk && endOk;
+    const postToolOk = await IDEInstaller.removeClaudeHook(
+      this.settingsPath(),
+      SESSIONMEM_POST_TOOL_HOOK_COMMAND,
+      "PostToolUse",
+    );
+    return mcpOk && startOk && endOk && postToolOk;
   }
 }

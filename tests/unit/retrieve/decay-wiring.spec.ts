@@ -4,14 +4,14 @@ import { decayOldBoosts } from "../../../src/core/retrieve/decay.js";
 import { scoreMemoryCandidate } from "../../../src/core/retrieve/score.js";
 
 describe("decay wiring into scoring pipeline", () => {
-  it("memory updated 10 days ago scores lower on importance than same memory updated today", () => {
+  it("memory updated 14 days ago scores lower on importance than same memory updated today", () => {
     const now = new Date("2026-06-15T12:00:00.000Z");
 
     const memories = [
       {
         id: "old-memory",
         importance: 8,
-        updated_at: "2026-06-05T12:00:00.000Z", // 10 days ago
+        updated_at: "2026-06-01T12:00:00.000Z", // 14 days ago
       },
       {
         id: "fresh-memory",
@@ -25,7 +25,8 @@ describe("decay wiring into scoring pipeline", () => {
     const oldMemory = decayed.find((m) => m.id === "old-memory")!;
     const freshMemory = decayed.find((m) => m.id === "fresh-memory")!;
 
-    // 10 days ago exceeds the 7-day threshold, so importance decays from 8 to 7
+    // 14 days ago is one full week past the 7-day threshold, so importance
+    // decays by 1 point (smoother multi-step decay: 1pt/week, capped at -3).
     expect(oldMemory.decayedImportance).toBe(7);
     // Fresh memory stays at 8
     expect(freshMemory.decayedImportance).toBe(8);

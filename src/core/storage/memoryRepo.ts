@@ -32,10 +32,12 @@ const UPSERT_INSERT_HEAD = `
   INSERT INTO memories (
     id, project_id, session_id, source_adapter, kind, content, normalized_content,
     importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+    tags, expires_at,
     created_at, updated_at
   ) VALUES (
     @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
     @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
+    @tags, @expires_at,
     COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )
@@ -53,6 +55,8 @@ const UPSERT_INSERT_TAIL = `
     embedding_version = excluded.embedding_version,
     author = excluded.author,
     origin_project_id = excluded.origin_project_id,
+    tags = excluded.tags,
+    expires_at = excluded.expires_at,
     created_at = excluded.created_at,
     updated_at = excluded.updated_at
 `;
@@ -68,10 +72,12 @@ function getStatements(db: Database): MemoryRepoStatements {
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      tags, expires_at,
       created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
       @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
+      @tags, @expires_at,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -80,10 +86,12 @@ function getStatements(db: Database): MemoryRepoStatements {
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      tags, expires_at,
       created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, 'summary', @content, @normalized_content,
       @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
+      @tags, @expires_at,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -99,6 +107,8 @@ function getStatements(db: Database): MemoryRepoStatements {
       embedding_version = excluded.embedding_version,
       author = excluded.author,
       origin_project_id = excluded.origin_project_id,
+      tags = excluded.tags,
+      expires_at = excluded.expires_at,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ON CONFLICT(id)
     DO UPDATE SET
@@ -113,15 +123,19 @@ function getStatements(db: Database): MemoryRepoStatements {
       embedding_version = excluded.embedding_version,
       author = excluded.author,
       origin_project_id = excluded.origin_project_id,
+      tags = excluded.tags,
+      expires_at = excluded.expires_at,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   `),
     listByProject: db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+      tags, expires_at,
       access_count, last_accessed, created_at, updated_at
     FROM memories
     WHERE project_id = ?
+      AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ORDER BY updated_at DESC
   `),
     // Lightweight projection for token-savings accounting: only `content` is
@@ -145,6 +159,7 @@ function getStatements(db: Database): MemoryRepoStatements {
       SELECT
         id, project_id, session_id, source_adapter, kind, content, normalized_content,
         importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
+        tags, expires_at,
         access_count, last_accessed, created_at, updated_at
       FROM memories
       WHERE project_id = ? AND id = ?
@@ -232,6 +247,8 @@ function toParams(input: InsertMemoryInput) {
     embedding_version: input.embedding_version ?? null,
     author: input.author ?? "",
     origin_project_id: input.origin_project_id ?? null,
+    tags: input.tags ?? null,
+    expires_at: input.expires_at ?? null,
     created_at: input.created_at ?? null,
     updated_at: input.updated_at ?? null,
   };

@@ -90,6 +90,8 @@ interface MemoryDto {
   accessCount: number;
   lastAccessed: string | null;
   effectiveImportance: number;
+  tags: string[] | null;
+  expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -183,6 +185,8 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
     accessCount: record.access_count,
     lastAccessed: record.last_accessed,
     effectiveImportance: computeEffectiveImportance(record.importance, record.access_count),
+    tags: record.tags ? (JSON.parse(record.tags) as string[]) : null,
+    expiresAt: record.expires_at ?? null,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   };
@@ -224,6 +228,10 @@ function toRetrievedMemoryDto(record: RetrievedMemoryCandidate): RetrievedMemory
     accessCount: record.access_count,
     lastAccessed: null,
     effectiveImportance: computeEffectiveImportance(record.importance, record.access_count),
+    // The semantic-search candidate projection does not carry tags/expires_at;
+    // expired rows are already filtered out by the retrieval SQL.
+    tags: null,
+    expiresAt: null,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
     semantic: record.semantic,
@@ -400,6 +408,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         // because this row did not come from another project's store.
         author: localAuthor,
         origin_project_id: null,
+        tags: JSON.stringify(parsed.tags ?? null),
+        expires_at: parsed.expiresAt ?? null,
       });
 
       const inserted = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
@@ -424,12 +434,26 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const parsed = parseRequest(retrieveMemoriesRequestSchema, request);
       const limit =
         parsed.depth === "deep" ? Math.min(parsed.limit * 2, DEEP_MODE_RETRIEVAL_CAP) : parsed.limit;
-      const ranked = retrieveMemories({
+      const rankedAll = retrieveMemories({
         db,
         projectId: parsed.projectId,
         queryText: parsed.query,
         limit,
       });
+
+      // Optional tag filter: keep a memory only when its stored tags contain ALL
+      // requested tags. The semantic candidate projection omits tags, so re-read
+      // each row's tags by id (this is an explicit, infrequent filter path).
+      const ranked =
+        parsed.tags && parsed.tags.length > 0
+          ? rankedAll.filter((m) => {
+              const rec = getMemoryRecordById(db, parsed.projectId, m.id);
+              const recTags: string[] = rec?.tags
+                ? (JSON.parse(rec.tags) as string[])
+                : [];
+              return parsed.tags!.every((t) => recTags.includes(t));
+            })
+          : rankedAll;
 
       if (ranked.length > 0 && parsed.mode !== "on-demand") {
         // Only boost access counts for startup injection (mode='auto'), not for
@@ -890,6 +914,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
                 embedding_version: embedding.embeddingVersion,
                 author: localAuthor,
                 origin_project_id: null,
+                tags: JSON.stringify(item.tags ?? null),
+                expires_at: item.expiresAt ?? null,
               });
 
               const inserted = getMemoryRecordById(db, parsed.projectId, item.memoryId);

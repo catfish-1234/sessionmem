@@ -76,7 +76,7 @@ Memories you authored yourself render with **no** prefix. Legacy memories create
 
 When the same memory id exists locally and in a teammate's snapshot, `sync` resolves it as follows:
 
-- **Last-write-wins by id**: the most recent content for a given id wins.
+- **Last-write-wins by id**: the most recent content for a given id wins (last-write-wins on content).
 - **Importance is preserved when higher locally**: if your local copy has a higher importance score, that higher value is kept rather than being lowered by a teammate's snapshot.
 - **Cross-project id collisions are skipped**: a memory whose id already belongs to a different project is never overwritten; it is skipped.
 - **Pulled content is re-redacted**: secret redaction runs again on every pulled record, so a teammate's memory cannot import a secret your redaction policy would have stripped.

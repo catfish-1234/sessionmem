@@ -1,10 +1,19 @@
+// On Windows, `sessionmem` resolves to a `.cmd` shim which requires cmd.exe to
+// execute. Claude Code spawns hook commands without a shell on Windows, so a
+// bare `sessionmem …` invocation fails silently. Route through `cmd /c` —
+// mirroring the MCP server install fix in claudeCode.ts — so the shim is
+// resolved correctly. On non-Windows platforms the bare command works fine.
+const _isWindows = process.platform === "win32";
+
 /**
  * The exact command Claude Code runs at session start. Installed as a
  * `SessionStart` hook in ~/.claude/settings.json so prior memories are injected
  * into every session automatically — the deterministic counterpart to the
  * advisory `startup_inject_memories` tool (which the agent must choose to call).
  */
-export const SESSIONMEM_HOOK_COMMAND = "sessionmem session-start";
+export const SESSIONMEM_HOOK_COMMAND = _isWindows
+  ? "cmd /c sessionmem session-start"
+  : "sessionmem session-start";
 
 /**
  * The command Claude Code runs when a session ends. Installed as a `SessionEnd`
@@ -12,7 +21,22 @@ export const SESSIONMEM_HOOK_COMMAND = "sessionmem session-start";
  * of any ingested session events) runs automatically once per session, without
  * relying on the agent choosing to call a tool.
  */
-export const SESSIONMEM_SESSION_END_HOOK_COMMAND = "sessionmem session-end";
+export const SESSIONMEM_SESSION_END_HOOK_COMMAND = _isWindows
+  ? "cmd /c sessionmem session-end"
+  : "sessionmem session-end";
+
+/**
+ * The command Claude Code runs after each tool use. Installed as a `PostToolUse`
+ * hook so high-signal tool uses (Bash/Edit/Write/MultiEdit) are captured as
+ * session events automatically, giving the SessionEnd auto-summarizer material
+ * to work with without the agent choosing to call ingestSessionEvents.
+ */
+export const SESSIONMEM_POST_TOOL_HOOK_COMMAND = _isWindows
+  ? "cmd /c sessionmem ingest-hook"
+  : "sessionmem ingest-hook";
+
+/** Tool matcher for the PostToolUse auto-ingest hook. */
+export const SESSIONMEM_POST_TOOL_MATCHER = "Bash|Edit|Write|MultiEdit";
 
 /** Default Claude Code hook event for the legacy 2-arg hook helpers. */
 const DEFAULT_HOOK_EVENT = "SessionStart";
@@ -202,12 +226,15 @@ export class IDEInstaller {
    * every other key (mcpServers, other hook events, user settings). Defaults to
    * the `SessionStart` event; pass `eventName` for another event (e.g.
    * `SessionEnd`). Idempotent: re-injecting the same command on the same event
-   * never produces a duplicate entry.
+   * never produces a duplicate entry. When `matcher` is provided (e.g. for
+   * `PostToolUse`), the pushed entry carries the matcher so Claude Code scopes
+   * the hook to the matching tools.
    */
   static injectClaudeHookBlock(
     content: string,
     command: string,
     eventName: string = DEFAULT_HOOK_EVENT,
+    matcher?: string,
   ): string {
     const config: Record<string, unknown> = content.trim()
       ? this.parseJsonc(content)
@@ -223,11 +250,17 @@ export class IDEInstaller {
       : [];
 
     // Drop any pre-existing sessionmem entry so re-install stays idempotent and
-    // a stale command form is replaced rather than duplicated.
+    // a stale command form is replaced rather than duplicated. hookEntryHasCommand
+    // only inspects entry.hooks, so it dedupes correctly whether or not the entry
+    // carries a matcher.
     const filtered = eventEntries.filter(
       (entry) => !this.hookEntryHasCommand(entry, command),
     );
-    filtered.push({ hooks: [{ type: "command", command }] });
+    filtered.push(
+      matcher !== undefined
+        ? { matcher, hooks: [{ type: "command", command }] }
+        : { hooks: [{ type: "command", command }] },
+    );
 
     hooks[eventName] = filtered;
     config.hooks = hooks;
@@ -275,6 +308,7 @@ export class IDEInstaller {
     filePath: string,
     command: string,
     eventName: string = DEFAULT_HOOK_EVENT,
+    matcher?: string,
   ): Promise<boolean> {
     try {
       const { readFileSync, writeFileSync, existsSync, mkdirSync } = await import(
@@ -284,7 +318,7 @@ export class IDEInstaller {
       const existing = existsSync(filePath)
         ? readFileSync(filePath, "utf-8")
         : "{}";
-      const updated = this.injectClaudeHookBlock(existing, command, eventName);
+      const updated = this.injectClaudeHookBlock(existing, command, eventName, matcher);
       const dir = dirname(filePath);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
