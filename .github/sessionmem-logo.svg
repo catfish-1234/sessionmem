@@ -1,0 +1,57 @@
+<svg width="680" height="310" viewBox="0 0 680 310" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>sessionmem</title>
+  <desc>Catfish mascot for sessionmem -- stylized catfish with teal eye and memory circuit dots on barbels</desc>
+
+  <!-- Tail upper fork -->
+  <path d="M 248,145 C 225,125 198,106 172,88 C 190,102 214,126 248,145" fill="#0f172a"/>
+  <!-- Tail lower fork -->
+  <path d="M 248,145 C 225,165 198,184 172,202 C 190,189 214,166 248,145" fill="#0f172a"/>
+  <!-- Tail fill -->
+  <path d="M 248,145 L 190,108 L 190,182 Z" fill="#0f172a"/>
+
+  <!-- Main body -->
+  <ellipse cx="380" cy="145" rx="138" ry="82" fill="#0f172a"/>
+
+  <!-- Belly highlight -->
+  <ellipse cx="386" cy="172" rx="104" ry="46" fill="#1a3454"/>
+
+  <!-- Dorsal fin -->
+  <path d="M 338,63 C 358,28 402,22 418,63" fill="#152840"/>
+
+  <!-- Pectoral fin -->
+  <path d="M 430,222 C 450,248 468,252 454,234 C 445,220 430,222 430,222" fill="#152840"/>
+
+  <!-- Lateral line -->
+  <path d="M 265,138 Q 340,130 420,132 Q 462,132 495,140" stroke="#1e3a5f" stroke-width="1.5" fill="none"/>
+
+  <!-- Eye glow -->
+  <circle cx="470" cy="116" r="30" fill="#0d9488" opacity="0.18"/>
+  <!-- Eye -->
+  <circle cx="470" cy="116" r="22" fill="#0d9488"/>
+  <!-- Pupil -->
+  <circle cx="470" cy="116" r="11" fill="#081120"/>
+  <!-- Eye shine -->
+  <circle cx="477" cy="109" r="5" fill="#ccfbf1"/>
+
+  <!-- Barbels from mouth -->
+  <path d="M 518,131 C 540,120 558,110 566,97" stroke="#3d5270" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+  <path d="M 518,142 C 546,142 565,143 578,145" stroke="#3d5270" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+  <path d="M 518,153 C 538,167 552,183 555,198" stroke="#3d5270" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+
+  <!-- Memory circuit dots at barbel tips -->
+  <circle cx="566" cy="97" r="7" fill="#2dd4bf"/>
+  <circle cx="578" cy="145" r="7" fill="#2dd4bf"/>
+  <circle cx="555" cy="198" r="7" fill="#2dd4bf"/>
+
+  <!-- Floating memory dots -->
+  <circle cx="608" cy="90" r="5" fill="#2dd4bf" opacity="0.6"/>
+  <circle cx="632" cy="75" r="3.5" fill="#2dd4bf" opacity="0.42"/>
+  <circle cx="626" cy="118" r="4.5" fill="#2dd4bf" opacity="0.5"/>
+  <circle cx="651" cy="100" r="3" fill="#2dd4bf" opacity="0.3"/>
+
+  <!-- Wordmark -->
+  <text x="340" y="278" text-anchor="middle"
+        font-family="'Courier New', Courier, monospace"
+        font-size="42" font-weight="500" letter-spacing="-1"
+        fill="#0d9488">sessionmem</text>
+</svg>
