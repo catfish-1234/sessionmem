@@ -25,6 +25,9 @@ import {
 } from "./commands/team.js";
 import { syncCommand } from "./commands/sync.js";
 import { reEmbedCommand } from "./commands/reEmbed.js";
+import { ingestHookCommand } from "./commands/ingestHook.js";
+import { dedupeCommand } from "./commands/dedupe.js";
+import { browseCommand } from "./commands/browse.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -55,6 +58,13 @@ program
     "Run the session-end pipeline (auto-summarize ingested session events + light retention prune) for the current project (invoked automatically by the SessionEnd hook installed during `sessionmem install`)",
   )
   .action(() => sessionEndCommand());
+
+program
+  .command("ingest-hook")
+  .description(
+    "Process a Claude Code PostToolUse hook payload from stdin and store it as a session event (invoked automatically by the hook installed during `sessionmem install`)",
+  )
+  .action(() => ingestHookCommand());
 
 program
   .command("install")
@@ -214,6 +224,22 @@ program
   .command("sync")
   .description("Push local memories and pull teammate memories via the shared path")
   .action(() => syncCommand());
+
+// dedupe — find near-duplicate memories by embedding cosine similarity.
+// Dry-run by default; --apply deletes the lower-importance duplicate per pair.
+program
+  .command("dedupe")
+  .description("Find and optionally remove near-duplicate memories")
+  .option("--apply", "Delete the lower-importance duplicate in each pair (default: dry-run)")
+  .option("--threshold <n>", "Cosine similarity threshold 0-1 (default: 0.85)")
+  .action((options) => dedupeCommand({ dry: !options.apply, threshold: options.threshold }));
+
+// browse — cross-project memory viewer.
+program
+  .command("browse")
+  .description("List all projects with memories, or browse a specific project")
+  .option("--project <id>", "Show memories for a specific project ID")
+  .action((options) => browseCommand({ project: options.project }));
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err instanceof Error ? err.message : String(err));

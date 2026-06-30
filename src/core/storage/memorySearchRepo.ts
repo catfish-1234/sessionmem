@@ -62,6 +62,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
       embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = ?
+      AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
       AND (
         importance >= 8
         OR updated_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')
@@ -77,6 +78,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
     JOIN memories m ON m.rowid = memories_fts.rowid
     WHERE memories_fts MATCH ?
       AND m.project_id = ?
+      AND (m.expires_at IS NULL OR m.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ORDER BY rank
     LIMIT ?
   `),

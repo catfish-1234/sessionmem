@@ -72,6 +72,8 @@ export const memorySchema = z.object({
   accessCount: z.number().int().nonnegative(),
   lastAccessed: z.string().nullable(),
   effectiveImportance: z.number().int().min(1).max(10),
+  tags: z.array(z.string()).nullable().optional(),
+  expiresAt: z.string().nullable().optional(),
   createdAt: z.string().min(1),
   updatedAt: z.string().min(1),
 });
@@ -167,6 +169,8 @@ export const storeMemoryRequestSchema = z.object({
   // the service layer can fall back to the policy-config redactionEnabled
   // setting (override > config.json > default precedence).
   redactionEnabled: z.boolean().optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10).optional(),
+  expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/, "must be UTC ISO timestamp").optional(),
 });
 
 export const retrieveMemoriesRequestSchema = z.object({
@@ -175,6 +179,7 @@ export const retrieveMemoriesRequestSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
   mode: z.enum(["auto", "on-demand"]).default("auto"),
   depth: z.enum(["default", "deep"]).default("default"),
+  tags: z.array(z.string().min(1).max(50)).max(10).optional(),
 });
 
 export const listMemoriesRequestSchema = z.object({
@@ -441,6 +446,8 @@ export const batchStoreMemoryItemSchema = z.object({
   content: z.string().min(1).max(MAX_CONTENT_LENGTH),
   importance: z.number().int().min(1).max(10),
   redactionEnabled: z.boolean().optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10).optional(),
+  expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/, "must be UTC ISO timestamp").optional(),
 });
 
 export const batchStoreMemoryRequestSchema = z.object({

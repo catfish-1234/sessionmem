@@ -21,12 +21,23 @@ hook support), call it once before any task work, or call \`retrieveMemories\`
 with the current task as the query. Never inject twice if context was already
 provided.
 
-### When to store memories (storeMemory)
+### Session event ingestion (auto-ingest path)
+The \`PostToolUse\` hook installed by sessionmem automatically captures Bash, Edit,
+Write, and MultiEdit tool uses as session events. These are summarized by the
+\`SessionEnd\` hook into a durable memory — no manual action required. To ingest
+additional context (e.g. key decisions made mid-session that weren't captured as
+tool use), call \`ingestSessionEvents\` at task boundaries with a description of
+what was accomplished.
+
+### When to store memories explicitly (storeMemory / batchStoreMemory)
 - User makes an architectural or design decision
 - You discover a non-obvious project constraint or convention
 - A debugging session reveals an important root cause
 - User states a preference about how they want things done
 - A warning or pitfall is discovered that future sessions should know about
+
+Use \`tags\` to categorize memories for better retrieval (e.g. \`tags: ["auth", "security"]\`).
+Use \`expiresAt\` for time-limited context (e.g. a temporary workaround).
 
 ### When to retrieve memories mid-session (retrieveMemories)
 - Before making architectural decisions (check if prior decisions exist)
@@ -38,6 +49,9 @@ Before the session ends, persist what was accomplished so the next session start
 informed. Store a concise \`summary\` memory (importance 7) of the key outcomes, plus
 any new decisions, facts, or warnings. Use \`batchStoreMemory\` to write several at
 once. This is what makes context survive across sessions and saves tokens later.
+
+Note: The SessionEnd hook also auto-summarizes captured session events — you only
+need to call \`batchStoreMemory\` for decisions and facts NOT already captured.
 
 ### Memory kinds
 - \`decision\` — architectural or design choices (importance: 7-9)
@@ -51,6 +65,7 @@ once. This is what makes context survive across sessions and saves tokens later.
 - \`getMemory\` — fetch a specific memory by ID
 - \`forgetMemory\` — delete an outdated or incorrect memory
 - \`batchStoreMemory\` — store multiple memories in one call (use at session end)
+- \`ingestSessionEvents\` — push raw session events for auto-summarization
 - \`stats\` — check memory count and health
 
 ### Guidelines
@@ -58,6 +73,7 @@ once. This is what makes context survive across sessions and saves tokens later.
 - Don't retrieve memories every single turn — retrieve at task boundaries
 - Keep memory content concise (1-3 sentences) and self-contained
 - Use appropriate importance scores (see kinds above)
+- Use tags to group related memories (\`tags: ["topic"]\`)
 `;
 
 export function generateClaudeMdBlock(): string {

@@ -122,6 +122,9 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
       depth: retrieveMemoriesRequestSchema.shape.depth.describe(
         "'default' for standard semantic search. 'deep' for a broader sweep that surfaces less-similar memories — use when the topic is new or unfamiliar."
       ),
+      tags: retrieveMemoriesRequestSchema.shape.tags.describe(
+        "Optional tag filter. When provided, only return memories that have ALL listed tags."
+      ),
     },
   },
   {
@@ -154,6 +157,12 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
       ),
       redactionEnabled: storeMemoryRequestSchema.shape.redactionEnabled.describe(
         "If true, PII is stripped from content before storage. Omit to use the project-level redaction setting from config.json."
+      ),
+      tags: storeMemoryRequestSchema.shape.tags.describe(
+        "Optional array of tag strings (max 10, each max 50 chars) for categorizing this memory. Example: ['auth', 'db-schema']. Tags are filterable via retrieveMemories."
+      ),
+      expiresAt: storeMemoryRequestSchema.shape.expiresAt.describe(
+        "Optional UTC ISO timestamp (e.g. '2026-12-31T00:00:00Z') after which this memory is excluded from retrieval. Use for time-limited context like a temporary workaround."
       ),
     },
   },

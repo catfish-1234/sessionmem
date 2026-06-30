@@ -7,6 +7,12 @@ export interface DecayMemoryInput {
   updated_at: string;
 }
 
+/**
+ * Apply time-based importance decay. Memories decay by 1 point per week
+ * after the first week of inactivity, capping decay at -3 so even old
+ * memories remain discoverable (minimum effective importance = stored - 3).
+ * This produces a smoother ranking fade-out vs. the previous single -1 step.
+ */
 export function decayOldBoosts<T extends DecayMemoryInput>(
   memories: T[],
   now: Date = new Date(),
@@ -18,13 +24,14 @@ export function decayOldBoosts<T extends DecayMemoryInput>(
       0,
       (now.getTime() - updatedAt.getTime()) / DAY_IN_MS,
     );
-    const shouldDecay = Number.isFinite(ageDays) && ageDays > thresholdDays;
+    const weeksOverThreshold = Number.isFinite(ageDays) && ageDays > thresholdDays
+      ? Math.floor((ageDays - thresholdDays) / 7)
+      : 0;
+    const decayAmount = Math.min(weeksOverThreshold, 3);
 
     return {
       ...memory,
-      decayedImportance: shouldDecay
-        ? Math.max(1, memory.importance - 1)
-        : memory.importance,
+      decayedImportance: Math.max(1, memory.importance - decayAmount),
     };
   });
 }

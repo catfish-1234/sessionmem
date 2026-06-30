@@ -24,6 +24,8 @@ export interface MemoryRecord {
   origin_project_id: string | null;
   access_count: number;
   last_accessed: string | null;
+  tags?: string | null;
+  expires_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +54,8 @@ export interface InsertMemoryInput {
   embedding_version?: string | null;
   author?: string;
   origin_project_id?: string | null;
+  tags?: string | null;
+  expires_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
