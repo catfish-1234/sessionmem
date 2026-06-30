@@ -11,9 +11,25 @@
 
 **85.6% fewer tokens. Every session starts knowing your codebase. Stored entirely on your machine.**
 
-`sessionmem` is a local-first memory layer for AI coding assistants (Claude Code, Cursor, Codex, Cline, Windsurf, Antigravity, QCoder, and any other tool that speaks [MCP](https://modelcontextprotocol.io)). It watches your coding sessions, writes down the important stuff (decisions, warnings, facts about your project), and quietly reminds the assistant about it the next time you start working, so you never have to repeat yourself.
+```
+New session. Claude starts fresh.
 
-Everything happens on your machine. There is no account to create, no cloud service to trust, and no data that leaves your computer unless you explicitly turn that on.
+WITHOUT sessionmem:
+  You explain the stack. The JWT bug from last week.
+  The Stripe migration that's halfway done. The billing code to stay away from.
+  Same questions. Different day.
+
+WITH sessionmem:
+  [warning] JWT blacklist must be checked before issuing new tokens. Fixed PR #47.
+  [decision] Stripe migration ~50% done. Do NOT use /lib/billing-v1.
+  [fact] Stack: TypeScript, Next.js, Postgres.
+
+  Claude: "Looks like you're mid-Stripe migration. Where do you want to pick up?"
+```
+
+`sessionmem` is an MCP server that watches your coding sessions and stores what actually mattered -- decisions, warnings, things that would bite you if Claude forgot them. At the start of each new session it injects the relevant bits automatically. Works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
+
+Everything stays on your machine. No account, no cloud, no data leaving your computer unless you explicitly turn that on.
 
 ---
 
