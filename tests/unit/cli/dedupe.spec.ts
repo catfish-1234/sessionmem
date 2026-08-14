@@ -31,12 +31,16 @@ const unitVector = (degrees: number): number[] => [
  * holding a deleted row — and without the guard it dropped C too, destroying a
  * memory whose only near-duplicate was already gone.
  */
-async function seedChain(ctx: Awaited<ReturnType<typeof createTestCliContext>>) {
+async function seedChain(
+  ctx: Awaited<ReturnType<typeof createTestCliContext>>,
+  order: "ascending" | "descending" = "ascending",
+) {
   const seeds: Array<{ id: string; degrees: number; importance: number }> = [
     { id: "chain-a", degrees: 0, importance: 9 },
     { id: "chain-b", degrees: 25, importance: 8 },
     { id: "chain-c", degrees: 50, importance: 7 },
   ];
+  if (order === "descending") seeds.reverse();
 
   for (const { id, degrees, importance } of seeds) {
     const vector = unitVector(degrees);
@@ -115,6 +119,34 @@ describe("dedupeCommand", () => {
     // near-duplicate was B; once B is deleted, C has nothing to collapse into.
     // The old code processed the stale (B,C) pair anyway and deleted C.
     expect(remaining.sort()).toEqual(["chain-a", "chain-c"]);
+  });
+
+  it("picks the same survivor regardless of stored row order", async () => {
+    // Candidate order came from `ORDER BY updated_at DESC`, which is not a
+    // total order: memories written in the same clock tick tie, and the winner
+    // varied by platform — the same cluster collapsed differently on Windows
+    // than on Linux, and `--apply` is a hard delete.
+    const results: string[][] = [];
+    for (const order of ["ascending", "descending"] as const) {
+      const ctx = await createTestCliContext();
+      await seedChain(ctx, order);
+      const out = captureStdout();
+      try {
+        await dedupeCommand({ dry: false }, ctx);
+      } finally {
+        out.restore();
+      }
+      results.push(
+        listMemoriesByProject(ctx.db, ctx.projectId)
+          .map((m) => m.id)
+          .filter((id) => id.startsWith("chain-"))
+          .sort(),
+      );
+      ctx.cleanup?.();
+    }
+
+    expect(results[0]).toEqual(results[1]);
+    expect(results[0]).toEqual(["chain-a", "chain-c"]);
   });
 
   it("does not delete anything on a dry run", async () => {

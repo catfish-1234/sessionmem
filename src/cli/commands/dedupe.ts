@@ -91,6 +91,19 @@ export async function dedupeCommand(
     return;
   }
 
+  // Highest importance first, id as the tie-break. Pairs are emitted in this
+  // order and the first element of a pair is the one kept, so the survivor of
+  // any duplicate cluster is deterministic.
+  //
+  // Without this the order came from `ORDER BY updated_at DESC`, which is not a
+  // total order — memories written in the same clock tick tie, and the winner
+  // varied by platform. The same three memories could collapse to a different
+  // survivor on Windows than on Linux, and `--apply` is a hard delete.
+  candidates.sort(
+    (left, right) =>
+      right.importance - left.importance || left.id.localeCompare(right.id),
+  );
+
   const pairs: DedupePair[] = [];
   for (let i = 0; i < candidates.length; i++) {
     const a = candidates[i];

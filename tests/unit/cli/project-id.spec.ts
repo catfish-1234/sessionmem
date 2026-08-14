@@ -110,11 +110,16 @@ describe("findProjectRoot / deriveProjectId (repository anchoring)", () => {
   });
 
   it("anchors a linked worktree, where .git is a file", () => {
-    const root = mkdtempSync(join(tmpdir(), "sessionmem-wt-"));
+    // realpathSync up front, as makeRepo does: on macOS tmpdir() reports
+    // /var/... while the real path is /private/var/.... findProjectRoot
+    // normalizes but deliberately does NOT resolve symlinks — in production its
+    // input is process.cwd(), which is already resolved — so the test has to
+    // feed it a resolved path rather than compare a resolved result.
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "sessionmem-wt-")));
     try {
       writeFileSync(join(root, ".git"), "gitdir: /elsewhere/.git/worktrees/wt");
       mkdirSync(join(root, "pkg"), { recursive: true });
-      expect(findProjectRoot(join(root, "pkg"))).toBe(realpathSync(root));
+      expect(findProjectRoot(join(root, "pkg"))).toBe(root);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
