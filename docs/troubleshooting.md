@@ -26,6 +26,37 @@ Each MCP host is wired in through its own adapter. Symptoms here usually mean th
 
 If a host loads but commands hang, run `sessionmem ping` to isolate whether the problem is the server or the host wiring.
 
+## "0 sessions" / no session data recorded
+
+`sessionmem savings` reporting no session data, or `sessionmem stats` showing `sessions: 0`, almost always means one of the following.
+
+### The hooks are not installed
+
+Session events are captured by a `PostToolUse` hook that `sessionmem install` registers in `~/.claude/settings.json`. If you installed sessionmem before the auto-ingest hook existed, that hook is missing. Re-run `sessionmem install` (it is idempotent) and restart your editor, then confirm the entry exists:
+
+```bash
+sessionmem install
+sessionmem stats   # check the session_events counter after a few tool calls
+```
+
+To watch the hook work in real time, run your host with `SESSIONMEM_DEBUG=1`; the hook then reports each ingest to stderr, including the project id it wrote to.
+
+### Memory is keyed to the repository
+
+A project's memories are keyed by its **repository root** — the nearest directory containing `.git`. Every directory inside one repository shares a single memory bucket, so it does not matter which subdirectory you run a command from.
+
+Outside a repository, the id falls back to the exact working directory. Two different directories that are not in a repository are two different projects, so running `sessionmem stats` from a different folder than the one your host session used will show an empty store. Either run from inside the repository, or pin the id explicitly:
+
+```bash
+export SESSIONMEM_PROJECT_ID=my-project
+```
+
+Use `sessionmem browse` to list every project that has memories along with its id; the current project is marked.
+
+### Not enough events to summarize
+
+`handleSessionEnd` only writes a session summary once at least 3 events were captured. A very short session is skipped by design and reports `not enough session events to summarize`.
+
 ## `better-sqlite3` native-build failures
 
 `sessionmem` stores memories in SQLite via `better-sqlite3`, which is a **native** module compiled for your platform and Node version. Most install-time crashes come from this native build.
