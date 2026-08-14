@@ -21,6 +21,48 @@ export interface RedactionResult {
 // applyRedaction invocation — a measurable saving in batch/import/pull loops.
 // The regex literals carry no `lastIndex` state because every pattern is used
 // with String.prototype.replace (not stateful .test()/.exec() on a shared regex).
+/**
+ * Key names that mark an assignment's value as a secret. Matched
+ * case-insensitively and allowed to carry bounded affixes on either side, so
+ * `AWS_SECRET_ACCESS_KEY` and `SECRET_TOKEN_VALUE` match as readily as `secret`.
+ */
+const SECRET_KEY_NAMES = [
+  "password",
+  "passwd",
+  "pwd",
+  "secret",
+  "api[_-]?key",
+  "apikey",
+  "access[_-]?token",
+  "refresh[_-]?token",
+  "auth[_-]?token",
+  "client[_-]?secret",
+  "private[_-]?key",
+  "credentials?",
+  "token",
+].join("|");
+
+/**
+ * `<key><separator><value>` where the key names a secret. Capture groups are
+ * (key, separator, value) so the replacement can keep the key and separator
+ * verbatim and swap only the value.
+ *
+ * Both `:` and `=` are accepted (YAML, JSON, `.env`, query strings, log lines),
+ * and the value may be backslash-escaped-quoted, double-quoted, single-quoted,
+ * or bare. Every quantifier is bounded, so the pattern is ReDoS-safe.
+ *
+ * The escaped-quote branch comes first and the bare branch excludes `\`, which
+ * together keep a JSON payload parseable after redaction. Session events store
+ * JSON, so a secret inside a stringified field arrives as `password=\"a b\"`;
+ * letting the bare branch match the lone backslash replaced it with
+ * `[REDACTED]` and left the rest of the quoted run stranded, producing
+ * unparseable JSON.
+ */
+const SECRET_ASSIGNMENT_PATTERN = new RegExp(
+  String.raw`\b([A-Za-z0-9_.-]{0,40}(?:${SECRET_KEY_NAMES})[A-Za-z0-9_.-]{0,40}\\?"?)(\s*[:=]\s*)(\\"(?:\\.|[^"\\]){0,4096}\\"|"[^"\n]{1,4096}"|'[^'\n]{1,4096}'|[^\s"'\\,;&}]{1,4096})`,
+  "gi",
+);
+
 const DEFAULT_RULES: readonly RedactionRule[] = createDefaultRules();
 
 function createDefaultRules(): RedactionRule[] {
@@ -106,24 +148,48 @@ function createDefaultRules(): RedactionRule[] {
         /\bBearer\s+[A-Za-z0-9._~+/-]{8,}=*/gi,
         "Bearer [REDACTED_BEARER_TOKEN]",
       ),
-    // Config/connection-string assignments: key=value where key is a known
-    // secret-bearing name. The key is kept and the value redacted. Covers
-    // password/secret plus api_key/apikey/token/access_token/pwd in URL query
-    // strings and config files. The `=` separator may carry surrounding spaces.
+    // HTTP Basic auth header: the base64 blob encodes user:password verbatim.
     (input) =>
       input.replace(
-        /\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|token)\s*=\s*([^\s"'&;]+)/gi,
-        "$1=[REDACTED]",
+        /\bBasic\s+[A-Za-z0-9+/]{12,}={0,2}/g,
+        "Basic [REDACTED_BASIC_AUTH]",
       ),
-    // JSON-form secret assignments: "key": "value" for known secret-bearing
-    // keys. Complements the key=value rule above so secrets embedded in JSON
-    // payloads (config files, logged request bodies) are redacted too. The key
-    // is preserved; the quoted value is collapsed.
+    // Slack incoming-webhook URLs — the path IS the credential, so the whole
+    // path is collapsed rather than a token-shaped substring of it.
     (input) =>
       input.replace(
-        /"(password|secret|api_key|token|access_token|auth_token|client_secret|private_key|pwd|passwd)"\s*:\s*"[^"]{4,}"/gi,
-        '"$1": "[REDACTED]"',
+        /https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9/_-]{10,200}/g,
+        "https://hooks.slack.com/services/[REDACTED_SLACK_WEBHOOK]",
       ),
+    // Secret-bearing assignments: `<key><sep><value>` for a known secret-ish key
+    // name, covering config files, .env exports, YAML, JSON bodies, log lines
+    // and URL query strings in one rule.
+    //
+    // Three things the narrower predecessors missed, each a real leak:
+    //  - `:` as a separator (YAML, JSON, `Header: value` log lines). Only `=`
+    //    was handled, so `aws_secret_access_key: wJalr…` passed through.
+    //  - Affixed key names. The keyword had to sit on a \b boundary, and `_` is
+    //    a word character, so `AWS_SECRET_ACCESS_KEY` and `SECRET_TOKEN_VALUE`
+    //    never matched. Allow bounded affixes on both sides.
+    //  - Quoted values. The value class excluded quotes, so `password="a b c"`
+    //    matched nothing at all.
+    //
+    // Quoted values keep their delimiters so a redacted JSON payload stays
+    // parseable. All quantifiers are bounded and the alternation is
+    // non-backtracking on failure, so the rule stays ReDoS-safe.
+    (input) =>
+      input.replace(SECRET_ASSIGNMENT_PATTERN, (_match, key: string, separator: string, value: string) => {
+        // Preserve the value's quote style so a redacted JSON payload stays
+        // parseable and a redacted YAML line stays well-formed.
+        const quote = value.startsWith('\\"')
+          ? '\\"'
+          : value.startsWith('"')
+            ? '"'
+            : value.startsWith("'")
+              ? "'"
+              : "";
+        return `${key}${separator}${quote}[REDACTED]${quote}`;
+      }),
   ];
 }
 
