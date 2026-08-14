@@ -2,6 +2,7 @@ import { statSync } from "fs";
 import { createCliContext, type CliContext } from "../context.js";
 import { countTokens } from "../../core/injection/tokenBudget.js";
 import { listMemoriesByProject } from "../../core/storage/memoryRepo.js";
+import { countDistinctSessions } from "../../core/storage/tokenSavingsRepo.js";
 import {
   configFilePath,
   readPolicyConfig,
@@ -59,8 +60,15 @@ export async function statsCommand(
 
   const redactionLine = `Redaction: ${redactionEnabled ? "enabled" : "disabled"}`;
 
+  // Surface the session-event counters. The auto-ingest pipeline is silent by
+  // design (a hook must never fail a tool call), so without these lines a
+  // pipeline that captures nothing looks identical to one that works.
+  const sessions = countDistinctSessions(context.db, context.projectId);
+
   process.stdout.write(
     `memories: ${result.totalMemories}\n` +
+      `sessions: ${sessions}\n` +
+      `session_events: ${result.totalSessionEvents}\n` +
       `db_size_bytes: ${sizeBytes}\n` +
       `total_content_tokens: ${totalTokens}\n` +
       `${retentionLine}\n` +

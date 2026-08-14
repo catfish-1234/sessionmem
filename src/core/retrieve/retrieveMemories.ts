@@ -95,7 +95,12 @@ export function retrieveMemories(
 
   // Use FTS5 pre-filtering to limit cosine similarity computation to ~50 candidates.
   // queryText is guaranteed non-empty by the Zod schema (z.string().min(1)) upstream.
-  const candidates = searchMemoryCandidatesFTS(input.db, input.projectId, queryText);
+  const candidates = searchMemoryCandidatesFTS(
+    input.db,
+    input.projectId,
+    queryText,
+    now,
+  );
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
