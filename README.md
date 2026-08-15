@@ -342,7 +342,16 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
 ## Troubleshooting
 
-Run into trouble installing or running `sessionmem`? Start with [`docs/troubleshooting.md`](docs/troubleshooting.md). It covers install failures, adapter-specific issues, and native module (`better-sqlite3`) build problems on different platforms.
+Run into trouble installing or running `sessionmem`? Start with [`docs/troubleshooting.md`](docs/troubleshooting.md). It covers install failures, adapter-specific issues, missing session data, and native module (`better-sqlite3`) build problems on different platforms.
+
+Two quick checks that resolve most reports:
+
+```bash
+sessionmem install   # idempotent — re-registers the MCP server and all three hooks
+sessionmem stats     # memories, sessions, and session_events for the current project
+```
+
+If `stats` shows `sessions: 0` after real work, see [“0 sessions” / no session data recorded](docs/troubleshooting.md#0-sessions--no-session-data-recorded). Memories are keyed to the **repository root**, so every directory inside one repo shares a bucket; outside a repo the working directory itself is the key.
 
 Quick checks:
 

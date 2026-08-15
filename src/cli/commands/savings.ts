@@ -105,7 +105,9 @@ export function savingsCommand(
       ? [
           "Storage compression:",
           "  No session data ingested yet.",
-          "  Tip: call ingestSessionEvents during sessions to track token usage.",
+          "  Session events are captured automatically by the PostToolUse hook.",
+          "  If this stays empty, run `sessionmem install` to (re)register the hook,",
+          "  then check `sessionmem stats` for the session_events counter.",
         ]
       : [
           "Storage compression:",

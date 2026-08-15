@@ -32,7 +32,11 @@ import {
   resolvePolicySettings,
 } from "../config/policyConfig.js";
 import { insertMemoryFeedbackEvent } from "../storage/memoryFeedbackRepo.js";
-import { countAllSessionEvents, insertSessionEvent } from "../storage/sessionEventsRepo.js";
+import {
+  countAllSessionEvents,
+  insertSessionEvent,
+  nextSessionEventIndex,
+} from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
   batchStoreMemoryItemSchema,
@@ -308,15 +312,29 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const redactionEnabled = resolveRedactionEnabled(undefined);
       const ingest = db.transaction(() => {
         let written = 0;
+        // Events that omit eventIndex are appended after the session's current
+        // maximum. Read it once inside the transaction and increment locally so
+        // a multi-event batch stays contiguous.
+        let nextIndex: number | undefined;
         for (const event of parsed.events) {
           const redactedPayload = applyRedaction(event.payloadJson, {
             redactionEnabled,
           }).text;
+          let eventIndex = event.eventIndex;
+          if (eventIndex === undefined) {
+            nextIndex ??= nextSessionEventIndex(
+              db,
+              parsed.projectId,
+              parsed.sessionId,
+            );
+            eventIndex = nextIndex;
+            nextIndex += 1;
+          }
           written += insertSessionEvent(db, {
             id: event.id,
             project_id: parsed.projectId,
             session_id: parsed.sessionId,
-            event_index: event.eventIndex,
+            event_index: eventIndex,
             event_type: event.eventType,
             payload_json: redactedPayload,
             created_at: event.createdAt,
@@ -325,7 +343,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         return written;
       });
 
-      const ingested = ingest();
+      // `immediate` takes the write lock up front so two concurrent hook
+      // processes cannot both read the same next index and have one insert
+      // silently ignored. busy_timeout (db.ts) makes the loser wait rather
+      // than fail.
+      const ingested = ingest.immediate();
 
       return {
         ok: true,

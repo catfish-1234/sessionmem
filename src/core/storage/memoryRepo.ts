@@ -136,7 +136,7 @@ function getStatements(db: Database): MemoryRepoStatements {
     FROM memories
     WHERE project_id = ?
       AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-    ORDER BY updated_at DESC
+    ORDER BY updated_at DESC, id ASC
   `),
     // Lightweight projection for token-savings accounting: only `content` is
     // needed to count tokens, so we deliberately avoid pulling the (potentially

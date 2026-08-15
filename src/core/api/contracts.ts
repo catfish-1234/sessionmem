@@ -80,7 +80,12 @@ export const memorySchema = z.object({
 
 export const ingestSessionEventSchema = z.object({
   id: z.string().min(1).max(200),
-  eventIndex: z.number().int().nonnegative(),
+  // Optional: callers that already track an ordering key (batch ingestion of a
+  // transcript) supply it; callers that fire one event at a time from separate
+  // processes (the PostToolUse hook) omit it and the service assigns the next
+  // free index per session. See nextSessionEventIndex for why inventing a
+  // wall-clock index silently loses events.
+  eventIndex: z.number().int().nonnegative().optional(),
   eventType: z.string().min(1).max(100),
   payloadJson: z
     .string()

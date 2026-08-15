@@ -165,8 +165,6 @@ retention
   .action((options) => retentionPruneCommand(options));
 
 // config command group — generic get/set over ~/.sessionmem/config.json.
-// config get/set are synchronous and take no CliContext, so the arrow-wrap here
-// only drops commander's trailing Command argument.
 const config = program
   .command("config")
   .description("Read and write sessionmem policy config");
@@ -182,10 +180,6 @@ config
   .action((key, value) => configSetCommand(key, value));
 
 // team command group — turn shared-memory mode on/off and inspect it.
-// enable/status take no CliContext (config-only), so their arrow-wraps just drop
-// commander's trailing Command argument. disable accepts an optional CliContext
-// seam for the --remove-team-memories DB delete; the arrow-wrap forwards only
-// options so production falls through to createCliContext() (NOTE above).
 const team = program
   .command("team")
   .description("Manage shared-path team memory mode");
@@ -210,16 +204,13 @@ team
   .action(() => teamStatusCommand());
 
 // re-embed — bulk-update stale embeddings to the current version.
-// reEmbedCommand declares a trailing `ctx?` test seam, so arrow-wrap to drop
-// commander's trailing Command argument (NOTE above).
 program
   .command("re-embed")
   .description("Re-embed all memories with stale embedding versions")
   .action(() => reEmbedCommand());
 
-// sync — push a local snapshot to the shared path and pull every
-// teammate snapshot back. syncCommand declares a trailing `ctx?` test seam, so
-// arrow-wrap to drop commander's trailing Command argument (NOTE above).
+// sync — push a local snapshot to the shared path and pull every teammate
+// snapshot back.
 program
   .command("sync")
   .description("Push local memories and pull teammate memories via the shared path")
