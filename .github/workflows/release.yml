@@ -36,19 +36,28 @@ jobs:
           node-version: 22
           registry-url: "https://registry.npmjs.org"
 
-      # node 22 ships npm 10.x, which does NOT support OIDC trusted publishing
-      # (introduced in npm 11.5.1). Without this upgrade the "Publish to npm" step
-      # below silently falls through to token auth and fails with ENEEDAUTH when
-      # NPM_TOKEN is unset — the root cause of releases not auto-publishing. Pin to
-      # a version new enough for trusted publishing + automatic provenance.
-      - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
-
+      # Install, build and test with the npm that ships with node 22.
+      #
+      # ORDER MATTERS: the npm upgrade below MUST come after `npm ci`. npm 12
+      # does not run dependencies' install scripts the way npm 10 does, so
+      # installing under it leaves better-sqlite3 without its compiled binding
+      # and every database-backed test dies with "Could not locate the bindings
+      # file" (229 of 479 tests, which is what blocked the v1.3.0 publish).
+      # The newer npm is only needed for the publish step itself.
       - run: npm ci
 
       - run: npm run build
 
       - run: npm test
+
+      # node 22 ships npm 10.x, which does NOT support OIDC trusted publishing
+      # (introduced in npm 11.5.1). Without this upgrade the "Publish to npm" step
+      # below silently falls through to token auth and fails with ENEEDAUTH when
+      # NPM_TOKEN is unset — the root cause of releases not auto-publishing. Pin to
+      # a version new enough for trusted publishing + automatic provenance.
+      # Runs after the install/build/test steps above; see the ORDER MATTERS note.
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
 
       # OIDC trusted publishing is auto-detected when id-token: write is present
       # AND npm >= 11.5.1 (see the upgrade step above); provenance is emitted
