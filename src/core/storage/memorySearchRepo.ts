@@ -43,6 +43,15 @@ interface MemorySearchRow {
 const FTS_CANDIDATE_LIMIT = 50;
 const FTS_FALLBACK_THRESHOLD = 5;
 
+/** Recency window for the fallback candidate scan. */
+const FALLBACK_RECENCY_DAYS = 90;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Storage timestamp format: ISO-8601 UTC with millisecond precision. */
+function toStorageTimestamp(date: Date): string {
+  return date.toISOString();
+}
+
 interface SearchRepoStatements {
   searchCandidates: Statement;
   searchCandidatesFTS: Statement;
@@ -55,17 +64,23 @@ function getSearchStatements(db: Database): SearchRepoStatements {
   if (stmts) return stmts;
 
   stmts = {
+    // `now` and the recency cutoff are bound parameters rather than
+    // strftime('now') so the caller's clock drives both filters. With SQL's own
+    // clock, a caller that passes an explicit `now` (retrieveMemories, and every
+    // test that pins a date) silently got a different window than it asked for,
+    // and fixed-date fixtures aged out of the 90-day band over real calendar
+    // time — turning deterministic tests into time bombs.
     searchCandidates: db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, author, origin_project_id, access_count, created_at, updated_at,
       embedding, embedding_dim, embedding_version
     FROM memories
-    WHERE project_id = ?
-      AND (expires_at IS NULL OR expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    WHERE project_id = @projectId
+      AND (expires_at IS NULL OR expires_at > @now)
       AND (
         importance >= 8
-        OR updated_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-90 days')
+        OR updated_at > @recencyCutoff
       )
   `),
     searchCandidatesFTS: db.prepare(`
@@ -76,11 +91,11 @@ function getSearchStatements(db: Database): SearchRepoStatements {
       m.embedding, m.embedding_dim, m.embedding_version
     FROM memories_fts
     JOIN memories m ON m.rowid = memories_fts.rowid
-    WHERE memories_fts MATCH ?
-      AND m.project_id = ?
-      AND (m.expires_at IS NULL OR m.expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    WHERE memories_fts MATCH @match
+      AND m.project_id = @projectId
+      AND (m.expires_at IS NULL OR m.expires_at > @now)
     ORDER BY rank
-    LIMIT ?
+    LIMIT @limit
   `),
   };
 
@@ -131,8 +146,15 @@ function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
 export function searchMemoryCandidates(
   db: Database,
   projectId: string,
+  now: Date = new Date(),
 ): MemorySearchCandidate[] {
-  const rows = getSearchStatements(db).searchCandidates.all(projectId) as MemorySearchRow[];
+  const rows = getSearchStatements(db).searchCandidates.all({
+    projectId,
+    now: toStorageTimestamp(now),
+    recencyCutoff: toStorageTimestamp(
+      new Date(now.getTime() - FALLBACK_RECENCY_DAYS * MS_PER_DAY),
+    ),
+  }) as MemorySearchRow[];
   return mapRows(rows);
 }
 
@@ -170,29 +192,31 @@ export function searchMemoryCandidatesFTS(
   db: Database,
   projectId: string,
   queryText: string,
+  now: Date = new Date(),
 ): MemorySearchCandidate[] {
   const sanitized = sanitizeFtsQuery(queryText);
   if (!sanitized) {
-    return searchMemoryCandidates(db, projectId);
+    return searchMemoryCandidates(db, projectId, now);
   }
 
   let rows: MemorySearchRow[];
   try {
-    rows = getSearchStatements(db).searchCandidatesFTS.all(
-      sanitized,
+    rows = getSearchStatements(db).searchCandidatesFTS.all({
+      match: sanitized,
       projectId,
-      FTS_CANDIDATE_LIMIT,
-    ) as MemorySearchRow[];
+      now: toStorageTimestamp(now),
+      limit: FTS_CANDIDATE_LIMIT,
+    }) as MemorySearchRow[];
   } catch {
     // FTS5 MATCH can throw on malformed queries — fall back to full scan
-    return searchMemoryCandidates(db, projectId);
+    return searchMemoryCandidates(db, projectId, now);
   }
 
   if (rows.length >= FTS_FALLBACK_THRESHOLD) {
     return dedupById(mapRows(rows));
   }
 
-  const fallback = searchMemoryCandidates(db, projectId);
+  const fallback = searchMemoryCandidates(db, projectId, now);
   if (rows.length === 0) {
     return fallback;
   }

@@ -34,9 +34,3 @@ export interface HostAdapterContract {
    */
   guidanceTargets?(): string[];
 }
-
-export type HostAdapterContractMap = {
-  [M in MemoryCoreMethod]: (
-    request: MemoryCoreRequest<M>,
-  ) => Promise<HostAdapterResult<M>>;
-};
