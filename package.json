@@ -32,7 +32,7 @@
     "postversion": "npm run build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.107.0",
+    "@anthropic-ai/sdk": "^0.111.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.4.1",
     "commander": "^15.0.0",
