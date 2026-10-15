@@ -7,10 +7,21 @@ version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
+    cooldown:
+      default-days: 7
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 7
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "pip"
+    directory: "/.github"
+    cooldown:
+      default-days: 7
     schedule:
       interval: "weekly"
