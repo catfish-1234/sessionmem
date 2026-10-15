@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { existsSync, readFileSync, writeFileSync, rmSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "fs";
 import { AdapterFactory } from "../../../src/adapters/factory.js";
 import { installCommand } from "../../../src/cli/commands/install.js";
 import { readPolicyConfig } from "../../../src/core/config/policyConfig.js";
@@ -23,9 +23,20 @@ function mockSuccessfulAdapter() {
   return mockAdapter;
 }
 
+// Installation tests must never edit the developer's real guidance or config.
+const testHome = vi.hoisted(() => ({ path: "" }));
+vi.mock("os", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("os")>()),
+  homedir: () => testHome.path,
+}));
+
 describe("installCommand", () => {
+  beforeEach(() => {
+    testHome.path = mkdtempSync(join(tmpdir(), "sessionmem-install-home-"));
+  });
   afterEach(() => {
     vi.restoreAllMocks();
+    rmSync(testHome.path, { recursive: true, force: true });
   });
 
   it("prints ✓ checklist on successful DB init and adapter.install()", async () => {

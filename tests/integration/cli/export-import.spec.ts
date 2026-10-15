@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { readFileSync, unlinkSync, existsSync } from "fs";
+import { readFileSync, unlinkSync, existsSync, mkdtempSync, rmSync } from "fs";
 import { exportCommand } from "../../../src/cli/commands/export.js";
 import { importCommand } from "../../../src/cli/commands/import.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
@@ -13,13 +13,23 @@ function makeTempFile(suffix = ".json"): string {
   return join(tmpdir(), `sessionmem-test-${randomUUID()}${suffix}`);
 }
 
+const testHome = vi.hoisted(() => ({ path: "" }));
+vi.mock("os", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("os")>()),
+  homedir: () => testHome.path,
+}));
+
 describe("export/import round-trip", () => {
+  beforeEach(() => {
+    testHome.path = mkdtempSync(join(tmpdir(), "sessionmem-export-home-"));
+  });
   let ctx: Awaited<ReturnType<typeof createTestCliContext>> | undefined;
 
   afterEach(() => {
     vi.restoreAllMocks();
     ctx?.cleanup?.();
     ctx = undefined;
+    rmSync(testHome.path, { recursive: true, force: true });
   });
 
   it("exportCommand writes a valid JSON array with the seeded memory count", async () => {
