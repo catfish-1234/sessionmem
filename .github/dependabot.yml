@@ -7,12 +7,12 @@ version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/"
+    schedule:
+      interval: "weekly"
     # typescript-eslint still requires TS <6.1; see docs/typescript-upgrade.md.
     ignore:
       - dependency-name: "typescript"
         versions: [">=7.0.0"]
-    schedule:
-      interval: "weekly"
 
   - package-ecosystem: "github-actions"
     directory: "/"
