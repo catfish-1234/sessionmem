@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { writeFileSync, existsSync } from "fs";
+import { writeFileSync, existsSync, mkdtempSync, rmSync } from "fs";
 import { AdapterFactory } from "../../../src/adapters/factory.js";
 import { uninstallCommand } from "../../../src/cli/commands/uninstall.js";
 import {
@@ -10,9 +10,20 @@ import {
   hasClaudeMdBlock,
 } from "../../../src/adapters/claudeMdInjector.js";
 
+// Installation tests must never edit the developer's real guidance or config.
+const testHome = vi.hoisted(() => ({ path: "" }));
+vi.mock("os", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("os")>()),
+  homedir: () => testHome.path,
+}));
+
 describe("uninstallCommand", () => {
+  beforeEach(() => {
+    testHome.path = mkdtempSync(join(tmpdir(), "sessionmem-uninstall-home-"));
+  });
   afterEach(() => {
     vi.restoreAllMocks();
+    rmSync(testHome.path, { recursive: true, force: true });
   });
 
   it("calls adapter.uninstall() and prints success message on success", async () => {
