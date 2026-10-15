@@ -39,4 +39,4 @@ At runtime the migrations directory is resolved **package-relative** (relative t
 - **Major-version upgrades** may introduce breaking changes; any required manual migration step or behavior change will be called out in the release notes for that major version.
 - **No down-migrations.** Because migrations are forward-only, downgrading to an older `sessionmem` version after a newer one has migrated your database is not supported. Before a major upgrade, run `sessionmem export` to keep a portable JSON copy of your memories you can re-import if needed.
 
-This is the v1 policy. Because v1 is the first released version there is no prior schema to upgrade *from*; the policy above is the contract for upgrades **after** v1 ships.
+This policy applies to upgrades between published v1 releases. Each release opens existing databases through the same forward-only migration runner.

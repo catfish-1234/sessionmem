@@ -10,7 +10,7 @@ Solo developers using Claude Code, Cursor, Cline, Codex, or Windsurf who want pr
 - Install: `npm install -g sessionmem` or `npx sessionmem`
 
 ## What it does
-Watches your AI coding sessions, compresses them into a compact summary, and auto-injects that summary at the start of each new session. Your coding agent picks up exactly where you left off.
+Claude Code hooks capture supported tool events, summarize them, and inject prior memories at session start. Other hosts use MCP tools and guidance; automatic lifecycle integration depends on the host. Your coding agent picks up exactly where you left off.
 
 ## Proof
 ~85.6% token reduction vs full session history; 100% retrieval hit-rate (reproducible via `npm run benchmark`). Secrets redacted by default. Offline by default. No SSRF surface, no network calls unless you opt in.
@@ -21,5 +21,5 @@ Watches your AI coding sessions, compresses them into a compact summary, and aut
 
 ## Install
 ```json
-{"mcpServers": {"sessionmem": {"command": "npx", "args": ["-y", "sessionmem"]}}}
+{"mcpServers": {"sessionmem": {"command": "npx", "args": ["-y", "sessionmem", "run"]}}}
 ```

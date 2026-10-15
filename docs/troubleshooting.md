@@ -10,7 +10,7 @@ Common problems running `sessionmem` and how to fix them. Most issues fall into 
 
 ### Adapter not detected
 
-`install` registers sessionmem with the MCP host in the current directory. If install reports that it could not find a host, you are likely running it outside a project the host recognizes. `cd` into your project root (where the host's config lives) and re-run `sessionmem install`. Run `sessionmem ping` afterward to confirm connectivity.
+`install` registers sessionmem with the MCP host in the current directory. If install reports that it could not find a host, you are likely running it outside a project the host recognizes. `cd` into your project root (where the host's config lives) and re-run `sessionmem install`. Use `sessionmem install --adapter <name>` from a plain terminal (for example `--adapter cline` or `--adapter windsurf`, which cannot be reliably auto-detected). Run `sessionmem ping` afterward to check local database access; it does not probe the host's MCP connection.
 
 ### Command not found
 
@@ -20,7 +20,7 @@ If `sessionmem` is not on your `PATH` after `npm install -g sessionmem`, your np
 
 Each MCP host is wired in through its own adapter. Symptoms here usually mean the host launched the server but the integration is misconfigured.
 
-- **Claude Code**: if memories are not injected at session start, confirm `sessionmem install` was run inside the project and that the MCP server entry exists in the host config. Use `sessionmem ping` to verify the server is reachable.
+- **Claude Code**: if memories are not injected at session start, confirm `sessionmem install` was run inside the project and that the MCP server entry exists in the host config. Use `sessionmem ping` to verify local database access, then check MCP connectivity in the host.
 - **Cursor**: Cursor must be pointed at the registered MCP server. Re-run `install` from the project root and restart Cursor so it reloads MCP servers.
 - **Generic MCP host**: for any other MCP-compatible host, ensure the host is configured to launch `sessionmem run` as the MCP server command. If the host starts but no memory appears, check that the working directory matches the project whose memories you expect.
 
