@@ -1,0 +1,2 @@
+# Security scanner; updated by Dependabot.
+semgrep==1.181.0
