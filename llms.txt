@@ -13,7 +13,7 @@ Solo developers using Claude Code, Cursor, Cline, Codex, or Windsurf who want pr
 Claude Code hooks capture supported tool events, summarize them, and inject prior memories at session start. Other hosts use MCP tools and guidance; automatic lifecycle integration depends on the host. Your coding agent picks up exactly where you left off.
 
 ## Proof
-~85.6% token reduction vs full session history; 100% retrieval hit-rate (reproducible via `npm run benchmark`). Secrets redacted by default. Offline by default. No SSRF surface, no network calls unless you opt in.
+~85.6% token reduction vs full session history; 100% retrieval hit-rate (reproducible via `npm run benchmark`). Secrets redacted by default. Offline by default. No network calls unless you opt in.
 
 ## Comparison
 - vs claude-mem: sessionmem works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder and any MCP host -- not just Claude. It also redacts secrets by default and ships reproducible benchmarks.

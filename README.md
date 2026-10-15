@@ -27,7 +27,7 @@ WITH sessionmem:
   Claude: "Looks like you're mid-Stripe migration. Where do you want to pick up?"
 ```
 
-`sessionmem` is an MCP server that watches your coding sessions and stores what actually mattered -- decisions, warnings, things that would bite you if Claude forgot them. At the start of each new session it injects the relevant bits automatically. Works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
+`sessionmem` is an MCP server that stores decisions, warnings, and project context across sessions. Claude Code hooks capture supported tool events and inject prior memories automatically. Other hosts use its MCP tools and guidance, with lifecycle automation depending on the host. It works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
 
 Everything stays on your machine. No account, no cloud, no data leaving your computer unless you explicitly turn that on.
 
