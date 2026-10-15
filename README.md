@@ -92,6 +92,7 @@ sessionmem ping
 - [Further documentation](#further-documentation)
 - [Troubleshooting](#troubleshooting)
 - [FAQ](#faq)
+- [Security](#security)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -381,6 +382,13 @@ No. Nothing leaves your machine by default. The optional cloud summarization pat
 
 **How do I see how many tokens sessionmem saved me?**
 Run `sessionmem savings` to see a breakdown of storage compression (raw session tokens vs memory tokens) and injection efficiency. Add `--json` for machine-readable output.
+
+---
+
+## Security
+
+See the [security policy](SECURITY.md) for supported versions, private vulnerability
+reporting through GitHub security advisories, and response expectations.
 
 ---
 

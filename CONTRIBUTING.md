@@ -108,7 +108,7 @@ Open an issue describing the use case. Explain the problem you're trying to solv
 
 ## Security
 
-If you find a security vulnerability, **do not open a public issue**. Instead, email kavishdua@gmail.com with details. See the [security workflow](.github/workflows/security.yml) for how automated scanning works.
+If you find a security vulnerability, **do not open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/catfish-1234/sessionmem/security/advisories/new). See the [security policy](SECURITY.md) for supported versions and response expectations, and the [security workflow](.github/workflows/security.yml) for automated scanning.
 
 ## License
 
