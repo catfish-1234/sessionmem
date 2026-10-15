@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -7,6 +7,16 @@ import {
   findProjectRoot,
   projectIdFromCwd,
 } from "../../../src/cli/projectId.js";
+
+const filesystem = vi.hoisted(() => ({ empty: false }));
+vi.mock("node:fs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return {
+    ...actual,
+    existsSync: (path: Parameters<typeof actual.existsSync>[0]) =>
+      !filesystem.empty && actual.existsSync(path),
+  };
+});
 
 describe("projectIdFromCwd (HIGH-3: collision-resistant project ids)", () => {
   it("includes a human-readable basename prefix", () => {
@@ -101,10 +111,13 @@ describe("findProjectRoot / deriveProjectId (repository anchoring)", () => {
 
   it("returns null outside any repository", () => {
     const bare = mkdtempSync(join(tmpdir(), "sessionmem-bare-"));
+    // A developer or sandbox may place tmpdir() inside a repository. Model
+    // an empty ancestor chain explicitly so this negative case is portable.
+    filesystem.empty = true;
     try {
-      // tmpdir() itself is not inside a repo on CI runners.
       expect(findProjectRoot(bare)).toBe(null);
     } finally {
+      filesystem.empty = false;
       rmSync(bare, { recursive: true, force: true });
     }
   });
