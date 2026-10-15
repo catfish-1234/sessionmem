@@ -17,7 +17,8 @@ const TARGETS = [
   "server.json",
 ];
 
-const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+const root = JSON.parse(readFileSync("package.json", "utf8"));
+const { version } = root;
 if (!version) {
   console.error("sync-version: package.json has no version field");
   process.exit(1);
@@ -26,6 +27,13 @@ if (!version) {
 for (const file of TARGETS) {
   const manifest = JSON.parse(readFileSync(file, "utf8"));
   manifest.version = version;
+  // The secondary manifest must describe the same runtime/tooling as the root.
+  if (file === "package/package.json") {
+    for (const key of ["dependencies", "devDependencies", "engines", "bugs", "homepage"]) {
+      if (root[key] === undefined) delete manifest[key];
+      else manifest[key] = root[key];
+    }
+  }
   // server.json nests a per-package version alongside the top-level one.
   if (Array.isArray(manifest.packages)) {
     for (const pkg of manifest.packages) {
@@ -35,3 +43,13 @@ for (const file of TARGETS) {
   writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`sync-version: ${file} -> ${version}`);
 }
+
+const dockerfile = readFileSync("Dockerfile", "utf8");
+if (!/^RUN npm install -g sessionmem@\S+$/m.test(dockerfile)) {
+  throw new Error("sync-version: Dockerfile has no sessionmem install pin");
+}
+writeFileSync("Dockerfile", dockerfile.replace(
+  /^(RUN npm install -g sessionmem@)\S+$/m,
+  (_line, prefix) => `${prefix}${version}`,
+));
+console.log(`sync-version: Dockerfile -> ${version}`);

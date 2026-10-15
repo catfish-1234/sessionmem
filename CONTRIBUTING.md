@@ -7,7 +7,7 @@ Thanks for your interest in contributing! This guide covers everything you need 
 ```bash
 git clone https://github.com/catfish-1234/sessionmem.git
 cd sessionmem
-npm install
+npm ci
 npm run build
 ```
 
@@ -16,6 +16,12 @@ npm run build
 Copy `.mcp.json.example` to `.mcp.json` for local dev, or run `sessionmem install` to auto-configure. The `.mcp.json` file is gitignored because it contains machine-specific paths.
 
 ## Development workflow
+
+Use Node 20.19+ or 22.13+ (Node 22 LTS recommended). Commander stays on 14
+because 15 requires Node 22.12+, while this project still tests Node 20.
+Likewise, better-sqlite3 13 and Vitest 5 require Node 22; those major upgrades
+are deferred until the Node support policy changes. Compatible dependency
+updates remain enabled.
 
 ### Build
 
@@ -65,7 +71,7 @@ docs/         # Architecture, benchmarks, and feature docs
 
 - **TypeScript**: strict mode, ES2022 target, NodeNext module resolution.
 - **Unused vars**: prefix with underscore (`_unused`) to satisfy the lint rule.
-- **No explicit `any` in tests**: the lint rule is relaxed in `tests/`.
+- **Explicit `any` in tests**: permitted in `tests/`; source code keeps the lint rule.
 - **Comments**: only when the "why" isn't obvious. No doc-block boilerplate.
 
 ## Pre-commit hooks
