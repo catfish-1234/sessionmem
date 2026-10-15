@@ -27,7 +27,7 @@ WITH sessionmem:
   Claude: "Looks like you're mid-Stripe migration. Where do you want to pick up?"
 ```
 
-`sessionmem` is an MCP server that watches your coding sessions and stores what actually mattered -- decisions, warnings, things that would bite you if Claude forgot them. At the start of each new session it injects the relevant bits automatically. Works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
+`sessionmem` is an MCP server that stores decisions, warnings, and project context across sessions. Claude Code hooks capture supported tool events and inject prior memories automatically. Other hosts use its MCP tools and guidance, with lifecycle automation depending on the host. It works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
 
 Everything stays on your machine. No account, no cloud, no data leaving your computer unless you explicitly turn that on.
 
@@ -35,7 +35,7 @@ Everything stays on your machine. No account, no cloud, no data leaving your com
 
 ## Quickstart
 
-No programming experience needed. You just need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org) installed.
+No programming experience needed. You just need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org) installed (20.19+ on the Node 20 line, or 22.13+; Node 22 LTS is recommended).
 
 ### 1. Install sessionmem
 
@@ -49,12 +49,15 @@ Run this inside the project folder you're working on, with your AI tool (Claude 
 
 ```bash
 sessionmem install
+# From a plain terminal, choose the host explicitly when needed:
+sessionmem install --adapter claude-code
+# Other names: cursor, cline, codex, windsurf, antigravity, qcoder, generic
 ```
 
 This does three things:
 - Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
 - Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults, but only if one doesn't already exist.
-- Injects instructions into `~/.claude/CLAUDE.md` so Claude Code knows about sessionmem's tools and uses them proactively (idempotent, so safe to re-run).
+- Injects instructions into the selected host's guidance file (for example `~/.claude/CLAUDE.md` for Claude Code, or `~/.codex/AGENTS.md` for Codex; idempotent, so safe to re-run).
 
 ### 3. Start using your AI tool as normal
 
@@ -65,9 +68,8 @@ sessionmem run
 (Most of the time you won't run this yourself. Your AI tool's host starts it automatically once it's registered.)
 
 That's it. From here:
-- `sessionmem` watches your sessions in the background.
-- At the end of each session, it writes down a short summary of what mattered.
-- At the start of your next session, it quietly reminds your assistant of the relevant bits.
+- In Claude Code, installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and inject prior memories automatically.
+- Other MCP hosts use sessionmem's tools and installed guidance. Automatic capture and lifecycle calls depend on that host or agent; MCP registration alone does not install Claude Code hooks there.
 
 You can verify everything is working with:
 
@@ -214,7 +216,7 @@ For a deeper technical dive, see [`docs/architecture.md`](docs/architecture.md).
 | `sessionmem install` | Register sessionmem with the current MCP host and write default config. |
 | `sessionmem uninstall [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
-| `sessionmem ping` | Check server connectivity. |
+| `sessionmem ping` | Check the local version and database reachability. |
 | `sessionmem search <query> [--limit <n>]` | Search memories by semantic query. |
 | `sessionmem list` | List all memories for the current project. |
 | `sessionmem show <id>` | Show full details of a memory. |
@@ -228,6 +230,9 @@ For a deeper technical dive, see [`docs/architecture.md`](docs/architecture.md).
 | `sessionmem config get <key>` / `config set <key> <value>` | Read and write policy config. |
 | `sessionmem team enable <path>` / `team disable` / `team status` | Manage shared-path team memory mode. |
 | `sessionmem sync` | Push local memories and pull teammate memories via the shared path. |
+| `sessionmem browse [--project <id>]` | List projects or browse a project's memories. |
+| `sessionmem dedupe [--apply] [--threshold <n>]` | Preview duplicate memories; `--apply` deletes them. |
+| `sessionmem re-embed` | Refresh memories with stale embedding versions. |
 
 ---
 
@@ -357,7 +362,7 @@ If `stats` shows `sessions: 0` after real work, see [“0 sessions” / no sessi
 Quick checks:
 
 ```bash
-sessionmem ping     # is the server reachable?
+sessionmem ping     # can the local database be opened?
 sessionmem stats    # is data being stored?
 ```
 
@@ -366,7 +371,7 @@ sessionmem stats    # is data being stored?
 ## FAQ
 
 **How do I give Cursor, Cline, or Windsurf memory between sessions?**
-Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. It registers as an MCP server with any supported host automatically.
+Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. Use `--adapter cursor`, `--adapter cline`, or `--adapter windsurf` when auto-detection cannot identify your host.
 
 **How do I give Claude Code persistent memory?**
 Same install. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` file in the repo), so it works with Claude Code's native plugin system too.
@@ -397,8 +402,9 @@ reporting through GitHub security advisories, and response expectations.
 Issues and pull requests are welcome. The codebase is TypeScript, tested with [Vitest](https://vitest.dev), and linted with ESLint:
 
 ```bash
-npm install
+npm ci
 npm run build
+npm run typecheck
 npm test
 npm run lint
 ```
