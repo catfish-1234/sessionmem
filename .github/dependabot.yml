@@ -11,6 +11,10 @@ updates:
       default-days: 7
     schedule:
       interval: "weekly"
+    # typescript-eslint still requires TS <6.1; see docs/typescript-upgrade.md.
+    ignore:
+      - dependency-name: "typescript"
+        versions: [">=7.0.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
