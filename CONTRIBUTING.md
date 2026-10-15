@@ -37,6 +37,9 @@ npm run lint         # ESLint
 npm run typecheck    # tsc --noEmit
 ```
 
+See [TypeScript 7 upgrade status](docs/typescript-upgrade.md) for the current
+upstream tooling blocker and the criteria for removing the temporary Dependabot ignore.
+
 ### Benchmarks
 
 ```bash
