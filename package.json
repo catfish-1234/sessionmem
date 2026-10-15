@@ -44,7 +44,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "eslint": "^10.4.1",
     "globals": "^17.6.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.61.0",
     "vitest": "^4.1.8"
   }
