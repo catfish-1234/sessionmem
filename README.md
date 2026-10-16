@@ -64,7 +64,8 @@ This initializes the database and, for supported adapters:
 Restart your editor or agent so it loads the MCP registration. Your host starts
 `sessionmem run` automatically; running it directly starts a stdio server that
 waits for MCP messages, so it can appear to hang in a terminal. For an unknown
-host (`generic`), add the MCP configuration printed by `install` manually.
+host (`generic`), install writes a project-local `.mcp.json`; if your host uses
+another format or location, copy its server entry into that host’s MCP config.
 
 That's it. From here:
 - In Claude Code, installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and inject prior memories automatically.
@@ -249,7 +250,8 @@ default directory is not created by database commands. Server logs are written
 to `logs/mcp.log` beside the selected database (disabled for `:memory:`). Config remains at
 `~/.sessionmem/config.json`. `uninstall --purge` deletes the selected database.
 Quote paths containing spaces (for example `"C:\Users\Ada Lovelace\memory.db"`
-on Windows). Imports accept CRLF and a UTF-8 BOM; convert other encodings to UTF-8.
+on Windows). In JSON config files, use forward slashes or escaped backslashes
+for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings to UTF-8.
 
 `SESSIONMEM_PROJECT_ID` pins the project bucket (useful when moving a repository);
 otherwise it is derived from the repository root or working directory.
