@@ -1,6 +1,7 @@
 import { existsSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import { resolveDbPath } from "../context.js";
 import { AdapterFactory } from "../../adapters/factory.js";
 import type { HostAdapterContract } from "../../adapters/contract/hostAdapterContract.js";
 import { removeClaudeMdBlock } from "../../adapters/claudeMdInjector.js";
@@ -74,7 +75,7 @@ export async function uninstallCommand(options: UninstallOptions = {}): Promise<
   }
 
   // Resolve dbPath: use injected override (for tests) or the default location
-  const dbPath = options.dbPath ?? join(homedir(), ".sessionmem", "memories.db");
+  const dbPath = resolveDbPath(options.dbPath);
 
   if (options.purge) {
     // --purge: delete only memories.db, not logs or the ~/.sessionmem directory

@@ -167,6 +167,20 @@ describe("dedupeCommand", () => {
     expect(out.getText()).toContain("--apply");
   });
 
+  it.each(["0.8oops", "0.5.2"])("rejects a threshold with trailing garbage: %s", async (threshold) => {
+    const ctx = await createTestCliContext();
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const exit = vi.spyOn(process, "exit").mockImplementation(() => { throw new Error("exit"); });
+    try {
+      await expect(dedupeCommand({ threshold }, ctx)).rejects.toThrow("exit");
+      expect(error.mock.calls.flat().join(" ")).toContain("Invalid --threshold");
+    } finally {
+      error.mockRestore();
+      exit.mockRestore();
+      ctx.cleanup?.();
+    }
+  });
+
   it("skips memories with malformed embeddings rather than throwing", async () => {
     const ctx = await createTestCliContext();
     insertMemory(ctx.db, {

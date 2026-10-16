@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "sessionmem": {
-      "command": "npx",
-      "args": ["-y", "sessionmem", "run"]
+      "command": "node",
+      "args": ["/absolute/path/to/sessionmem/dist/cli/index.js", "run"]
     }
   }
 }

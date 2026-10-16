@@ -69,20 +69,20 @@ export function expandTilde(p: string): string {
   return p;
 }
 
-function defaultDbPath(dir: string): string {
+export function resolveDbPath(override?: string): string {
+  if (override !== undefined) return expandTilde(override);
   // Env override seam (see deriveProjectId). Defaults to ~/.sessionmem/memories.db.
   const envDbPath = process.env.SESSIONMEM_DB_PATH;
   if (envDbPath && envDbPath.trim() !== "") return expandTilde(envDbPath);
-  // `dir` is the fixed ~/.sessionmem dir computed above, not user input.
   // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-  return join(dir, "memories.db");
+  return join(homedir(), ".sessionmem", "memories.db");
 }
 
 export function createCliContext(overrides: CliContextOverrides = {}): CliContext {
-  const dir = join(homedir(), ".sessionmem");
-  mkdirSync(dir, { recursive: true });
-
-  const dbPath = overrides.dbPath ?? defaultDbPath(dir);
+  const dbPath = resolveDbPath(overrides.dbPath);
+  if (!overrides.db && dbPath !== ":memory:") {
+    mkdirSync(dirname(dbPath), { recursive: true });
+  }
   const here = dirname(fileURLToPath(import.meta.url));
   const migrationsDir = overrides.migrationsDir ?? join(here, "..", "core", "schema", "migrations");
 

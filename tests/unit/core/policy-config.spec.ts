@@ -45,6 +45,12 @@ describe("policyConfig", () => {
       expect(readPolicyConfig(path)).toEqual(DEFAULT_POLICY_CONFIG);
     });
 
+    it.each([null, [], "text", 1, true])("returns defaults for non-object JSON: %j", (value) => {
+      const path = join(dir, "config.json");
+      writeFileSync(path, JSON.stringify(value), "utf8");
+      expect(readPolicyConfig(path)).toEqual(DEFAULT_POLICY_CONFIG);
+    });
+
     it("merges stored values over defaults", () => {
       const path = join(dir, "config.json");
       writeFileSync(path, JSON.stringify({ retentionDays: 30 }), "utf8");

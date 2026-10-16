@@ -39,7 +39,7 @@ interface DedupePair {
  */
 function resolveThreshold(raw: string | undefined): number {
   if (raw === undefined) return SIMILARITY_THRESHOLD;
-  const parsed = Number.parseFloat(raw);
+  const parsed = Number(raw.trim());
   if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 1) {
     console.error(
       `Invalid --threshold "${raw}": expected a number greater than 0 and at most 1.`,

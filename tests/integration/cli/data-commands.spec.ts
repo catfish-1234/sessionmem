@@ -28,6 +28,20 @@ describe("listCommand", () => {
     expect(output).toContain("test-mem-003");
   });
 
+  it("warns when the current project's list is truncated", async () => {
+    ctx = await createTestCliContext();
+    const seed = ctx.db.prepare("INSERT INTO memories (id, project_id, session_id, source_adapter, kind, content, normalized_content, importance) VALUES (?, ?, 's', 'test', 'fact', 'context', 'context', 5)");
+    ctx.db.transaction(() => {
+      for (let i = 0; i < 200; i++) seed.run(`extra-${i}`, ctx!.projectId);
+    })();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await listCommand(ctx);
+    expect((log.mock.calls[0][0] as string).split("\n")).toHaveLength(201);
+    expect(error.mock.calls.flat().join(" ")).toContain("Showing 200 of 203 memories");
+    expect(error.mock.calls.flat().join(" ")).toContain("sessionmem export");
+  });
+
   it("listCommand prints empty table when no memories exist for the project", async () => {
     ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});

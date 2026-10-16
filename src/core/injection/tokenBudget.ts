@@ -25,8 +25,15 @@ export function capTokens(text: string, cap: number): string {
   if (tokens.length <= cap) {
     return text;
   }
-  const trimmed = encoding.decode(tokens.slice(0, cap)).trimEnd();
-  return `${trimmed} ...`;
+  // Reserve room for the truncation marker, then verify the re-encoded text:
+  // token boundaries can change when a decoded prefix and suffix are joined.
+  const suffix = " ...";
+  for (let keep = Math.max(0, Math.floor(cap) - countTokens(suffix)); keep >= 0; keep--) {
+    const trimmed = encoding.decode(tokens.slice(0, keep)).trimEnd();
+    const result = trimmed ? `${trimmed}${suffix}` : suffix.trim();
+    if (countTokens(result) <= cap) return result;
+  }
+  return "";
 }
 
 export function trimLowestPriorityContent<T extends TokenBudgetEntry>(

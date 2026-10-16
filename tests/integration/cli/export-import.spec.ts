@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tmpdir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
-import { readFileSync, unlinkSync, existsSync, mkdtempSync, rmSync } from "fs";
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdtempSync, rmSync } from "fs";
 import { exportCommand } from "../../../src/cli/commands/export.js";
 import { importCommand } from "../../../src/cli/commands/import.js";
 import { createTestCliContext } from "../../helpers/cliTestContext.js";
@@ -293,4 +293,58 @@ describe("export/import round-trip", () => {
       if (existsSync(badPath)) unlinkSync(badPath);
     }
   });
+  it.each([false, true])("skips null/scalar records and reports original indexes (merge=%s)", async (merge) => {
+    ctx = await createTestCliContext();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const path = join(testHome.path, "import.json");
+    await exportCommand(path, ctx);
+    const duplicate = JSON.parse(readFileSync(path, "utf8"))[0];
+    const fresh = { ...duplicate, id: "new-provenance", author: "alice", originProjectId: "original-project" };
+    writeFileSync(path, JSON.stringify([duplicate, null, 42, [], "text", fresh]));
+    await importCommand(path, { merge }, ctx);
+    expect(error.mock.calls.map(([message]) => message).join("\n")).toContain("Record at index 1 is invalid");
+    expect(error).toHaveBeenCalledTimes(4);
+    expect(log.mock.calls.flat().join("\n")).toContain("4 invalid record(s) skipped");
+    const row = ctx.db.prepare("SELECT author, origin_project_id FROM memories WHERE id = ?").get(fresh.id);
+    expect(row).toEqual({ author: "alice", origin_project_id: "original-project" });
+  });
+
+  it("accepts UTF-8 BOM and CRLF without changing Unicode content", async () => {
+    ctx = await createTestCliContext();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const path = join(testHome.path, "windows export.json");
+    await exportCommand(path, ctx);
+    const record = JSON.parse(readFileSync(path, "utf8"))[0];
+    const content = "決定: café ☃\r\nsecond line";
+    writeFileSync(path, "\uFEFF" + JSON.stringify([{ ...record, id: "unicode", content }], null, 2).replace(/\n/g, "\r\n"));
+    await importCommand(path, {}, ctx);
+    expect(ctx.db.prepare("SELECT content FROM memories WHERE id = 'unicode'").get()).toEqual({ content });
+  });
+
+  it("rejects non-UTF-8 bytes rather than importing replacement characters", async () => {
+    ctx = await createTestCliContext();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process, "exit").mockImplementation(() => { throw new Error("process.exit called"); });
+    const path = join(testHome.path, "invalid-encoding.json");
+    await exportCommand(path, ctx);
+    const record = JSON.parse(readFileSync(path, "utf8"))[0];
+    const bytes = Buffer.from(JSON.stringify([{ ...record, id: "bad-encoding", content: "MARKER" }]));
+    bytes[bytes.indexOf("MARKER")] = 0xff;
+    writeFileSync(path, bytes);
+    await expect(importCommand(path, {}, ctx)).rejects.toThrow("process.exit called");
+    expect(error.mock.calls.flat().join(" ")).toMatch(/utf-8/i);
+    expect(ctx.db.prepare("SELECT id FROM memories WHERE id = 'bad-encoding'").get()).toBeUndefined();
+  });
+
+  it("acknowledges an empty import", async () => {
+    ctx = await createTestCliContext();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const path = join(testHome.path, "empty.json");
+    writeFileSync(path, "[]");
+    await importCommand(path, {}, ctx);
+    expect(log).toHaveBeenCalledWith("Imported 0, skipped 0 duplicates.");
+  });
+
 });
