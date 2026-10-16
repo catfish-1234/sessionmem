@@ -102,7 +102,11 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   let obj: Record<string, unknown>;
   try {
     raw = readFileSync(filePath, "utf8");
-    obj = JSON.parse(raw) as Record<string, unknown>;
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return { ...DEFAULT_POLICY_CONFIG };
+    }
+    obj = parsed as Record<string, unknown>;
   } catch {
     return { ...DEFAULT_POLICY_CONFIG };
   }

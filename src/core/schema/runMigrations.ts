@@ -83,6 +83,7 @@ export function runMigrations(
   );
 
   const runMigration = db.transaction((fileName: string) => {
+    if (hasMigrationStmt.get(fileName)) return;
     const filePath = path.join(migrationsDir, fileName);
     const sql = fs.readFileSync(filePath, "utf8");
     db.exec(sql);
@@ -90,13 +91,10 @@ export function runMigrations(
   });
 
   for (const fileName of files) {
-    const existing = hasMigrationStmt.get(fileName);
-    if (existing) {
-      continue;
-    }
-
+    if (hasMigrationStmt.get(fileName)) continue;
     try {
-      runMigration(fileName);
+      // Serialize the check and apply across processes opening the same DB.
+      runMigration.immediate(fileName);
     } catch (err) {
       // Idempotency guard for ALTER TABLE ADD COLUMN migrations (005/006).
       // SQLite has no `ADD COLUMN IF NOT EXISTS`, so re-running a column-adding
@@ -117,7 +115,9 @@ export function runMigrations(
         const filePath = path.join(migrationsDir, fileName);
         const sql = fs.readFileSync(filePath, "utf8");
         if (allAddedColumnsExist(db, sql)) {
-          insertMigrationStmt.run(fileName);
+          db.transaction(() => {
+            if (!hasMigrationStmt.get(fileName)) insertMigrationStmt.run(fileName);
+          }).immediate();
           continue;
         }
       }

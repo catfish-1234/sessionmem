@@ -22,7 +22,7 @@ export async function importCommand(
   // Read and parse the JSON file
   let parsed: unknown;
   try {
-    const raw = readFileSync(inPath, "utf8");
+    const raw = new TextDecoder("utf-8", { fatal: true }).decode(readFileSync(inPath));
     parsed = JSON.parse(raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -36,67 +36,35 @@ export async function importCommand(
     process.exit(1);
   }
 
-  const records = parsed as Array<Record<string, unknown>>;
-
-  let toImport = records;
-  let skippedCount = 0;
-
-  if (!options.merge) {
-    // By default, skip existing IDs (pre-filter). `id` is a
-    // globally-unique PRIMARY KEY (not scoped by project), so the duplicate
-    // check must consider every project's ids -- otherwise a record whose id
-    // collides with another project's memory would not be pre-filtered here
-    // and could fall through to the service's ON CONFLICT(id) upsert.
-    const existingIds = listAllMemoryIds(context.db);
-
-    const filtered = records.filter((r) => {
-      const id = typeof r.id === "string" ? r.id : undefined;
-      return id === undefined || !existingIds.has(id);
-    });
-    skippedCount = records.length - filtered.length;
-    toImport = filtered;
-  }
-
-  if (toImport.length === 0 && skippedCount > 0) {
-    console.log(`Imported 0, skipped ${skippedCount} duplicates.`);
-    return;
-  }
-
-  // Map to the expected shape, then validate each record before sending to the service
-  const mapped = toImport.map((r) => ({
-    id: r.id as string,
-    projectId: (r.projectId as string) ?? context.projectId,
-    sessionId: r.sessionId as string,
-    sourceAdapter: r.sourceAdapter as string,
-    kind: r.kind as string,
-    content: r.content as string,
-    importance: r.importance as number,
-    createdAt: r.createdAt as string | undefined,
-    updatedAt: r.updatedAt as string | undefined,
-  }));
-
-  // Validate each record but skip-and-warn on individual invalid
-  // records (consistent with the duplicate-skip UX) instead of aborting the
-  // entire import on the first invalid record, which would discard earlier
-  // valid records with no partial import.
+  const existingIds = options.merge ? undefined : listAllMemoryIds(context.db);
   const validMemories: Array<z.infer<typeof importMemoryRecordSchema>> = [];
+  let skippedCount = 0;
   let invalidCount = 0;
-  for (let i = 0; i < mapped.length; i++) {
-    const check = importMemoryRecordSchema.safeParse(mapped[i]);
+
+  for (const [index, record] of parsed.entries()) {
+    const isRecord = record !== null && typeof record === "object" && !Array.isArray(record);
+    if (isRecord && typeof record.id === "string" && existingIds?.has(record.id)) {
+      skippedCount += 1;
+      continue;
+    }
+    // Validate unknown values before accessing fields. Keep the source index in
+    // diagnostics even when earlier records were duplicates, and preserve the
+    // optional provenance fields carried by exports.
+    const check = importMemoryRecordSchema.safeParse(
+      isRecord ? { ...record, projectId: record.projectId ?? context.projectId } : record,
+    );
     if (!check.success) {
-      console.error(`Record at index ${i} is invalid, skipping: ${check.error.message}`);
+      console.error(`Record at index ${index} is invalid, skipping: ${check.error.message}`);
       invalidCount += 1;
       continue;
     }
-    // Use the parsed/transformed record so `kind` is narrowed to the
-    // canonical enum (memoryKindSchema maps legacy values like `architecture`).
     validMemories.push(check.data);
   }
 
   if (validMemories.length === 0) {
     if (invalidCount > 0) {
       console.log(`Imported 0, skipped ${invalidCount} invalid record(s).`);
-    } else if (skippedCount > 0) {
+    } else {
       console.log(`Imported 0, skipped ${skippedCount} duplicates.`);
     }
     return;
