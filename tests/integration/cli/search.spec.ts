@@ -20,6 +20,11 @@ describe("searchCommand", () => {
   const printed = (logSpy: ReturnType<typeof vi.spyOn>): string =>
     logSpy.mock.calls.map((c) => c[0] as string).join("\n");
 
+  it.each(["0", "-1", "1.5", "2oops", "101", "Infinity", ""])('rejects invalid --limit "%s"', async (limit) => {
+    ctx = await createTestCliContext();
+    await expect(searchCommand("memory", { limit }, ctx)).rejects.toThrow("expected an integer from 1 to 100");
+  });
+
   it("searchCommand prints a table of matching memories ranked by relevance", async () => {
     ctx = await createTestCliContext();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});

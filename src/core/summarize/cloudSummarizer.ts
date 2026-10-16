@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { capTokens } from "../injection/tokenBudget.js";
 import type { SessionEventRecord } from "../storage/types.js";
 import type { LocalSummarizeInput, SummarizerResult } from "./localSummarizer.js";
 import { summarizeLocalSessionEvents } from "./localSummarizer.js";
@@ -44,7 +45,7 @@ export async function summarizeWithCloud(
   });
 
   // Extract text from response content blocks
-  let text = response.content
+  const text = response.content
     .filter((block): block is Anthropic.TextBlock => block.type === "text")
     .map((block) => block.text)
     .join("\n");
@@ -55,15 +56,9 @@ export async function summarizeWithCloud(
     throw new Error("Cloud summarizer returned empty response");
   }
 
-  // Cap cloud output to summaryTokenCap (rough token→char ratio) for parity
-  // with the local summarizer, so a verbose cloud response cannot blow past the
-  // configured budget.
-  if (input.summaryTokenCap && text.length > input.summaryTokenCap * 4) {
-    text = text.slice(0, input.summaryTokenCap * 4);
-  }
 
   return {
-    summary: text,
+    summary: capTokens(text, input.summaryTokenCap),
     warningCodes: localResult.warningCodes,
   };
 }

@@ -13,4 +13,7 @@ export async function listCommand(ctx?: CliContext): Promise<void> {
   }
 
   console.log(formatTable(result.memories));
+  if (result.total > result.memories.length) {
+    console.error(`Showing ${result.memories.length} of ${result.total} memories. Use \`sessionmem export\` for the full project.`);
+  }
 }

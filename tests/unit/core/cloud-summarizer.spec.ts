@@ -16,6 +16,7 @@ vi.mock("@anthropic-ai/sdk", () => {
   return { default: MockAnthropic };
 });
 import { summarizeWithCloud } from "../../../src/core/summarize/cloudSummarizer.js";
+import { countTokens } from "../../../src/core/injection/tokenBudget.js";
 import { DEFAULT_SUMMARIZER_MODEL } from "../../../src/core/config/policyConfig.js";
 
 // Minimal mock of local summarizer so we control its output
@@ -64,6 +65,16 @@ describe("summarizeWithCloud", () => {
     // Verify return value is the API response text (no [model:...] prefix)
     expect(result.summary).toBe("compressed cloud summary");
     expect(result.summary).not.toMatch(/^\[model:/);
+  });
+
+  it("caps long Unicode cloud output by tokens", async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: "text", text: "決定 café ☃ ".repeat(500) }] });
+    const result = await summarizeWithCloud({
+      events: [], summaryTokenCap: 100, redactionEnabled: true,
+      factMode: "summary-only", anthropicApiKey: "test-key",
+    });
+    expect(countTokens(result.summary)).toBeLessThanOrEqual(100);
+    expect(result.summary.length).toBeGreaterThan(0);
   });
 
   it("uses custom model when provided", async () => {

@@ -1,23 +1,17 @@
 import { AdapterFactory } from "../../adapters/factory.js";
 import { mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
+import { join, dirname } from "path";
 import { deriveProjectId } from "../projectId.js";
-import { expandTilde } from "../context.js";
+import { resolveDbPath } from "../context.js";
 
 export async function runMcpServer() {
   const adapter = AdapterFactory.detectAdapter();
 
-  // Startup diagnostics: written to ~/.sessionmem/logs/mcp.log
-  const logDir = join(homedir(), ".sessionmem", "logs");
+  // Keep diagnostics beside the selected database so an override never
+  // creates the default home directory just to write a log.
+  const dbPath = resolveDbPath();
+  const logDir = join(dirname(dbPath), "logs");
   const logPath = join(logDir, "mcp.log");
-
-  // Derive db path for diagnostics (mirrors context.ts defaultDbPath)
-  const envDbPath = process.env.SESSIONMEM_DB_PATH;
-  const dbPath =
-    envDbPath && envDbPath.trim() !== ""
-      ? expandTilde(envDbPath)
-      : join(homedir(), ".sessionmem", "memories.db");
 
   // Derive project ID for diagnostics. Shares the exact derivation the server
   // uses (createCliContext → deriveProjectId) so the logged id never diverges
@@ -28,8 +22,10 @@ export async function runMcpServer() {
   const logMessage = `[${new Date().toISOString()}] Started sessionmem | adapter=${adapterName} db=${dbPath} project=${projectId}\n`;
 
   try {
-    mkdirSync(logDir, { recursive: true });
-    writeFileSync(logPath, logMessage, { flag: "a" });
+    if (dbPath !== ":memory:") {
+      mkdirSync(logDir, { recursive: true });
+      writeFileSync(logPath, logMessage, { flag: "a" });
+    }
   } catch {
     // best-effort logging; ignore failures
   }
