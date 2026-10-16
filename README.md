@@ -54,18 +54,18 @@ sessionmem install --adapter claude-code
 # Other names: cursor, cline, codex, windsurf, antigravity, qcoder, generic
 ```
 
-This does three things:
+This initializes the database and, for supported adapters:
 - Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
 - Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults, but only if one doesn't already exist.
 - Injects instructions into the selected host's guidance file (for example `~/.claude/CLAUDE.md` for Claude Code, or `~/.codex/AGENTS.md` for Codex; idempotent, so safe to re-run).
 
-### 3. Start using your AI tool as normal
+### 3. Restart your AI tool
 
-```bash
-sessionmem run
-```
-
-(Most of the time you won't run this yourself. Your AI tool's host starts it automatically once it's registered.)
+Restart your editor or agent so it loads the MCP registration. Your host starts
+`sessionmem run` automatically; running it directly starts a stdio server that
+waits for MCP messages, so it can appear to hang in a terminal. For an unknown
+host (`generic`), install writes a project-local `.mcp.json`; if your host uses
+another format or location, copy its server entry into that host’s MCP config.
 
 That's it. From here:
 - In Claude Code, installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and inject prior memories automatically.
@@ -114,7 +114,9 @@ This happens because most AI assistants only "know" what's inside the current co
 2. When the session ends, it **summarizes** the important parts (decisions made, warnings, useful facts) into short, durable notes.
 3. The next time you start a session, it **reminds** the assistant of the most relevant notes, automatically, in a small amount of text.
 
-You don't run any of these steps yourself. Once installed, it just works in the background.
+Claude Code runs these steps through the installed hooks. Other hosts need their
+agent to call the MCP memory and lifecycle tools; the installed guidance explains
+how to do that.
 
 ---
 
@@ -213,26 +215,48 @@ For a deeper technical dive, see [`docs/architecture.md`](docs/architecture.md).
 
 | Command | What it does |
 |---------|--------------|
-| `sessionmem install` | Register sessionmem with the current MCP host and write default config. |
-| `sessionmem uninstall [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
+| `sessionmem install [--adapter <name>]` | Register sessionmem with the current MCP host and write default config. |
+| `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ping` | Check the local version and database reachability. |
-| `sessionmem search <query> [--limit <n>]` | Search memories by semantic query. |
-| `sessionmem list` | List all memories for the current project. |
-| `sessionmem show <id>` | Show full details of a memory. |
+| `sessionmem search <query> [--limit <n>]` | Search memories by semantic query (limit 1–100, default 10). |
+| `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
+| `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
-| `sessionmem export [path]` | Export memories to a JSON file. |
-| `sessionmem import <path> [--merge]` | Import memories from a JSON file. |
+| `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
+| `sessionmem import <path> [--merge]` | Import up to 1000 valid records from UTF-8 JSON into the current project. Existing IDs are preserved, including with `--merge`; invalid records are skipped with warnings. |
 | `sessionmem stats` | Show memory statistics for the current project. |
 | `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
 | `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
 | `sessionmem retention prune [--force] [--days <n>]` | Prune old memories (dry-run by default). |
 | `sessionmem config get <key>` / `config set <key> <value>` | Read and write policy config. |
-| `sessionmem team enable <path>` / `team disable` / `team status` | Manage shared-path team memory mode. |
+| `sessionmem team enable <path>` / `team disable [--remove-team-memories]` / `team status` | Manage shared-path team memory mode. |
 | `sessionmem sync` | Push local memories and pull teammate memories via the shared path. |
-| `sessionmem browse [--project <id>]` | List projects or browse a project's memories. |
-| `sessionmem dedupe [--apply] [--threshold <n>]` | Preview duplicate memories; `--apply` deletes them. |
+| `sessionmem browse [--project <id>]` | List projects or preview up to 50 recent memories from one project. |
+| `sessionmem dedupe [--apply] [--threshold <n>]` | Preview duplicate memories; `--apply` deletes them (threshold >0–1, default 0.85). |
 | `sessionmem re-embed` | Refresh memories with stale embedding versions. |
+| `sessionmem session-start` | Print prior context as Claude Code SessionStart hook JSON. |
+| `sessionmem ingest-hook` | Read a Claude Code PostToolUse JSON payload from stdin and capture supported tool events. |
+| `sessionmem session-end` | Summarize ingested events and apply retention pruning; reads the hook session ID from stdin. |
+
+Use `sessionmem --help` or `sessionmem <command> --help` for options, and
+`sessionmem --version` for the installed version. Destructive commands require
+`--force`, `--apply`, or `--purge` as shown above. `team disable` preserves
+teammate memories unless `--remove-team-memories` is passed.
+
+The default database is `~/.sessionmem/memories.db`. Set `SESSIONMEM_DB_PATH`
+to use another file; its parent directories are created automatically and the
+default directory is not created by database commands. Server logs are written
+to `logs/mcp.log` beside the selected database (disabled for `:memory:`). Config remains at
+`~/.sessionmem/config.json`. `uninstall --purge` deletes the selected database.
+Quote paths containing spaces (for example `"C:\Users\Ada Lovelace\memory.db"`
+on Windows). In JSON config files, use forward slashes or escaped backslashes
+for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings to UTF-8.
+
+`SESSIONMEM_PROJECT_ID` pins the project bucket (useful when moving a repository);
+otherwise it is derived from the repository root or working directory.
+`SESSIONMEM_ADAPTER` selects the install/uninstall host unless `--adapter` is set.
+`SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
 
 ---
 
@@ -312,7 +336,8 @@ Full details, including the trust model: [`docs/team-mode.md`](docs/team-mode.md
 
 By default, summarization (turning a session into a short memory) happens entirely locally, with no API calls.
 
-If you explicitly opt in (`allowCloudSummarization=true`) and provide an `ANTHROPIC_API_KEY`, summarization can use Claude's API for higher-quality summaries. If that ever fails, it automatically falls back to local summarization. Your sessions are never left unsummarized.
+If you explicitly opt in (`allowCloudSummarization=true`) and provide an `ANTHROPIC_API_KEY`, summarization can use Claude's API for higher-quality summaries. If the cloud call fails and local fallback is enabled, it falls back to local
+summarization. Failures are recorded for diagnosis; see the linked configuration guide.
 
 Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
@@ -353,7 +378,7 @@ Run into trouble installing or running `sessionmem`? Start with [`docs/troublesh
 Two quick checks that resolve most reports:
 
 ```bash
-sessionmem install   # idempotent — re-registers the MCP server and all three hooks
+sessionmem install   # idempotent; Claude Code also installs all three hooks
 sessionmem stats     # memories, sessions, and session_events for the current project
 ```
 
@@ -409,7 +434,10 @@ npm test
 npm run lint
 ```
 
-**MCP config for local development:** Copy `.mcp.json.example` to `.mcp.json` for local dev, or use `sessionmem install` to auto-configure. The `.mcp.json` file is gitignored because it contains machine-specific paths.
+**MCP config for local development:** Clone the repository, build it, copy
+`.mcp.json.example` to `.mcp.json`, and replace the example path with the absolute
+path to your checkout’s `dist/cli/index.js`. This runs your local build.
+`sessionmem install` registers the `sessionmem` executable on PATH instead. The `.mcp.json` file is gitignored because it contains machine-specific paths.
 
 ---
 

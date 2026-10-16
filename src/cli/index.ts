@@ -38,7 +38,7 @@ const pkg = createRequire(import.meta.url)("../../package.json") as {
 };
 
 const program = new Command();
-program.name("sessionmem").version(pkg.version);
+program.name("sessionmem").description("Local-first memory for MCP coding agents").version(pkg.version);
 
 program
   .command("run")
@@ -102,17 +102,17 @@ program
 program
   .command("search <query>")
   .description("Search memories by semantic query")
-  .option("--limit <n>", "Maximum number of results", "10")
+  .option("--limit <n>", "Maximum number of results (1-100)", "10")
   .action((query, options) => searchCommand(query, options));
 
 program
   .command("list")
-  .description("List all memories for the current project")
+  .description("List up to 200 recent memories for the current project")
   .action(() => listCommand());
 
 program
   .command("show <id>")
-  .description("Show full details of a memory by ID")
+  .description("Show memory details by ID (content capped at 2000 characters)")
   .action((id) => showCommand(id));
 
 program
@@ -129,7 +129,7 @@ program
 program
   .command("import <path>")
   .description("Import memories from a JSON file")
-  .option("--merge", "Overwrite existing memories with imported data")
+  .option("--merge", "Merge new records; existing IDs are preserved")
   .action((path, options) => importCommand(path, options));
 
 program
@@ -222,7 +222,7 @@ program
   .command("dedupe")
   .description("Find and optionally remove near-duplicate memories")
   .option("--apply", "Delete the lower-importance duplicate in each pair (default: dry-run)")
-  .option("--threshold <n>", "Cosine similarity threshold 0-1 (default: 0.85)")
+  .option("--threshold <n>", "Cosine similarity threshold >0 to 1 (default: 0.85)")
   .action((options) => dedupeCommand({ dry: !options.apply, threshold: options.threshold }));
 
 // browse — cross-project memory viewer.

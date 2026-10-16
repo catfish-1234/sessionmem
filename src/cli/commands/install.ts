@@ -4,7 +4,7 @@ import { homedir } from "os";
 import { AdapterFactory } from "../../adapters/factory.js";
 import type { HostAdapterContract } from "../../adapters/contract/hostAdapterContract.js";
 import { injectGuidanceBlock } from "../../adapters/claudeMdInjector.js";
-import { createCliContext } from "../context.js";
+import { createCliContext, resolveDbPath } from "../context.js";
 import type { CliContextOverrides } from "../context.js";
 
 export interface InstallOptions {
@@ -85,10 +85,10 @@ export async function installCommand(
     dbPath = ctx.dbPath;
   } catch (err) {
     console.error(
-      `✗ DB init failed (~/.sessionmem/memories.db): ${err instanceof Error ? err.message : String(err)}`,
+      `✗ DB init failed (${resolveDbPath(contextOverrides?.dbPath)}): ${err instanceof Error ? err.message : String(err)}`,
     );
     console.error(
-      "Hint: ensure ~/.sessionmem directory is writable and run `sessionmem install` again.",
+      "Hint: ensure the database parent directory is writable and run `sessionmem install` again.",
     );
     process.exit(1);
   }

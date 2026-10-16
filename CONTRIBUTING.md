@@ -13,7 +13,10 @@ npm run build
 
 ### MCP config for local development
 
-Copy `.mcp.json.example` to `.mcp.json` for local dev, or run `sessionmem install` to auto-configure. The `.mcp.json` file is gitignored because it contains machine-specific paths.
+Copy `.mcp.json.example` to `.mcp.json` and replace its example path with the
+absolute path to this checkout’s `dist/cli/index.js`. Rebuild after source changes.
+`sessionmem install` registers the executable on PATH, which may be a different
+installed version. The `.mcp.json` file is gitignored because it contains machine-specific paths.
 
 ## Development workflow
 
@@ -53,7 +56,10 @@ npm run build        # benchmarks import from dist/
 npm run benchmark    # regenerates docs/benchmark.md
 ```
 
-All four checks (build, test, lint, typecheck) run in CI across Ubuntu, macOS, and Windows on Node 20 and 22.
+All four checks (build, test, lint, typecheck) run in CI on Node 20 and 22 for
+Ubuntu and macOS, and Node 22 for Windows. CI also installs the npm tarball and
+checks the installed CLI. Run `npm pack --dry-run` to review published files;
+only compiled runtime files, migrations, and user documentation belong there.
 
 ## Project structure
 
@@ -117,7 +123,7 @@ Open an issue describing the use case. Explain the problem you're trying to solv
 
 ## Security
 
-If you find a security vulnerability, **do not open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/catfish-1234/sessionmem/security/advisories/new). See the [security policy](SECURITY.md) for supported versions and response expectations, and the [security workflow](.github/workflows/security.yml) for automated scanning.
+If you find a security vulnerability, **do not open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/catfish-1234/sessionmem/security/advisories/new). See the [security policy](SECURITY.md) for supported versions and response expectations, and the [security workflow](https://github.com/catfish-1234/sessionmem/blob/main/.github/workflows/security.yml) for automated scanning.
 
 ## License
 

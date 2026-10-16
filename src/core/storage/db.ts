@@ -10,14 +10,34 @@ export interface OpenDbOptions {
 export function openDb(options: OpenDbOptions = {}): Database {
   const db = new BetterSqlite3(options.dbPath ?? ":memory:");
 
-  // Performance pragmas — WAL enables concurrent reads during writes;
-  // busy_timeout prevents SQLITE_BUSY under concurrent MCP tool calls.
-  db.pragma("journal_mode = WAL");
-  db.pragma("synchronous = NORMAL");
-  db.pragma("foreign_keys = ON");
-  db.pragma("busy_timeout = 5000");
-  db.pragma("cache_size = -32000");
+  try {
+    // Performance pragmas — WAL enables concurrent reads during writes;
+    // busy_timeout prevents SQLITE_BUSY under concurrent MCP tool calls.
+    // Concurrent first opens can race while switching to WAL. SQLite may
+    // bypass the busy handler for this lock upgrade, so retry within the same
+    // five-second budget used for normal writes.
+    const deadline = Date.now() + 5000;
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    for (;;) {
+      try {
+        db.pragma("journal_mode = WAL");
+        break;
+      } catch (err) {
+        if (!(err instanceof Error) || !("code" in err) || err.code !== "SQLITE_BUSY" || Date.now() >= deadline) {
+          throw err;
+        }
+        Atomics.wait(pause, 0, 0, 10);
+      }
+    }
+    db.pragma("synchronous = NORMAL");
+    db.pragma("foreign_keys = ON");
+    db.pragma("busy_timeout = 5000");
+    db.pragma("cache_size = -32000");
 
-  runMigrations(db, options.migrationsDir);
-  return db;
+    runMigrations(db, options.migrationsDir);
+    return db;
+  } catch (err) {
+    db.close();
+    throw err;
+  }
 }

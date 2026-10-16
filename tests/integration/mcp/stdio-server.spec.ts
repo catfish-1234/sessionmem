@@ -169,6 +169,8 @@ describe("stdio MCP server (spawned dist/cli/index.js run)", () => {
   it("completes the MCP initialize handshake", async () => {
     const client = startServer();
     await handshake(client);
+    expect(existsSync(join(homeDir, ".sessionmem"))).toBe(false);
+    expect(existsSync(join(homeDir, "logs", "mcp.log"))).toBe(true);
   });
 
   it("tools/list advertises retrieveMemories and storeMemory", async () => {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  capTokens,
   countTokens,
   trimLowestPriorityContent,
 } from "../../../src/core/injection/tokenBudget.js";
@@ -11,6 +12,16 @@ describe("token budget helpers", () => {
     expect(countTokens("short memory plus additional retrieval context")).toBeGreaterThan(
       countTokens("short memory"),
     );
+  });
+
+  it.each([0, 1, 2, 3, 300])("includes the truncation marker within a cap of %s tokens", (cap) => {
+    for (const text of ["long context ".repeat(1000), "決定 café ☃\r\n".repeat(500)]) {
+      expect(countTokens(capTokens(text, cap))).toBeLessThanOrEqual(cap);
+    }
+  });
+
+  it("preserves text already within budget", () => {
+    expect(capTokens("short memory", 100)).toBe("short memory");
   });
 
   it("trims the lowest-priority non-preserved content first", () => {

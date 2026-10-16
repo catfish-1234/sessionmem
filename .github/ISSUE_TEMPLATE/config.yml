@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/catfish-1234/sessionmem/security/advisories/new
+    about: Do not include vulnerabilities or sensitive session data in public issues.

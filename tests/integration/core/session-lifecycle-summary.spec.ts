@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryCoreService } from "../../../src/core/api/memoryCoreService.js";
+import { countTokens } from "../../../src/core/injection/tokenBudget.js";
 import { openDb } from "../../../src/core/storage/db.js";
 
 describe("session lifecycle summary pipeline", () => {
@@ -108,4 +109,30 @@ describe("session lifecycle summary pipeline", () => {
 
     db.close();
   });
+  it("summarizes a large session in bounded output across ingestion batches", async () => {
+    const db = openDb();
+    const service = createMemoryCoreService({ db });
+    try {
+      for (let batch = 0; batch < 3; batch++) {
+        const result = await service.ingestSessionEvents({
+          projectId: "large-project", sessionId: "large-session",
+          events: Array.from({ length: 400 }, (_, i) => ({
+            id: `large-${batch}-${i}`, eventType: "tool_use",
+            payloadJson: JSON.stringify({ text: `Step ${batch * 400 + i}: 決定 café\r\n` + "context ".repeat(500) }),
+          })),
+        });
+        expect(result.ingested).toBe(400);
+      }
+      const result = await service.handleSessionEnd({
+        projectId: "large-project", sessionId: "large-session", sourceAdapter: "test",
+        config: { autoSummarize: true, minimumEventThreshold: 3, summaryTokenCap: 300 },
+      });
+      expect(result.status).toBe("stored");
+      const row = db.prepare("SELECT content FROM memories WHERE id = 'large-session-summary'").get() as { content: string };
+      expect(row.content.length).toBeGreaterThan(0);
+      expect(countTokens(row.content)).toBeLessThanOrEqual(300);
+      expect(db.prepare("SELECT COUNT(*) AS count FROM session_events").get()).toEqual({ count: 1200 });
+    } finally { db.close(); }
+  });
+
 });

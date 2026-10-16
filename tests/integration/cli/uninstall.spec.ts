@@ -23,6 +23,7 @@ describe("uninstallCommand", () => {
   });
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
     rmSync(testHome.path, { recursive: true, force: true });
   });
 
@@ -102,6 +103,25 @@ describe("uninstallCommand", () => {
 
     const allLogs = logSpy.mock.calls.map((c) => c[0]).join("\n");
     expect(allLogs).toContain("memories.db deleted");
+  });
+
+
+  it("purges the environment-selected database and preserves the default", async () => {
+    const { mkdirSync } = await import("fs");
+    const defaultDir = join(testHome.path, ".sessionmem");
+    mkdirSync(defaultDir);
+    const defaultDb = join(defaultDir, "memories.db");
+    const selectedDb = join(testHome.path, "selected.db");
+    writeFileSync(defaultDb, "default");
+    writeFileSync(selectedDb, "selected");
+    vi.stubEnv("SESSIONMEM_DB_PATH", selectedDb);
+    vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue({
+      name: "TestAdapter", uninstall: async () => true, guidanceTargets: () => [],
+    } as never);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    await uninstallCommand({ purge: true });
+    expect(existsSync(selectedDb)).toBe(false);
+    expect(existsSync(defaultDb)).toBe(true);
   });
 
   it("prints error and exits non-zero when adapter has no uninstall() capability", async () => {

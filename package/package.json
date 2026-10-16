@@ -12,7 +12,11 @@
   },
   "mcpName": "io.github.catfish-1234/sessionmem",
   "files": [
-    "dist"
+    "dist",
+    "docs",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    ".github/sessionmem-logo.svg"
   ],
   "publishConfig": {
     "access": "public"
