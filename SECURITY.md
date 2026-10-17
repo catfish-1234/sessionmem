@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes are provided for the latest published stable release of
-sessionmem (currently 1.3.0). Older releases and prereleases are not supported;
+sessionmem. Older releases and prereleases are not supported;
 upgrade to the latest stable release before checking whether an issue persists.
 The main branch receives fixes for the next release but is not a supported
 published version.
