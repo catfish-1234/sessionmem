@@ -102,7 +102,7 @@ export function projectIdFromCwd(cwd: string): string {
  * bucket. The id is unchanged for anyone already running at the repo root,
  * since the root IS the cwd in that case.
  */
-export function deriveProjectId(): string {
+export function deriveProjectId(cwd = process.cwd()): string {
   const envProjectId = process.env.SESSIONMEM_PROJECT_ID;
   if (envProjectId && envProjectId.trim() !== "") {
     // Sanitize the operator-supplied id to prevent path traversal: the id is
@@ -120,6 +120,5 @@ export function deriveProjectId(): string {
       return sanitized;
     }
   }
-  const cwd = process.cwd();
   return projectIdFromCwd(findProjectRoot(cwd) ?? cwd);
 }

@@ -28,6 +28,8 @@ import { reEmbedCommand } from "./commands/reEmbed.js";
 import { ingestHookCommand } from "./commands/ingestHook.js";
 import { dedupeCommand } from "./commands/dedupe.js";
 import { browseCommand } from "./commands/browse.js";
+import { scanCommand } from "./commands/scan.js";
+import { watchCommand } from "./commands/watch.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -65,6 +67,20 @@ program
     "Process a Claude Code PostToolUse hook payload from stdin and store it as a session event (invoked automatically by the hook installed during `sessionmem install`)",
   )
   .action(() => ingestHookCommand());
+
+program
+  .command("scan")
+  .description("Import existing Claude Code transcripts using local capture and summarization")
+  .option("--transcripts-dir <path>", "Transcript directory (default: ~/.claude/projects)")
+  .action(async (options) => { await scanCommand(options); });
+
+program
+  .command("watch")
+  .description("Poll Claude Code transcripts and capture new or updated sessions offline")
+  .option("--transcripts-dir <path>", "Transcript directory (default: ~/.claude/projects)")
+  .option("--once", "Run one sweep and exit")
+  .option("--interval <seconds>", "Seconds between sweeps", "5")
+  .action((options) => watchCommand(options));
 
 program
   .command("install")

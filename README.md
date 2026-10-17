@@ -208,6 +208,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
 | `sessionmem import <path> [--merge]` | Import up to 1000 valid records from UTF-8 JSON into the current project. Existing IDs are preserved, including with `--merge`; invalid records are skipped with warnings. |
+| `sessionmem scan [--transcripts-dir <path>]` | Import existing Claude Code JSONL transcripts into local session memories. Reports files found, sessions imported, memories created, skipped files, and errors. |
+| `sessionmem watch [--once] [--interval <seconds>] [--transcripts-dir <path>]` | Capture new or updated Claude Code transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
 | `sessionmem stats` | Show memory statistics for the current project. |
 | `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
 | `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
@@ -240,6 +242,99 @@ for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings 
 otherwise it is derived from the repository root or working directory.
 `SESSIONMEM_ADAPTER` selects the install/uninstall host unless `--adapter` is set.
 `SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
+
+### Import existing sessions and watch for new ones
+
+Run a scan to capture Claude Code sessions from before sessionmem was installed:
+
+```bash
+sessionmem scan
+sessionmem watch --once
+sessionmem watch --interval 10
+```
+
+Both commands recursively read `~/.claude/projects/**/*.jsonl`. Use
+`--transcripts-dir "/path/to/projects"` to select another transcript tree. They
+work fully offline without API keys and always use the local summarizer, even
+if cloud summarization is enabled elsewhere.
+
+Transcript user/assistant text and supported tool uses (Bash, Edit, Write,
+MultiEdit) pass through the existing event-ingestion, redaction, and session-summary
+pipeline. Each session gets one summary memory, including short sessions with
+only one event. Updated sessions refresh that summary. Project buckets come from
+each transcript's `cwd`, using its repository root when available; the directory
+where you run scan/watch does not select the project. `SESSIONMEM_PROJECT_ID`
+can explicitly pin all imports to one bucket. Transcripts without a working
+directory or capturable events are skipped; nested subagent files get separate
+session summaries.
+
+Re-running either command does not duplicate memories or transcript events.
+File checkpoints live in the selected memory database, and unchanged files are
+skipped across restarts. Stable event IDs also make interrupted imports safe to
+retry. Partial or malformed JSONL lines are reported and retried on later sweeps;
+valid events in the same file can still be captured. A single sweep exits with
+status 1 if it encounters errors. The daemon keeps running and retries errors.
+
+`watch` prints its first sweep and subsequent imports or errors. It runs in the
+foreground until SIGINT or SIGTERM. For a background process:
+
+```bash
+nohup sessionmem watch > sessionmem-watch.log 2>&1 &
+```
+
+For macOS launchd, save this as
+`~/Library/LaunchAgents/io.sessionmem.watch.plist`. Replace the executable path
+with the output of `command -v sessionmem`, and adjust PATH for your Node install:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>io.sessionmem.watch</string>
+  <key>ProgramArguments</key>
+  <array><string>/opt/homebrew/bin/sessionmem</string><string>watch</string></array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+</dict>
+</plist>
+```
+
+```bash
+launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/io.sessionmem.watch.plist
+# Stop and unload:
+launchctl bootout "gui/$(id -u)/io.sessionmem.watch"
+```
+
+For a Linux systemd user service, save this as
+`~/.config/systemd/user/sessionmem-watch.service`. Replace the executable path
+and adjust PATH for your Node install:
+
+```ini
+[Unit]
+Description=Capture Claude Code transcripts with sessionmem
+
+[Service]
+ExecStart=/usr/local/bin/sessionmem watch
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now sessionmem-watch.service
+journalctl --user -u sessionmem-watch.service -f
+# Stop and disable:
+systemctl --user disable --now sessionmem-watch.service
+```
+
+These are optional examples; `sessionmem install` does not register a daemon.
 
 ---
 
