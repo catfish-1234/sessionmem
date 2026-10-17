@@ -1,50 +1,60 @@
-# Benchmark
+# Conversational retrieval benchmark
 
-`npm run benchmark` (`scripts/benchmark.mjs`) generates this report using the production functions `retrieveMemories`, `formatStartupInjection`, and `countTokens`. It measures token reduction against full session history and retrieval relevance using curated, synthetic fixtures. It runs offline with a hash-based embedding function, `deterministicEmbed`, and a fixed clock, so repeated runs produce identical output.
+`npm run benchmark` runs the committed LoCoMo corpus through the public
+`storeMemory` capture and `retrieveMemories` recall APIs. It replaces the previous
+ten exact-text queries and their 100% hit-rate claim. See
+[benchmarks/README.md](../benchmarks/README.md) for the corpus license, selection
+rules, metric definitions, and detailed reproduction instructions.
 
-Startup injection used **~85.6% fewer tokens** than full session history. Retrieval had a **100.0% hit-rate** across 10 curated queries.
+## Recorded result
 
-## Token reduction
+This run used sessionmem 1.4.0, Node v24.19.0, Linux x64, top-5 retrieval, fixed
+capture/retrieval time, and the production `deterministicEmbed`. It captured
+5,882 turns across 272 sessions in 10 conversations. Of 1,986 annotations,
+1,527 questions were scored; 446 adversarial, four missing-evidence, and nine
+invalid-evidence questions were excluded by fixed annotation rules.
 
-Token counts use the production `countTokens` function (js-tiktoken `o200k_base`). The table compares a single startup injection and average per-query context with the same full-history baseline. The result above uses startup injection.
+| Macro retrieval metric @5 | Result |
+| --- | ---: |
+| Hit rate | 1.44% |
+| Precision | 0.29% |
+| Recall | 0.88% |
+| All-evidence rate | 0.65% |
 
-| Framing | Baseline tokens (full history) | Injected tokens | Reduction |
-|---------|-------------------------------|-----------------|-----------|
-| (a) Top-3 startup injection vs full history | 1587 | 228 | 85.6% |
-| (b) Per-query injected context (avg) vs full history | 1587 | 232 | 85.4% |
+| Question category | Questions | Hit rate | Precision | Recall |
+| --- | ---: | ---: | ---: | ---: |
+| Multi-hop | 278 | 2.52% | 0.50% | 0.47% |
+| Temporal | 320 | 0.63% | 0.13% | 0.63% |
+| Open-domain | 89 | 3.37% | 0.67% | 1.19% |
+| Single-hop | 840 | 1.19% | 0.24% | 1.07% |
 
-Row (a) measures one startup injection of the top-ranked memories. Row (b) averages the injected context across the curated queries to model per-turn retrieval.
+Recall latency was mean **11.12 ms**, median **10.49 ms**, p95 **18.74 ms**,
+and maximum **38.94 ms**. These measurements include public service response
+formatting and exclude capture, process startup, and corpus loading. Timing
+depends on hardware and load; it is not a reproducible quality score.
 
-## Retrieval relevance
+The low scores show that the current hash-based embedding and retrieval pipeline
+perform poorly on conversational questions with different wording from the
+stored dialogue. The evaluation does not tune or replace that implementation.
+A hit means at least one annotated turn was found; it does not establish that
+enough evidence was found to answer a multi-hop question. This is retrieval
+evaluation, not answer-generation accuracy or automatic summarization quality.
 
-Each query runs through `retrieveMemories` with a limit of 3 results. The returned ids are compared with the expected memory ids. A query counts as a hit if at least one expected memory is returned.
+## Reproduce
 
-- **Hit-rate:** 100.0% (10 queries)
-- **Overall recall:** 100.0%
-- **Overall precision:** 33.3%
-
-| Query (memory content) | Expected memory | Recall | Precision |
-|------------------------|-----------------|--------|-----------|
-| We chose JWT access tokens with a 15-minute expiry and ro... | mem-auth-decision | 100.0% | 33.3% |
-| The persistence layer uses better-sqlite3 with WAL mode; ... | mem-db-decision | 100.0% | 33.3% |
-| Embeddings are computed offline with a deterministic sha2... | mem-embed-fact | 100.0% | 33.3% |
-| Retrieval ranks candidates by a weighted blend of semanti... | mem-retrieval-fact | 100.0% | 33.3% |
-| Startup injection formats the top-ranked memories under a... | mem-injection-fact | 100.0% | 33.3% |
-| Never edit an already-shipped migration file in place; ad... | mem-migration-warning | 100.0% | 33.3% |
-| Redaction must run on every memory-write path before stor... | mem-secret-warning | 100.0% | 33.3% |
-| The CLI exposes remember, retention prune, redact-scan, a... | mem-cli-fact | 100.0% | 33.3% |
-| Tests use vitest; integration specs seed an in-memory dat... | mem-testing-fact | 100.0% | 33.3% |
-| The MCP server runs over stdio and exposes memory retriev... | mem-mcp-decision | 100.0% | 33.3% |
-
-### Relevance interpretation
-
-`deterministicEmbed` uses a hash-based fingerprint. Identical text has a cosine similarity of 1.0; wording changes produce noisy scores. It supports exact or near-exact recall rather than semantic matching of paraphrases. These queries contain the target memory's content, so the hit-rate measures whether ranking retrieves that memory in that case. Matching paraphrases requires a semantic embedding model. Replacing the embedding model leaves the retrieval and scoring code unchanged, so the benchmark can still exercise those paths.
-
-## Reproducing
+After installing the lockfile dependencies:
 
 ```bash
-npm run build      # benchmark imports built functions from dist/
-npm run benchmark  # regenerates this file deterministically
+npm run build
+npm run benchmark -- --output benchmarks/results/locomo.json
 ```
 
-_Fixtures are synthetic; the report contains only aggregate metrics and synthetic example content. Generated by `scripts/benchmark.mjs`._
+The corpus is pinned to upstream commit
+`3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376`, SHA-256
+`79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4`.
+The runner verifies this checksum and blocks network calls. No API keys are
+required. A second full run with an empty environment produced identical
+retrieved IDs and quality metrics for all 1,527 questions. JSON output includes
+every scored question, answer, evidence list, returned IDs, and exclusion reason
+so failures can be inspected. The report above is a recorded result; the command
+prints current results and writes JSON only when requested.

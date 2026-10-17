@@ -1,6 +1,7 @@
 node_modules/
 *.log
 dist/
+benchmarks/results/
 
 # SQLite WAL mode auxiliary files
 *.db-wal
