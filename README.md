@@ -9,7 +9,7 @@
   <a href="https://github.com/catfish-1234/sessionmem/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
-**85.6% fewer tokens. Every session starts knowing your codebase. Stored entirely on your machine.**
+**Project memory between sessions, stored on your machine. Startup context used 85.6% fewer tokens than full session history in the included benchmark.**
 
 ```
 New session. Claude starts fresh.
@@ -27,15 +27,15 @@ WITH sessionmem:
   Claude: "Looks like you're mid-Stripe migration. Where do you want to pick up?"
 ```
 
-`sessionmem` is an MCP server that stores decisions, warnings, and project context across sessions. Claude Code hooks capture supported tool events and inject prior memories automatically. Other hosts use its MCP tools and guidance, with lifecycle automation depending on the host. It works with Claude Code, Cursor, Cline, Codex, Windsurf, and anything that speaks [MCP](https://modelcontextprotocol.io).
+`sessionmem` is an MCP server that stores decisions, warnings, and project context across sessions. Claude Code hooks capture supported tool events and load relevant memories automatically. Other hosts use its MCP tools and installed instructions; session automation depends on the host. It works with Claude Code, Cursor, Cline, Codex, Windsurf, and other [MCP](https://modelcontextprotocol.io) hosts.
 
-Everything stays on your machine. No account, no cloud, no data leaving your computer unless you explicitly turn that on.
+By default, everything stays on your machine. You don't need an account or a cloud service. Data only leaves your computer if you enable sharing or cloud summarization.
 
 ---
 
 ## Quickstart
 
-No programming experience needed. You just need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org) installed (20.19+ on the Node 20 line, or 22.13+; Node 22 LTS is recommended).
+You need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org), version 20.19+ on the Node 20 line, or 22.13+. Node 22 LTS is recommended. No programming experience is required.
 
 ### 1. Install sessionmem
 
@@ -45,7 +45,7 @@ npm install -g sessionmem
 
 ### 2. Register it with your AI tool
 
-Run this inside the project folder you're working on, with your AI tool (Claude Code, Cursor, etc.) configured:
+Run this in your project folder after configuring your AI tool (Claude Code, Cursor, etc.):
 
 ```bash
 sessionmem install
@@ -55,9 +55,10 @@ sessionmem install --adapter claude-code
 ```
 
 This initializes the database and, for supported adapters:
-- Tells your AI tool's MCP host about `sessionmem` so it can be launched automatically.
-- Creates a config file at `~/.sessionmem/config.json` with safe, privacy-respecting defaults, but only if one doesn't already exist.
-- Injects instructions into the selected host's guidance file (for example `~/.claude/CLAUDE.md` for Claude Code, or `~/.codex/AGENTS.md` for Codex; idempotent, so safe to re-run).
+
+- Registers `sessionmem` with your AI tool's MCP host so the host can start it automatically.
+- Creates `~/.sessionmem/config.json` with secret redaction enabled and a 90-day retention window, if the file doesn't already exist.
+- Adds instructions to the selected host's guidance file, such as `~/.claude/CLAUDE.md` for Claude Code or `~/.codex/AGENTS.md` for Codex. You can re-run the command without duplicating those instructions.
 
 ### 3. Restart your AI tool
 
@@ -67,11 +68,12 @@ waits for MCP messages, so it can appear to hang in a terminal. For an unknown
 host (`generic`), install writes a project-local `.mcp.json`; if your host uses
 another format or location, copy its server entry into that host’s MCP config.
 
-That's it. From here:
-- In Claude Code, installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and inject prior memories automatically.
-- Other MCP hosts use sessionmem's tools and installed guidance. Automatic capture and lifecycle calls depend on that host or agent; MCP registration alone does not install Claude Code hooks there.
+After restarting:
 
-You can verify everything is working with:
+- In Claude Code, the installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and load prior memories automatically.
+- Other MCP hosts use sessionmem's tools and installed instructions. Automatic capture and session lifecycle calls depend on the host or agent. MCP registration alone does not install Claude Code hooks there.
+
+Check that the local database is accessible:
 
 ```bash
 sessionmem ping
@@ -102,17 +104,13 @@ sessionmem ping
 
 ## What problem does this solve?
 
-If you've used an AI coding assistant for more than a day, you've probably hit this:
+Most AI coding assistants rely on the current conversation for context. Start a new session and you may need to explain the project's setup, libraries, fixed bugs, and design decisions again.
 
-> You spend twenty minutes explaining your project's setup, the libraries you use, a tricky bug you already fixed, and a decision you made about how authentication should work. The assistant nods along, helps you out... and then in your **next session**, it has forgotten all of it. You explain everything again.
+`sessionmem` keeps short notes between sessions:
 
-This happens because most AI assistants only "know" what's inside the current conversation. Once that conversation ends, the context is gone.
-
-`sessionmem` fixes this by sitting quietly between your assistant and your project:
-
-1. While you work, it **captures** what happens in the session.
-2. When the session ends, it **summarizes** the important parts (decisions made, warnings, useful facts) into short, durable notes.
-3. The next time you start a session, it **reminds** the assistant of the most relevant notes, automatically, in a small amount of text.
+1. While you work, it captures session events.
+2. At session end, it summarizes decisions, warnings, and useful facts into stored memories.
+3. At the next session start, it loads the most relevant memories within a small token budget.
 
 Claude Code runs these steps through the installed hooks. Other hosts need their
 agent to call the MCP memory and lifecycle tools; the installed guidance explains
@@ -122,26 +120,26 @@ how to do that.
 
 ## How is sessionmem different?
 
-There are other "memory for Claude" projects out there (for example, tools like *claude-mem* and similar community projects). Here's what sets `sessionmem` apart:
+Compared with projects such as *claude-mem* and other cloud or Claude-only memory tools, `sessionmem` focuses on local storage and support for multiple MCP hosts:
 
 | | **sessionmem** | Typical cloud/Claude-only memory tools |
 |---|---|---|
 | **Where is data stored?** | A single SQLite file on your computer (`~/.sessionmem/memories.db`) | Often a hosted service, a cloud vector database, or a separate server process you have to run |
-| **Account / sign-up required?** | No, never | Sometimes |
+| **Account / sign-up required?** | No | Sometimes |
 | **Which AI tools does it work with?** | Claude Code, Cursor, Codex, Cline, Windsurf, Antigravity, QCoder, and any other MCP-compatible host | Usually just one specific tool (commonly Claude Code only) |
 | **Secret redaction** | Built in, on by default. API keys, tokens, passwords, and private keys are scrubbed before anything is saved. | Often not handled, or left to the user |
-| **Token budget control** | Injected memories are trimmed to a small, fixed token budget so they don't bloat every conversation (see benchmarks below) | Varies, often unbounded |
-| **Old/stale memory cleanup** | Built-in retention policy automatically prunes old memories (configurable, on by default) | Often grows forever ("memory rot") |
+| **Token budget control** | Injected memories are trimmed to a small, fixed token budget (see benchmarks below) | Varies, often unbounded |
+| **Old/stale memory cleanup** | Built-in retention policy automatically prunes old memories (configurable, on by default) | Often no automatic cleanup ("memory rot") |
 | **Team sharing** | Optional, via a shared folder you already control (network drive, synced directory). No server needed. | Usually requires a shared hosted backend |
-| **Offline-capable** | Yes, fully. Works with no network connection by default. | Usually requires network access to the memory service |
+| **Offline-capable** | Yes. Works with no network connection by default. | Usually requires network access to the memory service |
 
-In short: `sessionmem` is the **boring, local, "just a SQLite file" option**: easy to inspect, back up, and delete, with no lock-in to any one vendor's AI tool.
+The SQLite file is easy to inspect, back up, or delete, and you can use it across AI tools from different vendors.
 
 ---
 
 ## Benchmark results
 
-These numbers come from `npm run benchmark` (`scripts/benchmark.mjs`), which runs the real production retrieval and injection code over a fixed, synthetic set of test data with no network calls. The results are fully reproducible. See [`docs/benchmark.md`](docs/benchmark.md) for the full report and how to regenerate it.
+These numbers come from `npm run benchmark` (`scripts/benchmark.mjs`). It runs the production retrieval and injection code against fixed, synthetic test data without network calls. See [`docs/benchmark.md`](docs/benchmark.md) for the full report and reproduction steps.
 
 ### Token savings
 
@@ -152,11 +150,11 @@ These numbers come from `npm run benchmark` (`scripts/benchmark.mjs`), which run
 | Full session history (baseline) | 1,587 |
 | What sessionmem injects at the start of your next session | 228 |
 
-In practice: instead of re-reading (or re-explaining) about 1,600 tokens of past context every session, the assistant gets a 230-token summary of just the things that matter: decisions, warnings, and key facts.
+In this benchmark, about 1,600 tokens of session history become roughly 230 tokens of decisions, warnings, and facts for the next session.
 
 ### Retrieval accuracy
 
-> **100% hit-rate**: every one of the 10 test queries successfully retrieved the memory it was supposed to.
+> **100% hit-rate**: all 10 test queries retrieved the expected memory.
 
 | Metric | Result |
 |---|---|
@@ -164,9 +162,9 @@ In practice: instead of re-reading (or re-explaining) about 1,600 tokens of past
 | Recall | 100.0% |
 | Precision | 33.3% |
 
-Precision of 33.3% is expected here: each query retrieves the top 3 candidate memories, and only one of those three is the "expected" match for a given test query. The other two are still relevant context for the agent, just not the one being scored. The important number is recall/hit-rate: **the right memory is never missed.**
+Each query returns 3 candidate memories, with one scored as the expected match. That gives 33.3% precision even when the expected memory is found every time. The other two candidates may provide context, but are not scored as matches. These results apply to the 10 curated queries; see the report for the embedding model's limits.
 
-These benchmarks are deterministic and reproducible. Run them yourself:
+The benchmark is deterministic and reproducible:
 
 ```bash
 npm run build      # benchmark imports the compiled code from dist/
@@ -203,11 +201,11 @@ npm run benchmark  # regenerates docs/benchmark.md
                      └──────────────────────────────────────────────┘
 ```
 
-- **Adapters** are small pieces that know how to talk to each specific AI tool. This is why sessionmem can support many tools: adding a new one doesn't change how memory itself works.
-- **The core engine** is the same no matter which tool you use. It decides what's worth remembering, how relevant it is later, and how much of it fits in a small "reminder" at the start of your next session.
-- **The database** is just a file. You can back it up, move it, inspect it, or delete it like any other file on your computer.
+- **Adapters** connect each AI tool to sessionmem. Supporting another tool doesn't require changing the memory engine.
+- **The core engine** stores memories, ranks their relevance, and selects what fits in the next session's context budget. Every adapter uses the same engine.
+- **The database** is a local file. You can back it up, move it, inspect it, or delete it.
 
-For a deeper technical dive, see [`docs/architecture.md`](docs/architecture.md).
+See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 
 ---
 
@@ -262,11 +260,11 @@ otherwise it is derived from the repository root or working directory.
 
 ## Privacy, secrets, and your data
 
-**Everything stays on your machine by default.** No account, no telemetry, no hosted memory service. Storage, retrieval, and summarization all run locally, governed by `~/.sessionmem/config.json`.
+Storage, retrieval, and summarization run locally by default. There is no account, telemetry, or hosted memory service. Settings live in `~/.sessionmem/config.json`.
 
 ### Secrets are scrubbed automatically
 
-Before anything is saved, `sessionmem` automatically removes common secret patterns and replaces them with `REDACTED`:
+Before saving memory content, `sessionmem` replaces common secret patterns with `REDACTED`:
 
 - Email addresses
 - API keys (`sk-...`, AWS `AKIA...`, GitHub `ghp_...`/`gho_...`, etc.)
@@ -274,7 +272,7 @@ Before anything is saved, `sessionmem` automatically removes common secret patte
 - Private key blocks (`-----BEGIN ... PRIVATE KEY-----`)
 - Connection-string style secrets (`password=...`, `secret=...`)
 
-This is **on by default**. You can scan and clean up older memories at any time:
+Redaction is on by default. To scan and clean up older memories:
 
 ```bash
 sessionmem redact-scan          # see what would be redacted
@@ -287,26 +285,26 @@ Full details: [`docs/privacy-and-retention.md`](docs/privacy-and-retention.md).
 
 ## Memory rot: keeping memory accurate over time
 
-"Memory rot" is what happens when a memory system keeps accumulating notes forever. Eventually it fills up with outdated decisions, duplicate facts, and noise, and the assistant starts surfacing stale information instead of helpful information.
+Old decisions and duplicate facts can accumulate in a memory store, causing the assistant to use outdated information. This is sometimes called "memory rot."
 
-`sessionmem` is designed to avoid this in a few ways:
+`sessionmem` handles it through retention, ranking, and sync rules:
 
-1. **Retention pruning**: memories older than a configurable window (default 90 days) are automatically eligible for cleanup. This runs as a light check at the end of every session, and can also be run manually:
+1. **Retention pruning**: memories older than a configurable window (90 days by default) are eligible for deletion. A lightweight check runs at session end. You can also run it manually:
 
    ```bash
    sessionmem retention prune          # dry run - shows what *would* be deleted
    sessionmem retention prune --force  # actually deletes
    ```
 
-2. **Importance-weighted ranking**: when memories are retrieved, they're ranked by a blend of semantic relevance, recency, and importance. Old, low-importance notes naturally sink to the bottom and stop being surfaced even before they're pruned.
+2. **Importance-weighted ranking**: retrieval ranks memories by semantic relevance, recency, and importance. Older, less important notes rank lower even before they are pruned.
 
-3. **Token-budgeted injection**: only the top-ranked, most relevant memories are injected (trimmed to a small token budget, see [benchmarks](#benchmark-results)), so even a large memory store doesn't produce bloated, noisy context.
+3. **Token-budgeted injection**: only the highest-ranked memories are loaded, trimmed to a small token budget (see [benchmarks](#benchmark-results)). The context stays within that budget as the store grows.
 
-4. **Conflict resolution in team mode**: when memories are merged from teammates, the system uses last-write-wins by id (so stale duplicates don't pile up) while preserving the higher importance score (so a critical warning doesn't get silently downgraded).
+4. **Conflict resolution in team mode**: merging teammate memories uses last-write-wins by id to avoid stale duplicates and keeps the higher importance score so a warning isn't downgraded.
 
-The retrieval benchmark above (100% hit-rate / 100% recall) demonstrates that even with the ranking and trimming in place, the right memory still surfaces. Accuracy is not traded away for compactness.
+The benchmark above found every expected memory across its 10 queries (100% hit-rate and recall) with ranking and trimming enabled.
 
-You're always in control: export everything first if you want a permanent record before pruning:
+Export your memories before pruning if you want to keep a copy:
 
 ```bash
 sessionmem export
@@ -316,17 +314,17 @@ sessionmem export
 
 ## Team mode (optional)
 
-Want your whole team's AI assistants to share decisions and warnings? Point `sessionmem` at a shared folder (a network drive, a synced directory, or any location everyone can read and write):
+To share decisions and warnings across your team's AI assistants, point `sessionmem` at a folder everyone can read and write, such as a network drive or synced directory:
 
 ```bash
 sessionmem team enable <shared-path>
 sessionmem sync
 ```
 
-- **Off by default**: nothing is shared until you turn it on.
-- No server needed. It's just files in a folder you already control.
-- Teammates' memories show up with an `author:` prefix so you know where they came from.
-- Secrets are re-redacted on every pulled memory, so a teammate's snapshot can't reintroduce something your redaction policy would have stripped.
+- Team mode is off by default. Nothing is shared until you enable it.
+- Memories are shared as files in that folder; no server is needed.
+- Teammate memories appear with an `author:` prefix identifying their source.
+- Redaction runs on every pulled memory using your redaction policy.
 
 Full details, including the trust model: [`docs/team-mode.md`](docs/team-mode.md).
 
@@ -334,10 +332,9 @@ Full details, including the trust model: [`docs/team-mode.md`](docs/team-mode.md
 
 ## Cloud summarization (optional, off by default)
 
-By default, summarization (turning a session into a short memory) happens entirely locally, with no API calls.
+By default, session summaries are created locally, with no API calls.
 
-If you explicitly opt in (`allowCloudSummarization=true`) and provide an `ANTHROPIC_API_KEY`, summarization can use Claude's API for higher-quality summaries. If the cloud call fails and local fallback is enabled, it falls back to local
-summarization. Failures are recorded for diagnosis; see the linked configuration guide.
+To use Claude's API for higher-quality summaries, set `allowCloudSummarization=true` and provide an `ANTHROPIC_API_KEY`. If cloud summarization fails after retries, sessionmem uses local summarization. Failures are recorded for diagnosis; see the configuration guide below.
 
 Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
@@ -355,7 +352,7 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 - Antigravity
 - QCoder
 
-...and any other tool that implements the [Model Context Protocol](https://modelcontextprotocol.io).
+Other tools that implement the [Model Context Protocol](https://modelcontextprotocol.io) can connect too.
 
 ---
 
@@ -373,9 +370,9 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
 ## Troubleshooting
 
-Run into trouble installing or running `sessionmem`? Start with [`docs/troubleshooting.md`](docs/troubleshooting.md). It covers install failures, adapter-specific issues, missing session data, and native module (`better-sqlite3`) build problems on different platforms.
+For install failures, adapter issues, missing session data, or `better-sqlite3` native-build problems, see [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
-Two quick checks that resolve most reports:
+To refresh the installation and check for stored session data:
 
 ```bash
 sessionmem install   # idempotent; Claude Code also installs all three hooks
@@ -384,7 +381,7 @@ sessionmem stats     # memories, sessions, and session_events for the current pr
 
 If `stats` shows `sessions: 0` after real work, see [“0 sessions” / no session data recorded](docs/troubleshooting.md#0-sessions--no-session-data-recorded). Memories are keyed to the **repository root**, so every directory inside one repo shares a bucket; outside a repo the working directory itself is the key.
 
-Quick checks:
+To check database access and memory counts:
 
 ```bash
 sessionmem ping     # can the local database be opened?
@@ -399,13 +396,13 @@ sessionmem stats    # is data being stored?
 Install sessionmem (`npm i -g sessionmem`), then run `sessionmem install` in your project. Use `--adapter cursor`, `--adapter cline`, or `--adapter windsurf` when auto-detection cannot identify your host.
 
 **How do I give Claude Code persistent memory?**
-Same install. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` file in the repo), so it works with Claude Code's native plugin system too.
+Use the same install steps above. sessionmem also ships as a Claude Code plugin (the `.claude-plugin` directory in the repo) for Claude Code's native plugin system.
 
 **Is there a local MCP memory server that works offline with no API key?**
-Yes. sessionmem stores everything in a single SQLite file at `~/.sessionmem/memories.db` and works fully offline by default. Nothing leaves your machine unless you explicitly enable the optional cloud summarization path.
+Yes. sessionmem stores memories in a single SQLite file at `~/.sessionmem/memories.db` and works offline by default. Sharing and cloud summarization are optional and off by default.
 
 **How is sessionmem different from claude-mem?**
-sessionmem is not Claude-only. It works with Cursor, Cline, Codex, Windsurf, Antigravity, QCoder, and any other MCP host, not just Claude Code. It also redacts secrets (API keys, tokens, JWTs) by default, prunes stale memory automatically, and ships reproducible benchmarks you can run yourself.
+sessionmem works with Claude Code, Cursor, Cline, Codex, Windsurf, Antigravity, QCoder, and other MCP hosts. It redacts secrets (API keys, tokens, JWTs) by default, prunes old memories automatically, and includes reproducible benchmarks.
 
 **Does sessionmem send my code to the cloud?**
 No. Nothing leaves your machine by default. The optional cloud summarization path is opt-in and off by default.

@@ -1,10 +1,10 @@
 # Migration and Upgrade Policy
 
-This document covers two related things: (a) how the SQLite **migration** system works for contributors and operators, and (b) the **version-upgrade** policy users should expect. Configuration and the local database both live under `~/.sessionmem/`.
+This guide explains SQLite migrations and what to expect when upgrading sessionmem. Configuration and the default database live under `~/.sessionmem/`.
 
 ## Migration system
 
-`sessionmem` evolves its SQLite schema with forward-only migrations. Each migration is a plain `.sql` file under `src/core/schema/migrations/`, named with a zero-padded ordinal prefix so they apply in a deterministic order:
+`sessionmem` updates its SQLite schema with forward-only migrations. Each migration is a `.sql` file under `src/core/schema/migrations/`. Zero-padded numeric prefixes determine the order:
 
 ```
 src/core/schema/migrations/
@@ -17,13 +17,13 @@ src/core/schema/migrations/
 
 ### How migrations run
 
-At startup the migration runner ensures a `_migrations` bookkeeping table exists, lists every `.sql` file in the migrations directory in sorted order, and applies (inside a transaction) only the ones not already recorded in `_migrations`. Migrations are therefore **idempotent across runs**: applying them again is a no-op, and the schema converges forward only (there are no down-migrations).
+At startup, the runner creates the `_migrations` tracking table if needed and sorts the `.sql` files by name. It applies each migration in its own transaction, skipping any already recorded in `_migrations`. Starting sessionmem again does not reapply completed migrations. There are no down-migrations.
 
 ### Build-time copy: `copy-migrations`
 
-The migration `.sql` files are source assets, not TypeScript, so the TypeScript build does not emit them. The `scripts/copy-migrations.mjs` build step (`copy-migrations`) copies every `.sql` file from `src/core/schema/migrations/` into `dist/core/schema/migrations/` so the published package ships its migrations alongside the compiled code.
+The TypeScript compiler does not copy `.sql` files. The build step `copy-migrations` runs `scripts/copy-migrations.mjs` to copy them from `src/core/schema/migrations/` to `dist/core/schema/migrations/`. This includes the migrations in the published package alongside the compiled code.
 
-At runtime the migrations directory is resolved **package-relative** (relative to the installed module, not the process working directory). This is deliberate: resolving package-relative means the published `dist` copy is used and an attacker cannot slip a malicious migration in by running the CLI from a directory that happens to contain a `migrations/` folder (Phase 5 Decision #15). If you add or edit a migration, the build must re-run `copy-migrations` for the change to reach `dist`.
+At runtime, sessionmem loads migrations relative to the installed module, using the packaged `dist` copy. It does not search the working directory, where an attacker could place a malicious `migrations/` folder (Phase 5 Decision #15). After adding or editing a migration, re-run the build so `copy-migrations` updates `dist`.
 
 ### Adding a migration (contributors)
 
@@ -35,8 +35,8 @@ At runtime the migrations directory is resolved **package-relative** (relative t
 
 `sessionmem` follows **semantic versioning** (semver): `MAJOR.MINOR.PATCH`.
 
-- **Patch / minor upgrades** are safe in place. Schema changes ship as additive, forward-only migrations that run automatically the first time the upgraded version opens your existing database. No manual step is required and your stored memories are preserved.
-- **Major-version upgrades** may introduce breaking changes; any required manual migration step or behavior change will be called out in the release notes for that major version.
-- **No down-migrations.** Because migrations are forward-only, downgrading to an older `sessionmem` version after a newer one has migrated your database is not supported. Before a major upgrade, run `sessionmem export` to keep a portable JSON copy of your memories you can re-import if needed.
+- **Patch / minor upgrades** work with your existing database. Additive, forward-only migrations run automatically when the upgraded version first opens it. Stored memories are preserved and no manual migration is needed.
+- **Major-version upgrades** may introduce breaking changes. The release notes will describe behavior changes and any manual migration steps.
+- **Downgrades after migration are unsupported.** Before a major upgrade, run `sessionmem export` to keep a portable JSON copy of your memories that you can re-import if needed.
 
 This policy applies to upgrades between published v1 releases. Each release opens existing databases through the same forward-only migration runner.

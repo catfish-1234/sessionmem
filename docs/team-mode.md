@@ -1,8 +1,8 @@
 # Team Mode (Shared Memory)
 
-Team mode lets a group of teammates share `sessionmem` memories through a common filesystem path, such as a network drive, a synced folder, or any directory every teammate can read and write. When enabled, `sessionmem sync` pushes your local memories to the shared path and pulls your teammates' memories back into your local database, so the agent can surface decisions, warnings, and facts captured by anyone on the team.
+Team mode shares `sessionmem` memories through a directory everyone on the team can read and write, such as a network drive or synced folder. With team mode enabled, `sessionmem sync` writes your local memories there and reads teammates' memories into your database. Your agent can then use decisions, warnings, and facts recorded by the team.
 
-Team mode is **off by default**. Nothing is shared until you explicitly enable it.
+Team mode is off by default. Enable it to start sharing.
 
 ## Setup
 
@@ -20,9 +20,9 @@ Inside the shared path, `sessionmem` uses a per-project, per-user file layout:
 {sharedPath}/{project_id}/{username}.json
 ```
 
-Each teammate writes a single snapshot file named after their OS username, scoped under the project's id. Different projects never collide because each gets its own sub-directory.
+Each teammate writes one snapshot file named after their OS username. Each project has its own subdirectory to keep snapshots separate.
 
-Inspect the current state at any time:
+To check the current state:
 
 ```
 sessionmem team status
@@ -38,12 +38,12 @@ Once team mode is enabled, run:
 sessionmem sync
 ```
 
-A single `sync` does two things:
+Each `sync` runs two steps:
 
 1. **Push**: writes a full snapshot of this project's local memories to
    `{sharedPath}/{project_id}/{username}.json`. The write is atomic (a temp file
-   is written in the same directory and then renamed) so a teammate never reads a
-   half-written snapshot off a network drive.
+   is written in the same directory and then renamed) so teammates don't read a
+   partly written snapshot.
 2. **Pull**: reads every other `*.json` snapshot in the project directory and
    merges those memories into your local database.
 
@@ -53,45 +53,43 @@ When it finishes, `sync` prints a summary:
 Pushed N memories, pulled M new + updated K from teammates.
 ```
 
-`N` is how many local memories you shared, `M` is how many brand-new teammate memories were added, and `K` is how many existing memories were updated from a teammate's snapshot.
+`N` is the number of local memories shared, `M` is the number of new teammate memories added, and `K` is the number of existing memories updated from teammate snapshots.
 
-If team mode is not enabled, `sync` is a clean no-op and tells you to run `team enable` first.
+If team mode is disabled, `sync` makes no changes and tells you to run `team enable` first.
 
 ## Provenance and author annotation
 
-Every memory carries provenance:
+Each memory records its source:
 
 - **`author`**: the OS username of whoever created the memory.
 - **`created_at`**: when it was first created.
 
-When a teammate's memory is surfaced in the agent's startup context, it is shown with an `author:` prefix so you can see who it came from, for example:
+In the agent's startup context, teammate memories have an `author:` prefix showing their recorded author, for example:
 
 ```
 - [decision] alice: decided to use X (...)
 ```
 
-Memories you authored yourself render with **no** prefix. Legacy memories created before provenance existed (which have an empty author) also render without a prefix. The prefix appears **only** when a memory's author differs from your local username, so a memory is never mis-attributed.
+Your own memories have no prefix. Older memories with an empty author also have no prefix. The prefix appears when the recorded author differs from your local username.
 
 ## Conflict behavior
 
 When the same memory id exists locally and in a teammate's snapshot, `sync` resolves it as follows:
 
-- **Last-write-wins by id**: the most recent content for a given id wins (last-write-wins on content).
-- **Importance is preserved when higher locally**: if your local copy has a higher importance score, that higher value is kept rather than being lowered by a teammate's snapshot.
-- **Cross-project id collisions are skipped**: a memory whose id already belongs to a different project is never overwritten; it is skipped.
-- **Pulled content is re-redacted**: secret redaction runs again on every pulled record, so a teammate's memory cannot import a secret your redaction policy would have stripped.
+- **Content**: sync uses last-write-wins by id, keeping the most recent content.
+- **Importance**: a teammate's snapshot cannot lower your local copy's importance score.
+- **Cross-project id collisions**: records whose ids already belong to a different project are skipped.
+- **Redaction**: every pulled record is checked again using your secret redaction policy.
 
 ## Disable and recovery
 
-Turn team mode off without losing anything:
+To stop syncing and keep memories already pulled from teammates:
 
 ```
 sessionmem team disable
 ```
 
-This stops syncing but keeps every memory you have already pulled from teammates. There is no data loss.
-
-To fully revert to a local-only store, also delete teammate-authored memories:
+To also delete teammate-authored memories:
 
 ```
 sessionmem team disable --remove-team-memories
@@ -101,22 +99,19 @@ This deletes the teammate-authored memories for this project, leaving only the m
 
 ## Trust boundary and security
 
-Team mode trusts **everyone who has write access to the shared path.** This is a deliberate design choice, and it is important to understand it:
+Anyone with write access to the shared path can add memories that your agent may use. Control access through the shared directory's filesystem permissions:
 
-- The real security boundary is the **OS filesystem permissions (ACLs)** on the shared directory. Restrict write access to that directory to the people you intend to share memory with.
-- The `author` value is **advisory provenance, not an authentication control.** A teammate with write access could set a fabricated author on a memory; the `author:` annotation tells you what the snapshot *claims*, not a verified identity.
-- `sessionmem` does not authenticate teammates, sign snapshots, or verify authorship. If you need stronger guarantees, enforce them at the filesystem / share level.
-
-In short: anyone who can write to the shared path can inject memories that your agent may surface. Treat the shared directory's access control as the security perimeter.
+- Restrict write access with OS filesystem permissions (ACLs) to the people you intend to share memories with.
+- The `author` field is advisory. A person with write access can change it, so the `author:` prefix does not verify identity.
+- `sessionmem` does not authenticate teammates, sign snapshots, or verify authorship. Enforce any additional access controls through the filesystem or file share.
 
 ## Failure recovery
 
-`sync` is defensive about a flaky shared filesystem:
+When `sync` encounters filesystem or snapshot errors:
 
 - **Missing or unwritable shared path**: `sync` reports the error to stderr and
   exits with a non-zero status. Your local memories are untouched.
-- **A corrupt or truncated teammate file**: that single file is skipped with a
-  warning, and the rest of the pull continues. One bad snapshot never aborts the
-  whole sync.
-- **An invalid record inside an otherwise-valid file**: that single record is
-  skipped with a warning; the remaining records in the file still merge.
+- **A corrupt or truncated teammate file**: the file is skipped with a warning,
+  and the rest of the pull continues.
+- **An invalid record inside an otherwise-valid file**: the record is skipped
+  with a warning; the remaining records still merge.

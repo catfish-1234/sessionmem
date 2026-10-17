@@ -1,16 +1,16 @@
 # Privacy and Retention
 
-`sessionmem` stores memories locally and applies two privacy controls automatically: **secret redaction** on every memory-write path, and a configurable **retention policy** that prunes old memories. Both are governed by `~/.sessionmem/config.json` and surfaced through CLI commands.
+`sessionmem` stores memories locally, redacts secrets before saving, and prunes old memories according to a retention policy. Configure both in `~/.sessionmem/config.json` or with the CLI commands below.
 
 ## Secret Redaction
 
-Redaction scrubs common secret patterns from memory content before it is stored, replacing each match with a `REDACTED` placeholder. It runs on **all** memory-write paths:
+Redaction replaces common secret patterns with `REDACTED` before saving memory content. It runs during:
 
-- auto-summarization at session end,
-- manual memory store (`remember`),
+- automatic summarization at session end,
+- manual memory storage (`storeMemory` or `batchStoreMemory`),
 - import.
 
-The same `redactionEnabled` flag governs every path. It defaults to **on** (`true`).
+The `redactionEnabled` flag controls all of these operations and defaults to `true`.
 
 ### Redacted categories
 
@@ -25,33 +25,33 @@ The same `redactionEnabled` flag governs every path. It defaults to **on** (`tru
 | Connection-string assignments | `password=...`, `secret=...` |
 | JWTs | three-part `xxxxx.yyyyy.zzzzz` tokens |
 
-These categories are roughly aligned with what the project's CI secret scanning already looks for.
+The project's CI secret scanning checks for similar categories.
 
 ### Partial-failure warnings
 
-If redaction cannot be applied cleanly on a write path, the response envelope carries a `redaction_partial_failure` warning code (the same warning mechanism used elsewhere in the lifecycle). The write still completes; the warning tells you to review the affected memory.
+If redaction partly fails, the response includes a `redaction_partial_failure` warning through the usual lifecycle warning mechanism. The write still completes. Review the affected memory when you see this warning.
 
 ### Disabling redaction
 
-Setting `redactionEnabled` to `false` turns redaction off across all write paths. This is not recommended. Leaving it on is the safe default.
+Setting `redactionEnabled` to `false` disables redaction for all memory writes. Leave it enabled to keep these checks.
 
 ## Retention Policy
 
-Retention pruning deletes memories older than a configurable window so the local store does not grow unbounded.
+Retention pruning limits growth of the local store by deleting memories older than a configured age.
 
 - **Scope:** the `memories` table only. Session events and feedback history are never touched.
 - **Age basis:** a memory's `created_at` timestamp.
 - **Default window:** `90` days (`retentionDays`).
-- **Disabling:** set `retentionDays` to `0` or `-1` to disable pruning entirely.
+- **Disabling:** set `retentionDays` to `0` to disable pruning. Negative values are rejected by the config schema.
 - **Hard delete:** pruned memories are permanently deleted from SQLite. There is no archive or soft-delete.
 
-> **Retain data before pruning.** Pruning is irreversible. Run `sessionmem export` first if you want to keep a copy of memories that would be deleted.
+> Pruning is permanent. Run `sessionmem export` first if you want to keep a copy of the memories.
 
 ## Automatic vs Manual Pruning
 
-**Automatic (session-end):** a light, non-blocking prune check runs as part of the session-end lifecycle, alongside summarization. It never blocks or delays summarization.
+**Automatic (session-end):** a lightweight prune check runs alongside summarization without blocking or delaying it.
 
-**Manual:** run the prune command on demand. It is dry-run by default. Nothing is deleted unless you pass `--force`:
+**Manual:** the prune command previews deletions by default. It only deletes memories when you pass `--force`:
 
 ```bash
 sessionmem retention prune
@@ -63,13 +63,13 @@ Dry-run output:
 Would delete N memories older than {retentionDays} days. Pass --force to confirm.
 ```
 
-To actually delete eligible memories:
+To delete eligible memories:
 
 ```bash
 sessionmem retention prune --force
 ```
 
-You can override the effective window for a single run with `--days <n>` (this takes precedence over `config.json` and the built-in default):
+Use `--days <n>` to set the retention window for one run, overriding `config.json` and the built-in default:
 
 ```bash
 sessionmem retention prune --days 30
@@ -77,13 +77,13 @@ sessionmem retention prune --days 30
 
 ## One-time Redaction Scrub
 
-Redaction is **not** applied retroactively during normal operation. To scrub secrets out of memories that were stored before redaction coverage was expanded, use `redact-scan`. It is dry-run by default:
+Normal memory writes do not recheck older memories. To check memories saved before redaction coverage was expanded, run `redact-scan`. It previews changes by default:
 
 ```bash
 sessionmem redact-scan
 ```
 
-Dry-run reports how many stored memories match the secret patterns (with previews). To redact and update those rows in place:
+The preview shows matching memories and a count. To redact and update them in place:
 
 ```bash
 sessionmem redact-scan --apply
@@ -104,17 +104,17 @@ Policy settings live in `~/.sessionmem/config.json`:
 
 ### Precedence
 
-Effective settings are resolved in this order, highest first:
+Settings take precedence in this order, highest first:
 
 1. **CLI flag** (e.g. `retention prune --days 30`)
 2. **`config.json`** value
 3. **built-in default**
 
-So a CLI flag always wins for that invocation, `config.json` overrides the built-in default, and a missing/invalid `config.json` falls back safely to the defaults.
+If `config.json` is missing or invalid, sessionmem uses the built-in defaults unless a CLI flag overrides them.
 
 ### Reading and writing config
 
-Use `config get` / `config set` to inspect and change settings without editing the file by hand:
+Use `config get` and `config set` to read and change settings:
 
 ```bash
 sessionmem config get retentionDays
@@ -122,16 +122,16 @@ sessionmem config set retention.days 30
 sessionmem config set redactionEnabled false
 ```
 
-Both the dotted operator key (`retention.days`) and the raw field name (`retentionDays`) are accepted. Invalid values (a non-integer for `retentionDays`, or anything other than `true`/`false` for `redactionEnabled`) are rejected with an error and the file is left unchanged.
+You can use either the dotted key `retention.days` or the field name `retentionDays`. Invalid values, such as a non-integer for `retentionDays` or a value other than `true`/`false` for `redactionEnabled`, produce an error without changing the file.
 
 ### Install and uninstall behavior
 
-- `sessionmem install` writes `config.json` with defaults (`retentionDays: 90`, `redactionEnabled: true`) **only if the file does not already exist**. An existing config is preserved byte-for-byte.
-- `sessionmem uninstall` leaves `config.json` in place (like the database) **unless** you pass `--purge`.
+- `sessionmem install` creates `config.json` with defaults (`retentionDays: 90`, `redactionEnabled: true`) if the file is missing. It leaves an existing file unchanged.
+- `sessionmem uninstall` keeps `config.json` and the database unless you pass `--purge`.
 
 ## Stats Visibility
 
-`sessionmem stats` includes retention and redaction summary lines so you can see the effective policy at a glance without running a separate command, for example:
+`sessionmem stats` shows the current retention and redaction settings, for example:
 
 ```
 Retention: 90 days (12 memories eligible for pruning)
