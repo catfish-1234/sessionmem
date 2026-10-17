@@ -1,12 +1,12 @@
 # Troubleshooting
 
-Common problems running `sessionmem` and how to fix them. Most issues fall into one of three buckets: install failures, adapter (MCP host) issues, and `better-sqlite3` native-build failures. Configuration lives in `~/.sessionmem/config.json`.
+This guide covers install failures, adapter (MCP host) issues, and `better-sqlite3` native-build failures. Configuration lives in `~/.sessionmem/config.json`.
 
 ## Install failures
 
 ### `config.json` not written
 
-`sessionmem install` only writes `~/.sessionmem/config.json` if it does not already exist. An existing config is preserved exactly as-is. If you expected fresh defaults but the file is unchanged, that is by design. Delete or move the old file and re-run `sessionmem install`, or edit it directly with `sessionmem config set`.
+`sessionmem install` creates `~/.sessionmem/config.json` only if the file is missing. It leaves an existing config unchanged. To restore defaults, move or delete the old file and re-run `sessionmem install`. To change individual settings, use `sessionmem config set`.
 
 ### Adapter not detected
 
@@ -18,17 +18,17 @@ If `sessionmem` is not on your `PATH` after `npm install -g sessionmem`, your np
 
 ## Adapter issues
 
-Each MCP host is wired in through its own adapter. Symptoms here usually mean the host launched the server but the integration is misconfigured.
+Each MCP host uses its own adapter. If the server starts but memories are missing, check the host's configuration:
 
 - **Claude Code**: if memories are not injected at session start, confirm `sessionmem install` was run inside the project and that the MCP server entry exists in the host config. Use `sessionmem ping` to verify local database access, then check MCP connectivity in the host.
 - **Cursor**: Cursor must be pointed at the registered MCP server. Re-run `install` from the project root and restart Cursor so it reloads MCP servers.
 - **Generic MCP host**: for any other MCP-compatible host, ensure the host is configured to launch `sessionmem run` as the MCP server command. If the host starts but no memory appears, check that the working directory matches the project whose memories you expect.
 
-If a host loads but commands hang, run `sessionmem ping` to isolate whether the problem is the server or the host wiring.
+If commands hang after the host loads, run `sessionmem ping` to check local database access, then check the host's MCP connection.
 
 ## "0 sessions" / no session data recorded
 
-`sessionmem savings` reporting no session data, or `sessionmem stats` showing `sessions: 0`, almost always means one of the following.
+If `sessionmem savings` reports no session data or `sessionmem stats` shows `sessions: 0`, check the following.
 
 ### The hooks are not installed
 
@@ -43,7 +43,7 @@ To watch the hook work in real time, run your host with `SESSIONMEM_DEBUG=1`; th
 
 ### Memory is keyed to the repository
 
-A project's memories are keyed by its **repository root** — the nearest directory containing `.git`. Every directory inside one repository shares a single memory bucket, so it does not matter which subdirectory you run a command from.
+A project's memories are keyed by its **repository root**, the nearest directory containing `.git`. All subdirectories in one repository share the same memory bucket.
 
 Outside a repository, the id falls back to the exact working directory. Two different directories that are not in a repository are two different projects, so running `sessionmem stats` from a different folder than the one your host session used will show an empty store. Either run from inside the repository, or pin the id explicitly:
 
