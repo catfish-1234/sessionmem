@@ -26,7 +26,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # Required to create the GitHub release below
       id-token: write # REQUIRED for OIDC trusted publishing + automatic provenance (scoped to this job only)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,7 +65,35 @@ jobs:
       # documented fallback for when the npmjs.com trusted-publisher UI setup has
       # not been completed — set the NPM_TOKEN repo secret to use it.
       - name: Publish to npm
-        run: npm publish --access public ${NPM_OTP:+--otp="$NPM_OTP"}
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
+            echo "$NAME@$VERSION is already published on npm; skipping publish."
+          else
+            npm publish --access public ${NPM_OTP:+--otp="$NPM_OTP"}
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_OTP: ${{ github.event.inputs.otp }}
+
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "GitHub release $GITHUB_REF_NAME already exists; skipping creation."
+            exit 0
+          fi
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES_FILE="$RUNNER_TEMP/release-notes.md"
+          awk -v version="$VERSION" '
+            /^## / { section = ($2 == "[" version "]"); found = found || section; next }
+            section || /^\[[^]]+\]:/ { print }
+            END { if (!found) exit 1 }
+          ' CHANGELOG.md > "$NOTES_FILE" || {
+            echo "No CHANGELOG.md section found for $GITHUB_REF_NAME" >&2
+            exit 1
+          }
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE" --verify-tag
