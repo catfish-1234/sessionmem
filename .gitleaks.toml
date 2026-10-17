@@ -18,4 +18,7 @@ paths = [
   '''tests/integration/core/secret-leakage\.spec\.ts''',
   '''tests/integration/core/redaction-write-paths\.spec\.ts''',
   '''tests/integration/cli/redact-scan\.spec\.ts''',
+  # Pinned third-party LoCoMo eval dataset: fictional dialogue contains
+  # example tokens, not real credentials.
+  '''benchmarks/data/locomo10\.json''',
 ]
