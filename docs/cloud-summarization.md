@@ -11,19 +11,17 @@ Cloud mode activates only when both conditions are true:
 1. `allowCloudSummarization=true`
 2. `ANTHROPIC_API_KEY` is present (mapped to `anthropicApiKey` in runtime config)
 
-If either condition is missing, execution stays local.
+If either condition is missing, summarization stays local.
 
 ## How It Works
 
-Cloud summarization uses a two-phase pipeline:
+Cloud summarization runs in two steps:
 
-1. **Local preprocessing** - the local summarizer runs first to extract, redact, and structure
-   session events into a compact transcript. This ensures sensitive content is redacted before
-   any data leaves the machine.
+1. **Local preprocessing** - the local summarizer extracts and structures session events
+   into a short transcript, with secret redaction applied before it leaves the machine.
 
-2. **Cloud compression** - the preprocessed summary is sent to the Anthropic Messages API
-   with a system prompt tuned for memory compression. Claude returns a compact, high-signal
-   list of facts, decisions, and context.
+2. **Cloud compression** - the transcript is sent to the Anthropic Messages API with
+   instructions to compress it into a short list of facts, decisions, and context.
 
 ### Model Configuration
 
@@ -33,8 +31,8 @@ in `CloudSummarizeInput`.
 
 ### Token Limits
 
-The `max_tokens` parameter sent to the API is `summaryTokenCap * 2`, giving the model
-headroom to produce a compressed summary within the configured cap.
+The API's `max_tokens` parameter is `Math.min(Math.floor((summaryTokenCap ?? 4000) * 1.5), 8192)`.
+The response is then trimmed to `summaryTokenCap`.
 
 ## Runtime Warning Signals
 
@@ -43,16 +41,17 @@ When cloud mode is active, lifecycle responses include:
 - warning code: `cloud_summarization_enabled`
 - warning message: `Cloud summarization active: allowCloudSummarization=true and ANTHROPIC_API_KEY present`
 
-These signals are emitted for observability and policy verification.
+Use these warnings to check whether cloud summarization is active.
 
 ## Failure Fallback Behavior
 
-Cloud summarization retries 2 times. If retries fail, the pipeline falls back to local summarization automatically.
+Cloud summarization retries 2 times. If the retries fail, it falls back to local summarization automatically.
 
-If fallback succeeds, the warning payload includes cloud fallback indicators.
-If fallback also fails, a durable failure record is written to `summarization_failures`.
+Cloud failures are saved in `summarization_failures`. If local fallback succeeds,
+the response includes a warning about the cloud failure. If fallback also fails,
+an additional failure record is saved.
 
 ## Manual Summarization When Auto Is Disabled
 
 Setting `autoSummarize=false` disables automatic `session_end` summarization only.
-Manual `summarizeSessionToMemory` remains available and functional.
+You can still call `summarizeSessionToMemory` manually.
