@@ -135,7 +135,7 @@ export interface CreateMemoryCoreServiceDeps {
   policyConfigPath?: string;
   /** Explicit retentionDays for the session-end light prune. Test seam. */
   retentionDaysOverride?: number;
-  /** Clock seam for the session-end prune cutoff. */
+  /** Clock seam for memory capture, retrieval scoring, and session-end pruning. */
   now?: () => Date;
   /** Injection seam for the session-end hard-delete (forces a throw in tests). */
   deleteOldMemories?: (
@@ -404,6 +404,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         redactionEnabled: resolveRedactionEnabled(parsed.redactionEnabled),
       });
       const embedding = deterministicEmbed(redaction.text, dimension);
+      const capturedAt = deps.now?.().toISOString();
 
       // Per-session write soft limit: warn the caller when the session has
       // already accumulated SESSION_WRITE_SOFT_LIMIT memories so the agent
@@ -432,6 +433,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         origin_project_id: null,
         tags: JSON.stringify(parsed.tags ?? null),
         expires_at: parsed.expiresAt ?? null,
+        created_at: capturedAt,
+        updated_at: capturedAt,
       });
 
       const inserted = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
@@ -461,6 +464,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         projectId: parsed.projectId,
         queryText: parsed.query,
         limit,
+        now: deps.now?.(),
       });
 
       // Optional tag filter: keep a memory only when its stored tags contain ALL

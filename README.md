@@ -9,7 +9,7 @@
   <a href="https://github.com/catfish-1234/sessionmem/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
-**Project memory between sessions, stored on your machine. Startup context used 85.6% fewer tokens than full session history in the included benchmark.**
+**Project memory between sessions, stored on your machine.**
 
 ```
 New session. Claude starts fresh.
@@ -139,36 +139,21 @@ The SQLite file is easy to inspect, back up, or delete, and you can use it acros
 
 ## Benchmark results
 
-These numbers come from `npm run benchmark` (`scripts/benchmark.mjs`). It runs the production retrieval and injection code against fixed, synthetic test data without network calls. See [`docs/benchmark.md`](docs/benchmark.md) for the full report and reproduction steps.
+`npm run benchmark` evaluates conversational retrieval on the committed LoCoMo
+corpus: 10 conversations, 272 sessions, 5,882 turns, and 1,527 scored questions.
+It captures dialogue through the public `storeMemory` API and asks the original
+questions through `retrieveMemories`, fully offline with no API keys.
 
-### Token savings
-
-> **~85.6% reduction** in tokens compared to carrying full session history.
-
-| | Tokens |
-|---|---|
-| Full session history (baseline) | 1,587 |
-| What sessionmem injects at the start of your next session | 228 |
-
-In this benchmark, about 1,600 tokens of session history become roughly 230 tokens of decisions, warnings, and facts for the next session.
-
-### Retrieval accuracy
-
-> **100% hit-rate**: all 10 test queries retrieved the expected memory.
-
-| Metric | Result |
-|---|---|
-| Hit-rate (10 curated queries) | 100.0% |
-| Recall | 100.0% |
-| Precision | 33.3% |
-
-Each query returns 3 candidate memories, with one scored as the expected match. That gives 33.3% precision even when the expected memory is found every time. The other two candidates may provide context, but are not scored as matches. These results apply to the 10 curated queries; see the report for the embedding model's limits.
-
-The benchmark is deterministic and reproducible:
+The evaluation reports hit rate, precision, recall, complete-evidence retrieval,
+and latency. It uses the production hash-based embedding; conversational questions
+expose retrieval limitations that exact copies of memory text do not measure.
+See [benchmark results](docs/benchmark.md) and the
+[methodology, dataset license, and metric definitions](benchmarks/README.md).
 
 ```bash
-npm run build      # benchmark imports the compiled code from dist/
-npm run benchmark  # regenerates docs/benchmark.md
+npm run build
+npm run benchmark
+npm run benchmark -- --output benchmarks/results/locomo.json
 ```
 
 ---
@@ -302,7 +287,7 @@ Old decisions and duplicate facts can accumulate in a memory store, causing the 
 
 4. **Conflict resolution in team mode**: merging teammate memories uses last-write-wins by id to avoid stale duplicates and keeps the higher importance score so a warning isn't downgraded.
 
-The benchmark above found every expected memory across its 10 queries (100% hit-rate and recall) with ranking and trimming enabled.
+The [conversational benchmark](benchmarks/README.md) measures retrieval quality separately from retention and startup token budgets.
 
 Export your memories before pruning if you want to keep a copy:
 
@@ -359,7 +344,7 @@ Other tools that implement the [Model Context Protocol](https://modelcontextprot
 ## Further documentation
 
 - [Architecture](docs/architecture.md): how the core engine, adapters, CLI, and SQLite storage fit together.
-- [Benchmark](docs/benchmark.md): full token-reduction and retrieval-accuracy report, and how to reproduce it.
+- [Benchmark](docs/benchmark.md): conversational retrieval results and reproduction steps.
 - [Privacy and retention](docs/privacy-and-retention.md): secret redaction, retention pruning, and config.
 - [Team mode](docs/team-mode.md): shared-path team memory.
 - [Cloud summarization](docs/cloud-summarization.md): the opt-in cloud summarization path.

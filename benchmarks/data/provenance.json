@@ -1,0 +1,11 @@
+{
+  "dataset": "LoCoMo",
+  "repository": "https://github.com/snap-research/locomo",
+  "commit": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376",
+  "source_path": "data/locomo10.json",
+  "git_blob": "d95b872480b413d935821fdc3c84f8a8f5f29e73",
+  "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "license": "CC-BY-NC-4.0",
+  "license_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0",
+  "modifications": "None. Dataset and license are byte-for-byte copies of upstream files."
+}

@@ -1,0 +1,3 @@
+# Preserve upstream bytes and checksums even with core.autocrlf enabled.
+benchmarks/data/locomo10.json -text
+benchmarks/data/LICENSE.txt -text whitespace=-blank-at-eof
