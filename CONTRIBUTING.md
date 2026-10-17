@@ -1,6 +1,6 @@
 # Contributing to sessionmem
 
-Thanks for your interest in contributing! This guide covers everything you need to get started.
+To work on sessionmem, clone the repository, install dependencies, and build it using the commands below.
 
 ## Getting started
 
