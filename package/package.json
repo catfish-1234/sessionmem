@@ -1,6 +1,6 @@
 {
   "name": "sessionmem",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": false,
   "type": "module",
   "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
@@ -14,6 +14,7 @@
   "files": [
     "dist",
     "docs",
+    "CHANGELOG.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
     ".github/sessionmem-logo.svg"

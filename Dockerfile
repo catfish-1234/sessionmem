@@ -5,7 +5,7 @@ RUN addgroup --system sessionmem && adduser --system --ingroup sessionmem sessio
 RUN mkdir -p /home/sessionmem/.sessionmem && \
     chown -R sessionmem:sessionmem /home/sessionmem/.sessionmem
 
-RUN npm install -g sessionmem@1.3.0
+RUN npm install -g sessionmem@1.4.0
 
 USER sessionmem
 
