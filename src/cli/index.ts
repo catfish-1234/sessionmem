@@ -33,6 +33,7 @@ import { scanCommand } from "./commands/scan.js";
 import { watchCommand } from "./commands/watch.js";
 import { entitiesCommand } from "./commands/entities.js";
 import { historyCommand } from "./commands/history.js";
+import { uiCommand } from "./commands/ui.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -49,6 +50,12 @@ program
   .command("run")
   .description("Start the sessionmem MCP server")
   .action(runMcpServer);
+
+program
+  .command("ui")
+  .description("Open a local read-only web viewer for the memory store")
+  .option("--port <N>", "Local port (default: 3777; 0 selects a free port)")
+  .action((options) => uiCommand(options));
 
 program
   .command("session-start")

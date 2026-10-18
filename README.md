@@ -213,6 +213,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem doctor [--adapter <name>]` | Check the store, schema, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
+| `sessionmem ui [--port N]` | Open the local read-only web viewer (default port 3777). |
 | `sessionmem ping` | Check the local version and database reachability. |
 | `sessionmem search <query> [--limit <n>] [--include-history]` | Search current memories by text query (limit 1–100, default 10). Include superseded facts with `--include-history`. |
 | `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
@@ -256,6 +257,39 @@ for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings 
 otherwise it is derived from the repository root or working directory.
 `SESSIONMEM_ADAPTER` selects the install/doctor/uninstall host unless `--adapter` is set.
 `SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
+
+### Inspect memories in your browser
+
+```bash
+sessionmem ui
+sessionmem ui --port 8080
+sessionmem ui --port 0  # Pick an available port
+```
+
+The command prints its URL and opens your default browser. It binds only to
+`127.0.0.1`, needs no authentication, and serves all assets locally using Node's
+built-in HTTP server. No external services, CDNs, or additional runtime dependencies
+are used. If browser launch is unavailable, open the printed URL manually. Press
+Ctrl-C to stop the server and close its database connection.
+
+The viewer starts on the current project, with a selector for other projects in
+the same store. Browse saved memories, search through the existing recall path,
+inspect extracted entities and relations with their source memories, and follow
+supersession chains with old/new values, source IDs, assertion times, detection
+times, and partial/full status. Search returns up to 50 results and defaults to
+current facts; select **Include superseded facts in search** to recall history.
+Browsing lists all saved records, including superseded and expired ones, in pages
+of 50. Source IDs open full memory details. Entity visibility and history links
+use the same rules as `sessionmem entities` and `sessionmem history`.
+
+The database is opened read-only. Browsing and on-demand search do not increment
+access counts, migrate the schema, or change memories. Only HTTP GET and HEAD are
+accepted; no write, delete, or edit routes are exposed. Responses are not cached,
+and cross-origin browser requests and unexpected Host headers are rejected. Run
+`sessionmem ping` first to initialize a missing store or upgrade an older schema.
+The usual `SESSIONMEM_DB_PATH` and `SESSIONMEM_PROJECT_ID` overrides
+apply. Anyone with access to this computer can read the local viewer while it is
+running; stop it when finished inspecting private memories.
 
 ### Import existing sessions and watch for new ones
 
