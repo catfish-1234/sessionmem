@@ -108,6 +108,9 @@ export const ingestSessionEventSchema = z.object({
 export const ingestSessionEventsRequestSchema = z.object({
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
+  // Mutable transcript hosts can refresh an existing event without changing
+  // its identity, order or original timestamp. Other callers remain append-only.
+  replaceExisting: z.boolean().optional(),
   events: z.array(ingestSessionEventSchema).min(1).max(MAX_INGEST_EVENTS),
 });
 

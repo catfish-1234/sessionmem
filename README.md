@@ -223,8 +223,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
 | `sessionmem import <path> [--merge]` | Import up to 1000 valid records from UTF-8 JSON into the current project. Existing IDs are preserved, including with `--merge`; invalid records are skipped with warnings. |
-| `sessionmem scan [--host <host>] [--transcripts-dir <path>]` | Import existing Claude Code and Codex JSONL transcripts into local session memories. Reports files found, sessions imported, memories created, skipped files, and errors. |
-| `sessionmem watch [--once] [--interval <seconds>] [--host <host>] [--transcripts-dir <path>]` | Capture new or updated Claude Code and Codex transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
+| `sessionmem scan [--host <host>] [--transcripts-dir <path>]` | Import existing Claude Code, Codex CLI, and Cursor transcripts into local session memories. Reports files found, sessions imported, memories created, skips, and errors. |
+| `sessionmem watch [--once] [--interval <seconds>] [--host <host>] [--transcripts-dir <path>]` | Capture new or updated Claude Code, Codex CLI, and Cursor transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
 | `sessionmem stats` | Show memory statistics for the current project. |
 | `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
 | `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
@@ -297,28 +297,35 @@ When a fact changes, sessionmem can link its replacement locally. For example, â
 
 Detection uses deterministic entity/relation rules, shared purpose words, a small tool-category vocabulary, and explicit negation or replacement phrases. It needs no API or model. Unfamiliar wording can be missed, and ambiguous changes can be misclassified. A memory with independent claims remains searchable while any claim is current; history labels these partial supersessions. See [supersession details](docs/architecture.md#contradiction-and-supersession).
 
-Run a scan to capture Claude Code and Codex CLI sessions from before sessionmem was installed:
+Run a scan to capture Claude Code, Codex CLI, and Cursor sessions from before sessionmem was installed:
 
 ```bash
 sessionmem scan
 sessionmem watch --once
 sessionmem watch --interval 10
+sessionmem scan --host cursor
 ```
 
 Both commands sweep all detected transcript histories by default:
 
 - Claude Code: `~/.claude/projects/**/*.jsonl`.
 - Codex CLI: `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`.
+- Cursor: `User/globalStorage/state.vscdb` under
+  `~/Library/Application Support/Cursor` on macOS, `~/.config/Cursor` on Linux,
+  or `%APPDATA%/Cursor` on Windows.
 
 Missing history directories are allowed. Use `--transcripts-dir "/path/to/history"`
-to select another transcript tree; each file's host is detected from its records.
-Use `--host codex` or `--host claude-code` to select one host, including when using
-a directory override. Files that do not match a supported format, or the selected
-host, produce an explicit `unsupported format` error.
+to select another transcript tree; each JSONL file's host is detected from its records.
+For Cursor, the override accepts its `User` directory or a `state.vscdb` path.
+Use `--host cursor`, `--host codex`, or `--host claude-code` to select one host,
+including when using an override. A Cursor User directory or `.vscdb` file is
+also detected without `--host`. Files that do not match a supported format, or
+the selected host, produce an explicit `unsupported format` error.
 
 Both commands work offline without API keys and always use the local summarizer,
 even if cloud summarization is enabled elsewhere. `sessionmem doctor` checks
-transcript discovery for both hosts and parses a sample when history is present.
+transcript discovery for all three hosts, parses JSONL samples, and validates
+Cursor's composer indexes and message rows when history is present.
 
 Transcript user/assistant text, supported Claude tool uses (Bash, Edit, Write,
 MultiEdit), and Codex function calls pass through the existing event-ingestion,
@@ -327,14 +334,30 @@ name and `call_id`. Encrypted `agent_message` payloads and obvious injected mach
 blocks, including plugin catalogues and environment context, are excluded. Each
 session gets one summary memory, including short sessions with only one event.
 Updated sessions refresh that summary. Project buckets come from
-each Claude transcript's `cwd` or Codex `session_meta.payload.cwd`, using its
-repository root when available; the directory where you run scan/watch does not
+each Claude transcript's `cwd`, Codex `session_meta.payload.cwd`, or Cursor's
+workspace path, using the repository root when available; the directory where you run scan/watch does not
 select the project. `SESSIONMEM_PROJECT_ID` can explicitly pin all imports to one
 bucket. Transcripts without capturable events are skipped. Claude transcripts
 without a working directory are also skipped; Codex session metadata must contain
 an ID and working directory. Nested subagent files get separate session summaries.
-Summary memories record `sourceAdapter` as `claude-code` or
-`codex` according to the transcript host.
+Summary memories record `sourceAdapter` as `claude-code`, `codex`, or `cursor`
+according to the transcript host. Cursor session IDs come from `composerId`.
+
+Cursor stores messages in `cursorDiskKV` bubble rows in its global SQLite
+database. The importer supports workspace `composer.composerData` indexes
+(Cursor 2.6 and earlier) and the central `composer.composerHeaders` index
+(Cursor 3.0 and later). It captures up to 4,000 characters of user/assistant text
+per bubble and excludes tool-only bubbles and internal tool/code fields. Missing
+tables, index keys, or required conversation data produce an explicit
+`unsupported format for cursor` error.
+
+Cursor databases are never written. Each sweep copies the database and its WAL
+to a private temporary directory, checking for concurrent changes during the
+copy. SQLite opens the copy read-only, using immutable mode when URI support is
+available and there is no WAL to replay. Cursor's live database is never opened by SQLite. Busy
+copies are reported and retried. Each sweep reads a fresh snapshot; per-composer
+checkpoints skip unchanged messages, and streamed bubble updates refresh the
+existing event without duplicating it.
 
 Codex resumes create new rollout files. Files with the same session ID are grouped,
 and replayed events are deduplicated across files, sweeps, and restarts. A Codex
@@ -342,8 +365,10 @@ sub-agent keeps its own `session_meta.payload.id`, even when `parent_thread_id`
 points to a parent session.
 
 Re-running either command does not duplicate memories or transcript events.
-File checkpoints live in the selected memory database, and unchanged files are
-skipped across restarts. Stable event IDs also make interrupted imports safe to
+File and composer checkpoints live in the selected memory database, and unchanged
+files or composers are skipped across restarts. For Cursor, `files found` counts
+global databases, and `skipped` counts unchanged or empty composers.
+Stable event IDs also make interrupted imports safe to
 retry. Partial or malformed JSONL lines are reported and retried on later sweeps;
 valid events in the same file can still be captured. A single sweep exits with
 status 1 if it encounters errors. The daemon keeps running and retries errors.
@@ -387,7 +412,7 @@ and adjust PATH for your Node install:
 
 ```ini
 [Unit]
-Description=Capture Claude Code and Codex transcripts with sessionmem
+Description=Capture Claude Code, Codex, and Cursor transcripts with sessionmem
 
 [Service]
 ExecStart=/usr/local/bin/sessionmem watch

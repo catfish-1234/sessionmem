@@ -64,6 +64,32 @@ describe("ingestSessionEvents (HIGH-2: transactional + deduped)", () => {
     db.close();
   });
 
+  it("refreshes mutable events only when requested, preserving identity and redaction", async () => {
+    const db = openDb();
+    try {
+      const service = createMemoryCoreService({ db });
+      const request = { projectId: "project", sessionId: "session", events: [{
+        id: "bubble", eventType: "message:assistant", payloadJson: '{"text":"Partial response"}',
+        createdAt: "2026-10-17T10:00:00.000Z",
+      }] };
+      await service.ingestSessionEvents(request);
+      const original = listSessionEventsBySession(db, "project", "session")[0];
+      const updated = { ...request, events: [{ ...request.events[0], payloadJson: '{"text":"password=super-secret-value"}' }] };
+      expect((await service.ingestSessionEvents(updated)).ingested).toBe(0);
+      expect(listSessionEventsBySession(db, "project", "session")[0]).toEqual(original);
+      expect((await service.ingestSessionEvents({ ...updated, replaceExisting: true })).ingested).toBe(1);
+      const saved = listSessionEventsBySession(db, "project", "session");
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({ id: original.id, event_index: original.event_index, created_at: original.created_at });
+      expect(saved[0].payload_json).not.toContain("super-secret-value");
+      expect((await service.ingestSessionEvents({ ...updated, replaceExisting: true })).ingested).toBe(0);
+      // A matching ID owned by another project/session cannot be overwritten.
+      await service.ingestSessionEvents({ ...request, projectId: "other", replaceExisting: true });
+      expect(listSessionEventsBySession(db, "project", "session")).toEqual(saved);
+      expect(listSessionEventsBySession(db, "other", "session")).toEqual([]);
+    } finally { db.close(); }
+  });
+
   it(`accepts a full batch of exactly MAX_INGEST_EVENTS (${MAX_INGEST_EVENTS}) events`, async () => {
     const db = openDb();
     const service = createMemoryCoreService({ db });

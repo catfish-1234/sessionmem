@@ -2,7 +2,8 @@ import { stat } from "node:fs/promises";
 import { handleSessionEndConfigSchema, MAX_INGEST_EVENTS } from "../core/api/contracts.js";
 import { type CliContext } from "./context.js";
 import { deriveProjectId } from "./projectId.js";
-import { readTranscript, transcriptFiles, transcriptSources, type TranscriptOptions } from "./transcripts/index.js";
+import { isCursorSource, readTranscript, transcriptFiles, transcriptSources, type TranscriptOptions } from "./transcripts/index.js";
+import { cursorDatabasePath, readCursorTranscripts } from "./transcripts/cursor.js";
 import { stableId, type CapturedEvent, type TranscriptHost } from "./transcripts/types.js";
 
 export type ScanOptions = TranscriptOptions;
@@ -22,7 +23,7 @@ async function fingerprint(path: string, host?: TranscriptHost): Promise<string>
   return `hosts-v1:${host ?? "auto"}:${process.env.SESSIONMEM_PROJECT_ID ?? ""}:${info.dev}:${info.ino}:${info.size}:${info.mtimeNs}:${info.ctimeNs}`;
 }
 
-interface PendingFile { path: string; before: string; host?: TranscriptHost; malformed: boolean }
+interface PendingFile { path: string; before: string; host?: TranscriptHost; malformed: boolean; snapshot?: boolean }
 interface SessionGroup {
   host: TranscriptHost;
   projectId: string;
@@ -44,6 +45,33 @@ export async function sweepTranscripts(context: CliContext, options: ScanOptions
 
   for (const source of sources) {
     try {
+      if (source.host === "cursor" || (!source.host && await isCursorSource(source.directory))) {
+        const path = await cursorDatabasePath(source.directory);
+        if (!path) continue;
+        summary.filesFound++;
+        for (const transcript of await readCursorTranscripts(path)) {
+          const projectId = deriveProjectId(transcript.cwd!);
+          const checkpointPath = `cursor:${JSON.stringify([path, transcript.sessionId])}`;
+          // A database/WAL fingerprint is insufficient: unrelated settings and
+          // other composers change it. Hash only this composer's bounded events.
+          const before = stableId("cursor-v1", projectId, JSON.stringify(transcript.events));
+          if ((checkpoint.get(checkpointPath) as { fingerprint: string } | undefined)?.fingerprint === before) {
+            summary.skipped++;
+            continue;
+          }
+          if (!transcript.events.length) {
+            summary.skipped++;
+            saveCheckpoint.run(checkpointPath, before);
+            continue;
+          }
+          groups.set(JSON.stringify(["cursor", projectId, transcript.sessionId]), {
+            host: "cursor", projectId, sessionId: transcript.sessionId,
+            events: new Map(transcript.events.map(event => [event.id, event])),
+            files: [{ path: checkpointPath, before, host: "cursor", malformed: false, snapshot: true }],
+          });
+        }
+        continue;
+      }
       for await (const path of transcriptFiles(source.directory)) {
         summary.filesFound++;
         try {
@@ -82,6 +110,8 @@ export async function sweepTranscripts(context: CliContext, options: ScanOptions
       for (let offset = 0; offset < events.length; offset += MAX_INGEST_EVENTS) {
         const result = await context.service.call("ingestSessionEvents", {
           projectId, sessionId,
+          // Cursor edits the same bubble while streaming a response.
+          replaceExisting: host === "cursor",
           events: events.slice(offset, offset + MAX_INGEST_EVENTS).map(event => ({
             // Preserve existing Claude IDs for compatibility with earlier sweeps.
             ...event, id: host === "claude-code" ? stableId(projectId, sessionId, event.id)
@@ -103,7 +133,9 @@ export async function sweepTranscripts(context: CliContext, options: ScanOptions
       if (!existing) summary.memoriesCreated++;
       for (const file of group.files) {
         // Never mark concurrent appends or incomplete files as processed.
-        if (!file.malformed && await fingerprint(file.path, file.host) === file.before) {
+        // Cursor checkpoints describe the copied snapshot, so a newer live
+        // commit will be discovered by the next fresh read without a stat gate.
+        if (!file.malformed && (file.snapshot || await fingerprint(file.path, file.host) === file.before)) {
           saveCheckpoint.run(file.path, file.before);
         }
       }

@@ -1,17 +1,19 @@
 import { createReadStream } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { expandTilde } from "../context.js";
 import { isClaudeRecord, parseClaudeTranscript } from "./claudeCode.js";
 import { parseCodexTranscript } from "./codex.js";
+import { cursorDatabasePath, cursorUserDirectory, readCursorTranscripts } from "./cursor.js";
 import { object, type Transcript, type TranscriptHost, type TranscriptRecord } from "./types.js";
 
-export const TRANSCRIPT_HOSTS: readonly TranscriptHost[] = ["claude-code", "codex"];
+export const TRANSCRIPT_HOSTS: readonly TranscriptHost[] = ["claude-code", "codex", "cursor"];
 const parsers = { "claude-code": parseClaudeTranscript, codex: parseCodexTranscript };
 
 export function transcriptDirectory(host: TranscriptHost): string {
+  if (host === "cursor") return cursorUserDirectory();
   return join(homedir(), host === "codex" ? ".codex" : ".claude", host === "codex" ? "sessions" : "projects");
 }
 
@@ -41,7 +43,19 @@ export async function* transcriptFiles(directory: string): AsyncGenerator<string
   }
 }
 
+/** Recognize Cursor overrides without changing JSONL directory overrides. */
+export async function isCursorSource(directory: string): Promise<boolean> {
+  try {
+    if ((await stat(directory)).isFile()) return directory.endsWith(".vscdb");
+    return !!await cursorDatabasePath(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export async function readTranscript(path: string, claimedHost?: TranscriptHost): Promise<Transcript> {
+  if (claimedHost === "cursor") throw new Error("unsupported format for cursor: expected a User directory or state.vscdb database");
   const records: TranscriptRecord[] = [];
   let malformed = false;
   const input = createReadStream(path);
@@ -71,6 +85,12 @@ export async function readTranscript(path: string, claimedHost?: TranscriptHost)
 /** Read-only doctor probe: enumerate history and validate one sample per host. */
 export async function inspectTranscriptDiscovery(host: TranscriptHost): Promise<string> {
   const directory = transcriptDirectory(host);
+  if (host === "cursor") {
+    const path = await cursorDatabasePath(directory);
+    if (!path) return `No transcripts found (${directory})`;
+    const transcripts = await readCursorTranscripts(path);
+    return `${transcripts.length} composer(s) found (${path}); parsed as cursor`;
+  }
   let count = 0;
   let sample: string | undefined;
   for await (const path of transcriptFiles(directory)) { count++; sample ??= path; }

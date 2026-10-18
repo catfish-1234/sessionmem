@@ -80,16 +80,16 @@ program
 
 program
   .command("scan")
-  .description("Import Claude Code and Codex transcripts using local capture and summarization")
-  .option("--transcripts-dir <path>", "Override transcript roots; detect the host from each file")
-  .option("--host <host>", "Select a transcript host: claude-code or codex")
+  .description("Import Claude Code, Codex, and Cursor transcripts using local capture and summarization")
+  .option("--transcripts-dir <path>", "Override transcript roots (Cursor: User directory or state.vscdb)")
+  .option("--host <host>", "Select a transcript host: claude-code, codex, or cursor")
   .action(async (options) => { await scanCommand(options); });
 
 program
   .command("watch")
-  .description("Poll Claude Code and Codex transcripts and capture sessions offline")
-  .option("--transcripts-dir <path>", "Override transcript roots; detect the host from each file")
-  .option("--host <host>", "Select a transcript host: claude-code or codex")
+  .description("Poll Claude Code, Codex, and Cursor transcripts and capture sessions offline")
+  .option("--transcripts-dir <path>", "Override transcript roots (Cursor: User directory or state.vscdb)")
+  .option("--host <host>", "Select a transcript host: claude-code, codex, or cursor")
   .option("--once", "Run one sweep and exit")
   .option("--interval <seconds>", "Seconds between sweeps", "5")
   .action((options) => watchCommand(options));

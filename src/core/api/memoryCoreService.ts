@@ -338,7 +338,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
             event_type: event.eventType,
             payload_json: redactedPayload,
             created_at: event.createdAt,
-          });
+          }, parsed.replaceExisting);
         }
         return written;
       });
