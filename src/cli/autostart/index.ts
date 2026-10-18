@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { accessSync, constants, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "os";
-import { dirname, isAbsolute, join, resolve, win32 } from "node:path";
+import { dirname, isAbsolute, posix, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveDbPath } from "../context.js";
 
@@ -122,7 +122,7 @@ export function invalidLaunchPaths(launch: Launch): string[] {
 export function createAutostart(options: AutostartOptions = {}): Autostart {
   const platform = options.platform ?? process.platform;
   const home = options.home ?? homedir();
-  const paths = platform === "win32" ? win32 : { join, dirname, resolve };
+  const paths = platform === "win32" ? win32 : posix;
   const selectedDb = options.dbPath ?? resolveDbPath();
   if (selectedDb === ":memory:") throw new Error("Login capture requires a persistent database");
   const dbPath = paths.resolve(selectedDb);
@@ -143,7 +143,7 @@ export function createAutostart(options: AutostartOptions = {}): Autostart {
     mkdirSync(paths.dirname(log), { recursive: true });
   };
   if (platform === "darwin") {
-    const file = join(home, "Library", "LaunchAgents", `${LABEL}.plist`);
+    const file = paths.join(home, "Library", "LaunchAgents", `${LABEL}.plist`);
     const domain = `gui/${options.uid ?? userInfo().uid}`;
     const target = `${domain}/${LABEL}`;
     const loaded = () => {
@@ -173,7 +173,7 @@ export function createAutostart(options: AutostartOptions = {}): Autostart {
     };
   }
   if (platform === "linux") {
-    const file = join(home, ".config", "systemd", "user", UNIT);
+    const file = paths.join(home, ".config", "systemd", "user", UNIT);
     return {
       enable() {
         prepare();
