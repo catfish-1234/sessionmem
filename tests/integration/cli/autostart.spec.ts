@@ -38,7 +38,7 @@ beforeEach(() => {
 afterEach(() => { rmSync(home, { recursive: true, force: true }); });
 function run(...args: string[]) {
   const result = spawnSync(process.execPath, [cli, ...args], { env, encoding: "utf8", cwd: home, timeout: 20000, stdio: ["ignore", "pipe", "pipe"] });
-  if (result.error) throw result.error;
+  if (result.error) throw new Error(`sessionmem ${args.join(" ")} failed: ${result.error.message}`, { cause: result.error });
   return result;
 }
 function checkpoint() { return JSON.parse(readFileSync(watchCheckpointPath(dbPath), "utf8")); }
@@ -68,15 +68,40 @@ describe("login capture CLI (native scheduler mocked)", () => {
     expect(after.prepare("SELECT count(*) AS n FROM memories").get()).toEqual(memories);
     after.close();
   });
-  it("supports disable and enable and rejects unknown actions before changing registration", () => {
+  // Each CLI boot loads storage; install/enable also run a real watcher sweep,
+  // and doctor starts an MCP child. Keep these cases independent so Windows
+  // startup costs do not exhaust one test's 20-second budget.
+  it("rejects unknown actions before changing registration", () => {
     install();
-    expect(run("autostart", "invalid").status).toBe(1);
+    const before = checkpoint();
+    const invalid = run("autostart", "invalid");
+    expect(invalid.status).toBe(1);
+    expect(invalid.stderr).toContain("Use sessionmem autostart enable, disable, or status");
     expect(run("autostart", "status").stdout).toContain("enabled");
+    expect(checkpoint()).toEqual(before);
+  });
+  it("disables capture idempotently and reports the missing registration", () => {
+    install();
     expect(run("autostart", "disable").status).toBe(0);
     expect(run("autostart", "disable").status).toBe(0);
-    expect(run("doctor").stdout).toContain("FAIL Auto-start registration");
+    const doctor = run("doctor");
+    expect(doctor.status).toBe(1);
+    expect(doctor.stdout).toContain("FAIL Auto-start registration");
+  });
+  it("re-enables capture after disable and imports newly appended events", () => {
+    install();
+    expect(run("autostart", "disable").status).toBe(0);
+    appendFileSync(transcript, JSON.stringify({
+      timestamp: "2026-10-18T00:01:00.000Z", type: "response_item",
+      payload: { type: "message", role: "user", content: [{ type: "input_text", text: "Use TypeScript for this project." }] },
+    }) + "\n");
     expect(run("autostart", "enable").status).toBe(0);
     expect(run("autostart", "status").stdout).toContain("enabled");
+    expect(checkpoint()).toMatchObject({ summary: { sessionsImported: 1, memoriesCreated: 0, errors: 0 }, checkpointCount: 1 });
+    const db = new BetterSqlite3(dbPath, { readonly: true });
+    try {
+      expect(db.prepare("SELECT count(*) AS n FROM session_events WHERE session_id = ?").get("automatic-session")).toEqual({ n: 2 });
+    } finally { db.close(); }
   });
   it("diagnoses stale checkpoints and points to enable and capture logs", () => {
     install();
