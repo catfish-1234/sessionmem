@@ -25,6 +25,7 @@ import {
 import { resolveSummarizerMode } from "../summarize/strategySelector.js";
 import { extractEventText } from "../summarize/summaryShape.js";
 import { extractKnowledge, type Knowledge } from "../extract/knowledge.js";
+import type { TimedFactSource } from "../extract/factClaims.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
 
@@ -118,6 +119,7 @@ function storeSummaryMemory(
     summary: string;
     author: string;
     knowledge: Knowledge;
+    factSource: TimedFactSource[];
   },
 ): void {
   const embedding = deterministicEmbed(input.summary, embeddingDimension);
@@ -136,7 +138,7 @@ function storeSummaryMemory(
     // Session summaries are locally authored.
     author: input.author,
     origin_project_id: null,
-  }, input.knowledge);
+  }, input.knowledge, input.factSource);
 }
 
 function buildMemoryId(request: HandleSessionEndRequest): string {
@@ -254,7 +256,8 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
     const memoryId = buildMemoryId(request);
     // Extract from the same event text as the summarizer, before its line/token
     // caps. This remains deterministic even when cloud summaries are opted in.
-    const knowledge = extractKnowledge(events.map(extractEventText).join("\n"));
+    const factSource = events.map(event => ({ text: extractEventText(event), observedAt: event.created_at }));
+    const knowledge = extractKnowledge(factSource.map(source => source.text).join("\n"));
     const baseInput = {
       events,
       summaryTokenCap: request.config.summaryTokenCap,
@@ -278,6 +281,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           summary: cloudResult.summary,
           author,
           knowledge,
+          factSource,
         });
 
         runLightPrune(request.projectId);
@@ -316,6 +320,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           summary: fallbackResult.summary,
           author,
           knowledge,
+          factSource,
         });
 
         runLightPrune(request.projectId);
@@ -373,6 +378,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         summary: localResult.summary,
         author,
         knowledge,
+        factSource,
       });
 
       runLightPrune(request.projectId);

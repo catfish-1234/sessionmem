@@ -57,6 +57,8 @@ describe("schema migrations", () => {
     expect(tableExists(db, "memories")).toBe(true);
     expect(tableExists(db, "summarization_failures")).toBe(true);
     expect(tableExists(db, "memory_feedback")).toBe(true);
+    expect(tableExists(db, "memory_claims")).toBe(true);
+    expect(tableExists(db, "memory_supersessions")).toBe(true);
 
     expect(indexExists(db, "idx_memories_project_updated")).toBe(true);
     expect(indexExists(db, "idx_memories_project_session")).toBe(true);
@@ -80,7 +82,7 @@ describe("schema migrations", () => {
     const countRow = db
       .prepare("SELECT COUNT(*) AS count FROM _migrations")
       .get() as { count: number };
-    expect(countRow.count).toBe(14);
+    expect(countRow.count).toBe(15);
 
     const names = db
       .prepare("SELECT name FROM _migrations ORDER BY name")
@@ -100,6 +102,7 @@ describe("schema migrations", () => {
       "012_transcript_checkpoints.sql",
       "013_fts_porter.sql",
       "014_memory_entities.sql",
+      "015_memory_supersessions.sql",
     ]);
 
     db.close();

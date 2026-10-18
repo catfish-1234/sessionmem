@@ -184,6 +184,7 @@ export const retrieveMemoriesRequestSchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
   mode: z.enum(["auto", "on-demand"]).default("auto"),
   depth: z.enum(["default", "deep"]).default("default"),
+  includeHistory: z.boolean().optional(),
   tags: z.array(z.string().min(1).max(50)).max(10).optional(),
 });
 

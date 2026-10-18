@@ -7,6 +7,7 @@ import {
   writePolicyConfig,
 } from "../../core/config/policyConfig.js";
 import { createCliContext, type CliContext } from "../context.js";
+import { reconcileProjectSupersessions } from "../../core/storage/supersessionRepo.js";
 
 interface TeamCommandOptions {
   /** Test seam: point at a temp config file instead of ~/.sessionmem/config.json. */
@@ -120,11 +121,13 @@ export function teamDisableCommand(
   }
 
   const context = ctx ?? createCliContext();
-  const result = context.db
-    .prepare(
+  const result = context.db.transaction(() => {
+    const removed = context.db.prepare(
       "DELETE FROM memories WHERE project_id = ? AND author != ? AND author != ''",
-    )
-    .run(context.projectId, context.username);
+    ).run(context.projectId, context.username);
+    if (removed.changes) reconcileProjectSupersessions(context.db, context.projectId);
+    return removed;
+  })();
 
   console.log(
     `Team mode disabled. Removed ${result.changes} teammate-authored ${

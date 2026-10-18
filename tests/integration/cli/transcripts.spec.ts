@@ -12,6 +12,7 @@ import { listMemoriesByProject } from "../../../src/core/storage/memoryRepo.js";
 import { listSessionEventsBySession } from "../../../src/core/storage/sessionEventsRepo.js";
 import { buildToolEvent } from "../../../src/core/capture/toolEvent.js";
 import { listProjectKnowledge } from "../../../src/core/storage/knowledgeRepo.js";
+import { listSupersessions } from "../../../src/core/storage/supersessionRepo.js";
 
 const execFileAsync = promisify(execFile);
 const cliPath = join(process.cwd(), "dist/cli/index.js");
@@ -60,6 +61,29 @@ afterEach(() => {
 });
 
 describe("retroactive transcript capture", () => {
+  it("detects replacements from full events, using timestamps rather than filename order", async () => {
+    const datedRecord = (sessionId: string, text: string, timestamp: string) =>
+      JSON.stringify({ type: "user", sessionId, uuid: sessionId, cwd, timestamp, message: { content: text } }) + "\n";
+    // The newer fact is scanned first. Neither stored summary needs to contain
+    // the assertion: extraction reads the complete events before token caps.
+    writeFileSync(join(root, "encoded-project", "a-new.jsonl"), datedRecord("new", "I switched to Neovim.", "2026-01-02T00:00:00.000Z"));
+    const oldPath = join(root, "encoded-project", "z-old.jsonl");
+    writeFileSync(oldPath, datedRecord("old", "I use VS Code.", "2026-01-01T00:00:00.000Z"));
+    expect(await sweepTranscripts(context, { transcriptsDir: root })).toMatchObject({ sessionsImported: 2, errors: 0 });
+    const links = listSupersessions(context.db, projectId);
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({ oldValue: "vs code", newValue: "neovim", supersededAt: "2026-01-02T00:00:00.000Z" });
+    expect(memories().find(m => m.id === links[0].supersedes)?.session_id).toBe("old");
+    expect(memories().find(m => m.id === links[0].supersededBy)?.session_id).toBe("new");
+    // Unrelated appended events must not date an old assertion as a new fact.
+    appendFileSync(oldPath, datedRecord("unrelated", "All tests passed.", "2026-01-03T00:00:00.000Z").replace('"sessionId":"unrelated"', '"sessionId":"old"'));
+    await sweepTranscripts(context, { transcriptsDir: root });
+    expect(listSupersessions(context.db, projectId)).toEqual(links);
+    context.db.prepare("DELETE FROM transcript_checkpoints").run();
+    await sweepTranscripts(context, { transcriptsDir: root });
+    expect(listSupersessions(context.db, projectId)).toEqual(links);
+  });
+
   it("imports through shared capture and stays idempotent across restarts and replay", async () => {
     const network = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
     const path = join(root, "encoded-project", "session-1.jsonl");

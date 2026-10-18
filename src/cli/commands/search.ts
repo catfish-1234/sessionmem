@@ -5,6 +5,7 @@ export interface SearchOptions {
   // commander supplies option values as strings; the direct test-injection
   // callers pass numbers. Accept both and coerce at the call site.
   limit?: number | string;
+  includeHistory?: boolean;
 }
 
 const DEFAULT_LIMIT = 10;
@@ -31,6 +32,7 @@ export async function searchCommand(
     limit,
     mode: "auto",
     depth: "default",
+    includeHistory: options.includeHistory,
   });
 
   if (!result.ok) {

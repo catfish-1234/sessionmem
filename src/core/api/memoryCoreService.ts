@@ -463,6 +463,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         db,
         projectId: parsed.projectId,
         queryText: parsed.query,
+        includeHistory: parsed.includeHistory,
         limit,
         now: deps.now?.(),
       });
@@ -925,6 +926,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
                 redactionEnabled: resolveRedactionEnabled(item.redactionEnabled),
               });
               const embedding = deterministicEmbed(redaction.text, dimension);
+              const capturedAt = deps.now?.().toISOString();
 
               insertMemory(db, {
                 id: item.memoryId,
@@ -942,6 +944,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
                 origin_project_id: null,
                 tags: JSON.stringify(item.tags ?? null),
                 expires_at: item.expiresAt ?? null,
+                created_at: capturedAt,
+                updated_at: capturedAt,
               });
 
               const inserted = getMemoryRecordById(db, parsed.projectId, item.memoryId);
