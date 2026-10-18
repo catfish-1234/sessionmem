@@ -1,3 +1,5 @@
+import { createAutostart, invalidLaunchPaths } from "../autostart/index.js";
+import { inspectWatchCheckpoint } from "../watchCheckpoint.js";
 import BetterSqlite3 from "better-sqlite3";
 import type { Database } from "better-sqlite3";
 import { randomUUID } from "node:crypto";
@@ -64,6 +66,21 @@ export async function doctorCommand(
   }
 
   const dbPath = resolveDbPath(overrides.dbPath);
+  const captureFix = "Run sessionmem autostart enable; inspect logs/watch.log beside the database and OS service logs, then run sessionmem doctor";
+  try {
+    const registration = createAutostart({ dbPath }).status();
+    report("Auto-start registration", registration.registered, registration.detail, registration.registered ? undefined : captureFix);
+    const invalid = registration.launch ? invalidLaunchPaths(registration.launch) : ["No registered binary"];
+    report("Auto-start binary", invalid.length === 0, invalid.length ? invalid.join(", ") : "Registered Node binary and sessionmem entry point are readable", invalid.length ? "Reinstall sessionmem if needed, then run sessionmem autostart enable" : undefined);
+  } catch (err) {
+    report("Auto-start registration", false, message(err), captureFix);
+    report("Auto-start binary", false, "Cannot inspect the registration", captureFix);
+  }
+  try {
+    report("Watcher capture", true, inspectWatchCheckpoint(dbPath));
+  } catch (err) {
+    report("Watcher capture", false, message(err), captureFix);
+  }
   for (const host of TRANSCRIPT_HOSTS) {
     try {
       report(`${host} transcripts`, true, await inspectTranscriptDiscovery(host));
