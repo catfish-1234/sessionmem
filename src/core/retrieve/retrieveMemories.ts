@@ -93,8 +93,8 @@ export function retrieveMemories(
   const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
 
-  // Use FTS5 pre-filtering to limit cosine similarity computation to ~50 candidates.
-  // queryText is guaranteed non-empty by the Zod schema (z.string().min(1)) upstream.
+  // FTS5 retrieves up to 50 BM25 matches; sparse matches retain the existing
+  // recency/importance fallback. The public request schema validates queryText.
   const candidates = searchMemoryCandidatesFTS(
     input.db,
     input.projectId,
@@ -104,6 +104,13 @@ export function retrieveMemories(
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
+
+  // FTS5 returns negative BM25 ranks; storage converts them to positive scores.
+  // Normalize within this query so BM25 fits the existing relevance weight.
+  const maxLexicalScore = candidates.reduce(
+    (max, candidate) => Math.max(max, candidate.lexical_score),
+    0,
+  );
 
   const ranked = decayedCandidates
     .map((candidate) => {
@@ -117,9 +124,14 @@ export function retrieveMemories(
         candidate.embedding.length !== queryVector.length
           ? 0.5
           : cosineSimilarity(queryVector, candidate.embedding);
+      // Hash cosine is useful for identical text, but adds noise to lexical
+      // matches. Keep it as a diagnostic and as the no-match fallback only.
+      const relevance = maxLexicalScore > 0
+        ? candidate.lexical_score / maxLexicalScore
+        : semantic;
       const score = scoreMemoryCandidate(
         {
-          semantic,
+          semantic: relevance,
           updated_at: candidate.updated_at,
           importance: candidate.importance,
           access_count: candidate.access_count,

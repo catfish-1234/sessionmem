@@ -145,8 +145,8 @@ It captures dialogue through the public `storeMemory` API and asks the original
 questions through `retrieveMemories`, fully offline with no API keys.
 
 The evaluation reports hit rate, precision, recall, complete-evidence retrieval,
-and latency. It uses the production hash-based embedding; conversational questions
-expose retrieval limitations that exact copies of memory text do not measure.
+and latency. Production retrieval uses offline BM25 ranking with English stemming;
+conversational questions test recall beyond exact copies of memory text.
 See [benchmark results](docs/benchmark.md) and the
 [methodology, dataset license, and metric definitions](benchmarks/README.md).
 
@@ -202,7 +202,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ping` | Check the local version and database reachability. |
-| `sessionmem search <query> [--limit <n>]` | Search memories by semantic query (limit 1–100, default 10). |
+| `sessionmem search <query> [--limit <n>]` | Search memories by text query (limit 1–100, default 10). |
 | `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
 | `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
@@ -376,7 +376,7 @@ Old decisions and duplicate facts can accumulate in a memory store, causing the 
    sessionmem retention prune --force  # actually deletes
    ```
 
-2. **Importance-weighted ranking**: retrieval ranks memories by semantic relevance, recency, and importance. Older, less important notes rank lower even before they are pruned.
+2. **Importance-weighted ranking**: retrieval ranks memories by offline BM25 lexical relevance, recency, and importance. Older, less important notes rank lower even before they are pruned.
 
 3. **Token-budgeted injection**: only the highest-ranked memories are loaded, trimmed to a small token budget (see [benchmarks](#benchmark-results)). The context stays within that budget as the store grows.
 

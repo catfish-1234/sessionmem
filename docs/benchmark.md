@@ -1,48 +1,72 @@
 # Conversational retrieval benchmark
 
 `npm run benchmark` runs the committed LoCoMo corpus through the public
-`storeMemory` capture and `retrieveMemories` recall APIs. It replaces the previous
-ten exact-text queries and their 100% hit-rate claim. See
+`storeMemory` capture and `retrieveMemories` recall APIs. See
 [benchmarks/README.md](../benchmarks/README.md) for the corpus license, selection
 rules, metric definitions, and detailed reproduction instructions.
 
-## Recorded result
+## Before and after
 
-This run used sessionmem 1.4.0, Node v24.19.0, Linux x64, top-5 retrieval, fixed
-capture/retrieval time, and the production `deterministicEmbed`. It captured
-5,882 turns across 272 sessions in 10 conversations. Of 1,986 annotations,
-1,527 questions were scored; 446 adversarial, four missing-evidence, and nine
+The baseline was run first on main at `c06857d`, before changing retrieval.
+Both runs used sessionmem 1.4.0, Node v24.19.0, Linux x64, top-5,
+and the same lockfile dependencies and fixed capture/retrieval clock.
+They captured 5,882 turns across 272 sessions in 10 conversations and scored
+1,527 questions. The same 446 adversarial, four missing-evidence, and nine
 invalid-evidence questions were excluded by fixed annotation rules.
 
-| Macro retrieval metric @5 | Result |
-| --- | ---: |
-| Hit rate | 1.44% |
-| Precision | 0.29% |
-| Recall | 0.88% |
-| All-evidence rate | 0.65% |
+| Macro retrieval metric @5 | Main (hash ranking) | BM25 + stop words + stemming |
+| --- | ---: | ---: |
+| Hit rate | 1.44% | 61.95% |
+| Precision | 0.29% | 13.45% |
+| Recall | 0.88% | 55.96% |
+| All-evidence rate | 0.65% | 51.15% |
+
+| Recall latency | Main | Selected change |
+| --- | ---: | ---: |
+| Mean | 16.33 ms | 14.93 ms |
+| Median | 15.22 ms | 13.52 ms |
+| p95 | 28.80 ms | 28.81 ms |
+| Maximum | 133.49 ms | 56.73 ms |
+
+Latency includes the complete public service response, including startup-injection
+formatting, and excludes capture, process startup, and corpus loading. Each query
+is timed once without warmup. Timing depends on hardware and load.
 
 | Question category | Questions | Hit rate | Precision | Recall |
 | --- | ---: | ---: | ---: | ---: |
-| Multi-hop | 278 | 2.52% | 0.50% | 0.47% |
-| Temporal | 320 | 0.63% | 0.13% | 0.63% |
-| Open-domain | 89 | 3.37% | 0.67% | 1.19% |
-| Single-hop | 840 | 1.19% | 0.24% | 1.07% |
+| Multi-hop | 278 | 46.76% | 13.60% | 25.06% |
+| Temporal | 320 | 69.38% | 14.38% | 66.22% |
+| Open-domain | 89 | 38.20% | 8.09% | 28.25% |
+| Single-hop | 840 | 66.67% | 13.62% | 65.22% |
 
-Recall latency was mean **11.12 ms**, median **10.49 ms**, p95 **18.74 ms**,
-and maximum **38.94 ms**. These measurements include public service response
-formatting and exclude capture, process startup, and corpus loading. Timing
-depends on hardware and load; it is not a reproducible quality score.
+## Candidate comparisons
 
-The low scores show that the current hash-based embedding and retrieval pipeline
-perform poorly on conversational questions with different wording from the
-stored dialogue. The evaluation does not tune or replace that implementation.
-A hit means at least one annotated turn was found; it does not establish that
-enough evidence was found to answer a multi-hop question. This is retrieval
-evaluation, not answer-generation accuracy or automatic summarization quality.
+Each candidate was run with the existing offline evaluator on the same questions.
+Only additions that increased hit rate, precision, and recall were retained.
+
+| Candidate @5 | Hit rate | Precision | Recall |
+| --- | ---: | ---: | ---: |
+| BM25 with OR terms | 52.78% | 11.15% | 47.69% |
+| + English stop-word filtering | 57.69% | 12.39% | 52.62% |
+| + Porter stemming (selected) | 61.95% | 13.45% | 55.96% |
+| 90% BM25 / 10% hash cosine (discarded) | 61.76% | 13.43% | 55.78% |
+
+BM25 preserves lexical relevance instead of replacing it with hash-vector noise.
+Common question words no longer require a literal match, and SQLite's built-in
+Porter tokenizer matches English inflections. The existing recency, importance,
+expiry, project scope, and no-match vector fallback remain in place. There are
+no new dependencies, API keys, or model downloads. Migration 013 rebuilds the
+existing FTS index; memory content and IDs are preserved.
+
+These comparisons use the same corpus used to select the ranker; they are not
+a held-out generalization estimate. BM25 still needs lexical overlap, and a hit
+can leave evidence missing for multi-hop questions. These are annotated-evidence
+retrieval scores, not answer-generation accuracy or summarization quality.
 
 ## Reproduce
 
-After installing the lockfile dependencies:
+After installing the lockfile dependencies, run on main to record the baseline,
+then repeat on the change:
 
 ```bash
 npm run build

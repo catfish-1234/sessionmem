@@ -56,8 +56,9 @@ Capture timestamps and retrieval time are both pinned to
 `2026-01-01T00:00:00.000Z`. All turns therefore have equal recency regardless of
 ingestion order. Original conversation dates remain in the text for temporal
 questions. Retention is disabled; this benchmark does not test time decay.
-The production hash-based `deterministicEmbed` and candidate/ranking code run
-unchanged. No semantic model or answer-aware ranking is substituted.
+The production BM25 candidate/ranking code runs unchanged. The hash-based
+`deterministicEmbed` remains a diagnostic and no-match fallback. No semantic model
+or answer-aware ranking is substituted.
 
 ## Metrics
 

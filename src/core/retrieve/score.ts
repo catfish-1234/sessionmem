@@ -21,6 +21,7 @@ export function computeEffectiveImportance(
 }
 
 export interface ScoreMemoryCandidateInput {
+  /** Relevance: normalized BM25 for lexical matches, otherwise hash cosine. */
   semantic: number;
   updated_at: string;
   importance: number;
@@ -30,6 +31,7 @@ export interface ScoreMemoryCandidateInput {
 
 export interface ScoreBreakdown {
   raw: {
+    /** Legacy field name retained for the retrieval relevance component. */
     semantic: number;
     recency: number;
     importance: number;
