@@ -115,6 +115,8 @@ jobs:
         run: |
           TMP_HOME="$(mktemp -d)"
           export HOME="$TMP_HOME"
+          # Native login managers are mocked; one real capture sweep still runs.
+          export NODE_OPTIONS="--require \"$(pwd)/scripts/lib/autostart-test-preload.cjs\""
           sessionmem install --adapter claude-code
           if [ ! -f "$TMP_HOME/.sessionmem/config.json" ]; then
             echo "config.json was not written to isolated HOME ($TMP_HOME)"
@@ -122,6 +124,8 @@ jobs:
           fi
           echo "config.json found at $TMP_HOME/.sessionmem/config.json"
           sessionmem doctor --adapter claude-code
+          sessionmem autostart status
+          sessionmem uninstall --adapter claude-code
 
       - name: sessionmem install (isolated temp HOME, Windows)
         if: runner.os == 'Windows'
@@ -133,6 +137,9 @@ jobs:
           $env:USERPROFILE = $tmpHome
           $env:HOMEDRIVE = (Split-Path $tmpHome -Qualifier)
           $env:HOMEPATH = (Split-Path $tmpHome -NoQualifier)
+          # NODE_OPTIONS parses backslashes as escapes even inside quotes.
+          $preloadPath = Join-Path $env:GITHUB_WORKSPACE 'scripts/lib/autostart-test-preload.cjs'
+          $env:NODE_OPTIONS = '--require ' + (ConvertTo-Json -InputObject $preloadPath -Compress)
           sessionmem install --adapter claude-code
           $configPath = Join-Path $tmpHome ".sessionmem\config.json"
           if (-not (Test-Path $configPath)) {
@@ -141,3 +148,5 @@ jobs:
           }
           Write-Host "config.json found at $configPath"
           sessionmem doctor --adapter claude-code
+          sessionmem autostart status
+          sessionmem uninstall --adapter claude-code

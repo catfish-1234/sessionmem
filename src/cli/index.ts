@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { autostartCommand } from "./commands/autostart.js";
 import { Command } from "commander";
 import { createRequire } from "node:module";
 import { runMcpServer } from "./commands/run.js";
@@ -90,13 +91,15 @@ program
   .description("Poll Claude Code, Codex, and Cursor transcripts and capture sessions offline")
   .option("--transcripts-dir <path>", "Override transcript roots (Cursor: User directory or state.vscdb)")
   .option("--host <host>", "Select a transcript host: claude-code, codex, or cursor")
+  .option("--db-path <path>", "Database file for headless capture")
+  .option("--log-file <path>", "Append timestamped stdout, stderr and startup failures to a file")
   .option("--once", "Run one sweep and exit")
   .option("--interval <seconds>", "Seconds between sweeps", "5")
   .action((options) => watchCommand(options));
 
 program
   .command("install")
-  .description("Install sessionmem into every detected agent host")
+  .description("Install integrations and enable login transcript capture")
   .option(
     "--adapter <name>",
     "Force a host adapter instead of auto-detecting (claude-code, cursor, windsurf, cline, codex, antigravity, qcoder, generic)",
@@ -104,14 +107,19 @@ program
   .action((options) => installCommand(options));
 
 program
+  .command("autostart <action>")
+  .description("Control login capture: enable, disable, or status")
+  .action((action) => autostartCommand(action));
+
+program
   .command("doctor")
-  .description("Check storage, transcript discovery, hooks, MCP wiring, and recall offline")
+  .description("Check login capture, storage, transcripts, hooks, MCP wiring, and recall offline")
   .option("--adapter <name>", "Check a specific host instead of installed-host detection")
   .action(async (options) => { await doctorCommand(options); });
 
 program
   .command("uninstall")
-  .description("Remove sessionmem from the current MCP host")
+  .description("Stop login capture and remove sessionmem from the current MCP host")
   .option("--purge", "Also delete the local memories database")
   .option(
     "--adapter <name>",

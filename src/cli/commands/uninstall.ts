@@ -1,3 +1,4 @@
+import { createAutostart } from "../autostart/index.js";
 import { existsSync, rmSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -44,6 +45,10 @@ export async function uninstallCommand(options: UninstallOptions = {}): Promise<
     console.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
+
+  // Stop capture before removing integrations or purging an open database.
+  createAutostart({ dbPath: options.dbPath }).disable();
+  console.log("Auto-start removed and watcher stopped");
 
   if (!adapter.uninstall) {
     console.error(

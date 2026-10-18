@@ -13,6 +13,8 @@ Doctor prints PASS or FAIL and a fix hint for each problem. Any failed check
 returns a nonzero exit status. It checks:
 
 - **Memory store:** the selected database exists, opens, and passes SQLite's quick integrity check. It does not create a missing database.
+- **Auto-start:** this OS's per-user login registration is present and enabled; the registered Node executable and sessionmem entry point still exist. Run `sessionmem autostart enable` after moving the package or changing Node versions.
+- **Watcher capture:** a recent completed sweep checkpoint has no capture errors and transcript checkpoints exist when source files were found. Check `logs/watch.log` beside the database. Unchanged transcripts do not require new imports. Missing or stale checkpoints fail even if an OS service is registered.
 - **Schema:** all bundled migrations have been applied. It reports pending or unrecognized migrations without changing the schema.
 - **Hooks, per host:** Claude Code's SessionStart, SessionEnd, and PostToolUse commands, types, matchers, and enabled state match the current version's definitions. Other hosts report that lifecycle hooks are not required.
 - **Adapter wiring, per host:** the installed MCP entry matches the installer, its local command starts, the server version matches, and the expected tools and stats response work. This tests the configured server process without starting the coding agent itself.
@@ -20,6 +22,8 @@ returns a nonzero exit status. It checks:
 
 For Codex, the wiring check supports the installer-generated TOML command and
 args. Custom Codex launch settings require manual verification.
+
+Codex and Cursor transcript capture uses the login watcher; install does not wire lifecycle capture hooks for those hosts. Claude Code also has its installed hooks.
 
 All checks work offline, including when cloud summarization is enabled. Doctor
 does not summarize sessions or sync shared memories. It honors `SESSIONMEM_DB_PATH`
@@ -29,6 +33,7 @@ running a suggested repair.
 Safe repair commands printed by doctor include:
 
 ```bash
+sessionmem autostart enable             # update paths and restart login capture
 sessionmem ping                         # initialize a missing store / apply pending migrations
 sessionmem install --adapter claude-code # repair MCP registration and hook definitions
 ```

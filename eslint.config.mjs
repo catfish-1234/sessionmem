@@ -26,7 +26,7 @@ export default tseslint.config(
   {
     // Plain Node ESM scripts (build/copy helpers) run in the Node runtime, not
     // the browser — expose Node globals so `console`/`process` resolve.
-    files: ["scripts/**/*.mjs", "**/*.mjs"],
+    files: ["scripts/**/*.mjs", "scripts/**/*.cjs", "**/*.mjs"],
     languageOptions: { globals: globals.node },
   },
   {

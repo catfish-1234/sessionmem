@@ -22,7 +22,7 @@ describe("offline setup and doctor CLI", () => {
     mkdirSync(bin);
     // Block and record networking in both the CLI and its MCP child process.
     const guard = join(home, "offline.cjs");
-    writeFileSync(guard, `
+    writeFileSync(guard, readFileSync(join(process.cwd(), "scripts/lib/autostart-test-preload.cjs"), "utf8") + `
       const deny = () => {
         require('node:fs').writeFileSync(${JSON.stringify(join(home, "network-attempt"))}, 'attempted');
         throw new Error('Network access forbidden by offline test');
@@ -96,7 +96,7 @@ describe("offline setup and doctor CLI", () => {
 
     const result = run("doctor");
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(8);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(11);
     expect(result.stdout).toContain("Claude Code adapter wiring");
     expect(result.stdout).toContain("canary rolled back");
     const after = new BetterSqlite3(dbPath);
@@ -112,7 +112,7 @@ describe("offline setup and doctor CLI", () => {
   it("does not create a missing memory store and reports storage, host, and discovery checks", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
-    expect(result.stdout.match(/^FAIL /gm)).toHaveLength(5);
+    expect(result.stdout.match(/^FAIL /gm)).toHaveLength(8);
     expect(result.stdout.match(/^PASS .* transcripts:/gm)).toHaveLength(3);
     expect(result.stdout).toContain("sessionmem ping");
     expect(existsSync(dbPath)).toBe(false);
@@ -263,7 +263,7 @@ describe("offline setup and doctor CLI", () => {
     expect(installed.status, installed.stdout + installed.stderr).toBe(0);
     const result = run("doctor", "--adapter", adapter);
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(8);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(11);
     expect(result.stdout).toContain("no lifecycle hooks are required");
   });
 

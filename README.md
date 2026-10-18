@@ -62,12 +62,25 @@ Claude Code on `PATH` or in its standard native install locations. Use
 If no supported host is found, the command says so and exits nonzero before
 creating files. Discovery and configuration work fully offline.
 
-This initializes the database and, for each selected adapter:
+This initializes the database and configures the selected adapters:
 
 - Registers `sessionmem` with your AI tool's MCP host so the host can start it automatically.
 - Creates `~/.sessionmem/config.json` with secret redaction enabled and a 90-day retention window, if the file doesn't already exist.
 - Adds instructions to the selected host's guidance file, such as `~/.claude/CLAUDE.md` for Claude Code or `~/.codex/AGENTS.md` for Codex. You can re-run the command without duplicating those instructions.
 - Installs Claude Code's SessionStart, SessionEnd, and PostToolUse hooks and prints what was configured per host. If a host fails, the remaining hosts are still attempted and the command exits nonzero.
+- Enables and starts one per-user login service for `sessionmem watch`. Re-running install updates that registration in place and restarts capture. Capture continues after closing the terminal and starts again at login.
+
+Login capture uses a LaunchAgent in `~/Library/LaunchAgents` on macOS, a
+`systemd --user` service on Linux, and a Scheduled Task with a user logon trigger
+on Windows. Linux requires systemd and an available user service manager; macOS
+requires a GUI login session. If registration or startup fails, install exits
+nonzero, preserves completed setup, and prints a repair hint. After fixing the
+OS service error, run `sessionmem autostart enable`.
+
+The watcher captures existing and updated Claude Code, Codex CLI, and Cursor
+history offline, without API keys. It starts immediately after install; no
+manual scan or watch process is required. Hosts outside these three can use MCP
+memory tools, but do not have a transcript reader.
 
 ### 3. Restart your AI tool
 
@@ -80,7 +93,8 @@ another format or location, copy its server entry into that host’s MCP config.
 After restarting:
 
 - In Claude Code, the installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and load prior memories automatically.
-- Other MCP hosts use sessionmem's tools and installed instructions. Automatic capture and session lifecycle calls depend on the host or agent. MCP registration alone does not install Claude Code hooks there.
+- Codex and Cursor use the auto-started watcher for transcript capture. Install does not wire lifecycle capture hooks for these hosts. Their MCP tools and installed instructions provide recall and explicit memory operations.
+- Other MCP hosts use sessionmem's tools and installed instructions; automatic transcript capture requires a supported transcript reader.
 
 Check the installation offline:
 
@@ -209,9 +223,10 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 
 | Command | What it does |
 |---------|--------------|
-| `sessionmem install [--adapter <name>]` | Detect installed hosts, register sessionmem with each, and write default config; the flag selects one host. |
-| `sessionmem doctor [--adapter <name>]` | Check the store, schema, transcript discovery, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
-| `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
+| `sessionmem install [--adapter <name>]` | Detect installed hosts, configure integrations, write default config, and enable login capture; the flag selects one host. |
+| `sessionmem doctor [--adapter <name>]` | Check the store, schema, auto-start, binary paths, capture freshness, transcript discovery, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
+| `sessionmem autostart enable\|disable\|status` | Start login capture, stop and unregister it, or inspect its registration and binary paths. |
+| `sessionmem uninstall [--adapter <name>] [--purge]` | Stop and unregister login capture, then remove sessionmem from the selected host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ui [--port N]` | Open the local read-only web viewer (default port 3777). |
 | `sessionmem ping` | Check the local version and database reachability. |
@@ -297,7 +312,7 @@ When a fact changes, sessionmem can link its replacement locally. For example, �
 
 Detection uses deterministic entity/relation rules, shared purpose words, a small tool-category vocabulary, and explicit negation or replacement phrases. It needs no API or model. Unfamiliar wording can be missed, and ambiguous changes can be misclassified. A memory with independent claims remains searchable while any claim is current; history labels these partial supersessions. See [supersession details](docs/architecture.md#contradiction-and-supersession).
 
-Run a scan to capture Claude Code, Codex CLI, and Cursor sessions from before sessionmem was installed:
+Install starts capture for existing history and new sessions automatically. For a manual import or a foreground diagnostic run:
 
 ```bash
 sessionmem scan
@@ -373,66 +388,64 @@ retry. Partial or malformed JSONL lines are reported and retried on later sweeps
 valid events in the same file can still be captured. A single sweep exits with
 status 1 if it encounters errors. The daemon keeps running and retries errors.
 
-`watch` prints its first sweep and subsequent imports or errors. It runs in the
-foreground until SIGINT or SIGTERM. For a background process:
+`watch` prints its first sweep and subsequent imports or errors. A manual run
+stays in the foreground until SIGINT or SIGTERM. Login capture uses the same
+watcher with an absolute Node executable and absolute sessionmem entry point;
+it does not need a shell, a TTY, or your interactive PATH.
+
+Control login capture explicitly:
 
 ```bash
-nohup sessionmem watch > sessionmem-watch.log 2>&1 &
+sessionmem autostart status
+sessionmem autostart disable
+sessionmem autostart enable
 ```
 
-For macOS launchd, save this as
-`~/Library/LaunchAgents/io.sessionmem.watch.plist`. Replace the executable path
-with the output of `command -v sessionmem`, and adjust PATH for your Node install:
+`enable` updates one registration and starts capture immediately. `disable` stops
+the registered watcher and removes its login registration, preserving memories.
+The next `sessionmem install` enables it again. This control affects the login
+watcher; Claude Code hooks and explicit MCP memory tools remain active.
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>io.sessionmem.watch</string>
-  <key>ProgramArguments</key>
-  <array><string>/opt/homebrew/bin/sessionmem</string><string>watch</string></array>
-  <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-</dict>
-</plist>
-```
+Registrations:
+
+| OS | Registration |
+| --- | --- |
+| macOS | `~/Library/LaunchAgents/io.sessionmem.watch.plist` |
+| Linux | `~/.config/systemd/user/sessionmem-watch.service` |
+| Windows | Scheduled Task `sessionmem-watch-<user-home-hash>`, for the current user only |
+
+Capture output and failures are appended with timestamps to `logs/watch.log`
+beside the selected database (default `~/.sessionmem/logs/watch.log`). The
+watcher also writes `memories.db.watch-checkpoint.json` beside the default store
+after each completed sweep. Doctor checks this checkpoint's age, capture errors,
+and transcript checkpoint count; unchanged history and an empty history are
+healthy when the watcher continues completing sweeps. A checkpoint older than
+two minutes fails the default 5-second watcher check. For a custom polling
+interval, the limit is the greater of two minutes and three intervals.
+
+`SESSIONMEM_DB_PATH` selected at install or enable is saved as an absolute
+watcher argument. Run enable with that variable again to switch stores. The
+policy config remains `~/.sessionmem/config.json`. After moving sessionmem or
+changing Node versions, run `sessionmem autostart enable` to update the absolute
+paths. For failures before the watcher can open its log, inspect `launchctl
+print gui/<uid>/io.sessionmem.watch`, `journalctl --user -u
+sessionmem-watch.service`, or Windows Task Scheduler's task history.
+
+### Uninstall
 
 ```bash
-launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/io.sessionmem.watch.plist
-# Stop and unload:
-launchctl bootout "gui/$(id -u)/io.sessionmem.watch"
+sessionmem uninstall --adapter claude-code
+# Also delete the selected memory database:
+sessionmem uninstall --adapter claude-code --purge
 ```
 
-For a Linux systemd user service, save this as
-`~/.config/systemd/user/sessionmem-watch.service`. Replace the executable path
-and adjust PATH for your Node install:
-
-```ini
-[Unit]
-Description=Capture Claude Code, Codex, and Cursor transcripts with sessionmem
-
-[Service]
-ExecStart=/usr/local/bin/sessionmem watch
-Environment=PATH=/usr/local/bin:/usr/bin:/bin
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-```
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now sessionmem-watch.service
-journalctl --user -u sessionmem-watch.service -f
-# Stop and disable:
-systemctl --user disable --now sessionmem-watch.service
-```
-
-These are optional examples; `sessionmem install` does not register a daemon.
+Uninstall stops capture and removes the login registration before removing MCP
+configuration, Claude hooks, and agent guidance for the selected host. It keeps
+the database, config and logs by default. Use the same `SESSIONMEM_DB_PATH` as
+install when selecting a custom database to purge. If stopping or unregistering
+the watcher fails, uninstall reports the OS error and leaves the database intact.
+For multiple installed hosts, repeat uninstall with each adapter to remove its
+MCP configuration and guidance.
 
 ---
 
@@ -558,9 +571,10 @@ sessionmem doctor --adapter claude-code  # explicit host override
 ```
 
 `doctor` reports a separate PASS or FAIL for the memory store, schema, transcript
-discovery for Claude Code and Codex, hook definitions shipped with the current
-version, configured MCP command, and a
-canary write/recall. It exits nonzero if any check fails and prints fix hints,
+discovery for Claude Code, Codex and Cursor, login auto-start registration,
+registered binary paths, watcher capture checkpoint freshness, hook definitions
+shipped with the current version, configured MCP command, and a canary
+write/recall. It exits nonzero if any check fails and prints fix hints,
 including exact commands for safe repairs. It does not create a missing store or
 apply migrations. Its temporary canary is isolated from your projects and rolled
 back even on failure. The MCP check starts the installed local command and verifies
@@ -568,7 +582,9 @@ its version, tools, and a stats response; it does not require a running agent.
 
 Use `sessionmem ping` to initialize a missing store or apply pending schema
 migrations, or `sessionmem install --adapter claude-code` to refresh Claude Code's
-MCP registration and hooks. Run repairs with the same `SESSIONMEM_DB_PATH` as
+MCP registration and hooks. Use `sessionmem autostart enable` to refresh the
+login service and absolute binary paths; inspect `logs/watch.log` beside the
+database when capture fails. Run repairs with the same `SESSIONMEM_DB_PATH` as
 doctor when using a custom store.
 
 If `stats` shows `sessions: 0` after real work, see [“0 sessions” / no session data recorded](docs/troubleshooting.md#0-sessions--no-session-data-recorded). Memories are keyed to the **repository root**, so every directory inside one repo shares a bucket; outside a repo the working directory itself is the key.

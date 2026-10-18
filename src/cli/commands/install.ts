@@ -1,3 +1,4 @@
+import { createAutostart } from "../autostart/index.js";
 import { existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
@@ -118,6 +119,14 @@ export async function installCommand(
     if (adapter.name === "Claude Code") {
       console.log("✓ Claude Code: SessionStart, SessionEnd, PostToolUse hooks configured (~/.claude/settings.json)");
     }
+  }
+  try {
+    createAutostart({ dbPath: dbPath! }).enable();
+    console.log("Auto-start enabled and started; capture logs are in logs/watch.log beside the database");
+  } catch (err) {
+    console.error(`Auto-start setup failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error("Fix the OS login service error, then run sessionmem autostart enable. Run sessionmem doctor to check capture.");
+    failed = true;
   }
   if (failed) process.exit(1);
   console.log("✓ sessionmem ready — restart your editor/agent so it picks up the MCP server");

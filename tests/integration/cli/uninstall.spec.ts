@@ -1,3 +1,6 @@
+vi.mock("../../../src/cli/autostart/index.js", () => ({
+  createAutostart: vi.fn(() => ({ enable: vi.fn(), disable: vi.fn() })),
+}));
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { tmpdir, homedir } from "os";
 import { join } from "path";
