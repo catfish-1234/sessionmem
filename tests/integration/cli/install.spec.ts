@@ -3,7 +3,7 @@ import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "fs";
-import { AdapterFactory } from "../../../src/adapters/factory.js";
+import * as installedHosts from "../../../src/adapters/installedHosts.js";
 import { installCommand } from "../../../src/cli/commands/install.js";
 import { readPolicyConfig } from "../../../src/core/config/policyConfig.js";
 import {
@@ -19,7 +19,7 @@ function mockSuccessfulAdapter() {
     call: vi.fn(),
     startMcpServer: vi.fn(),
   };
-  vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue(mockAdapter as never);
+  vi.spyOn(installedHosts, "resolveInstallAdapters").mockReturnValue({ adapters: [mockAdapter as never], forced: false });
   return mockAdapter;
 }
 
@@ -53,7 +53,7 @@ describe("installCommand", () => {
       call: vi.fn(),
       startMcpServer: vi.fn(),
     };
-    vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue(mockAdapter as never);
+    vi.spyOn(installedHosts, "resolveInstallAdapters").mockReturnValue({ adapters: [mockAdapter as never], forced: false });
 
     await installCommand({}, { dbPath });
 
@@ -83,7 +83,7 @@ describe("installCommand", () => {
       call: vi.fn(),
       startMcpServer: vi.fn(),
     };
-    vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue(mockAdapter as never);
+    vi.spyOn(installedHosts, "resolveInstallAdapters").mockReturnValue({ adapters: [mockAdapter as never], forced: false });
 
     await expect(installCommand({}, { dbPath })).rejects.toThrow(/process\.exit/);
 
@@ -113,7 +113,7 @@ describe("installCommand", () => {
       call: vi.fn(),
       startMcpServer: vi.fn(),
     };
-    vi.spyOn(AdapterFactory, "detectAdapter").mockReturnValue(mockAdapter as never);
+    vi.spyOn(installedHosts, "resolveInstallAdapters").mockReturnValue({ adapters: [mockAdapter as never], forced: false });
 
     await expect(installCommand({}, { dbPath })).rejects.toThrow(/process\.exit/);
 
@@ -191,5 +191,23 @@ describe("installCommand", () => {
         removeClaudeMdBlock(claudeMdPath);
       }
     }
+  });
+
+  it("attempts and reports every detected host even when one fails", async () => {
+    const failed = mockSuccessfulAdapter();
+    failed.name = "First host";
+    failed.install.mockRejectedValue(new Error("settings are read-only"));
+    const successful = { ...failed, name: "Second host", install: vi.fn().mockResolvedValue(true) };
+    vi.mocked(installedHosts.resolveInstallAdapters).mockReturnValue({ adapters: [failed, successful], forced: false });
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process, "exit").mockImplementation(() => { throw new Error("exit 1"); });
+
+    await expect(installCommand({}, { dbPath: join(testHome.path, "memories.db") })).rejects.toThrow("exit 1");
+    expect(failed.install).toHaveBeenCalledOnce();
+    expect(successful.install).toHaveBeenCalledOnce();
+    expect(log.mock.calls.flat().join("\n")).toContain("Second host config updated");
+    expect(log.mock.calls.flat().join("\n")).not.toContain("sessionmem ready");
+    expect(error.mock.calls.flat().join("\n")).toContain("First host config update failed");
   });
 });

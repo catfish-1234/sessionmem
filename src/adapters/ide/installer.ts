@@ -46,6 +46,15 @@ interface ClaudeHookEntry {
   hooks?: Array<{ type?: string; command?: string; timeout?: number }>;
 }
 
+/** Recognize our bare/Windows hook forms, including stale command arguments. */
+export function isManagedClaudeHook(value: unknown, expected: string): boolean {
+  if (typeof value !== "string") return false;
+  const normalize = (command: string) => command.replace(/^cmd \/c /i, "");
+  const base = normalize(expected);
+  const candidate = normalize(value);
+  return candidate === base || candidate.startsWith(`${base} `);
+}
+
 export class IDEInstaller {
   static parseJsonc(content: string): Record<string, unknown> {
     // Strip single-line comments (//) that appear outside of string literals.
@@ -249,13 +258,13 @@ export class IDEInstaller {
       ? (hooks[eventName] as ClaudeHookEntry[])
       : [];
 
-    // Drop any pre-existing sessionmem entry so re-install stays idempotent and
-    // a stale command form is replaced rather than duplicated. hookEntryHasCommand
-    // only inspects entry.hooks, so it dedupes correctly whether or not the entry
-    // carries a matcher.
-    const filtered = eventEntries.filter(
-      (entry) => !this.hookEntryHasCommand(entry, command),
-    );
+    // Replace our commands, including stale forms, while preserving user hooks
+    // that share an entry. The fresh entry restores the current matcher/type.
+    const filtered = eventEntries.flatMap((entry) => {
+      if (!entry || !Array.isArray(entry.hooks)) return [entry];
+      const remaining = entry.hooks.filter((hook) => !isManagedClaudeHook(hook?.command, command));
+      return remaining.length ? [{ ...entry, hooks: remaining }] : [];
+    });
     filtered.push(
       matcher !== undefined
         ? { matcher, hooks: [{ type: "command", command }] }

@@ -81,6 +81,21 @@ describe("IDEInstaller.injectClaudeHookBlock", () => {
     expect(parsed.theme).toBe("dark");
     expect(parsed.hooks?.SessionStart).toHaveLength(1);
   });
+
+  it("repairs stale hooks while preserving unrelated hooks in a shared entry", () => {
+    const stale = JSON.stringify({ hooks: { SessionStart: [{
+      matcher: "old-matcher",
+      hooks: [
+        { type: "command", command: "sessionmem session-start --old" },
+        { type: "command", command: "my-own-hook" },
+      ],
+    }] } });
+    const parsed = parse(IDEInstaller.injectClaudeHookBlock(stale, SESSIONMEM_HOOK_COMMAND));
+    expect(parsed.hooks?.SessionStart).toEqual([
+      { matcher: "old-matcher", hooks: [{ type: "command", command: "my-own-hook" }] },
+      { hooks: [{ type: "command", command: SESSIONMEM_HOOK_COMMAND }] },
+    ]);
+  });
 });
 
 describe("IDEInstaller.removeClaudeHookBlock", () => {

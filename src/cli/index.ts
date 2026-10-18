@@ -5,6 +5,7 @@ import { runMcpServer } from "./commands/run.js";
 import { sessionStartCommand } from "./commands/sessionStart.js";
 import { sessionEndCommand } from "./commands/sessionEnd.js";
 import { installCommand } from "./commands/install.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { pingCommand } from "./commands/ping.js";
 import { searchCommand } from "./commands/search.js";
@@ -84,12 +85,18 @@ program
 
 program
   .command("install")
-  .description("Install sessionmem into the current MCP host")
+  .description("Install sessionmem into every detected agent host")
   .option(
     "--adapter <name>",
     "Force a host adapter instead of auto-detecting (claude-code, cursor, windsurf, cline, codex, antigravity, qcoder, generic)",
   )
   .action((options) => installCommand(options));
+
+program
+  .command("doctor")
+  .description("Check the local store, schema, hooks, adapter wiring, and recall offline")
+  .option("--adapter <name>", "Check a specific host instead of installed-host detection")
+  .action(async (options) => { await doctorCommand(options); });
 
 program
   .command("uninstall")

@@ -2,6 +2,7 @@ import { join } from "path";
 import { homedir } from "os";
 import { existsSync } from "fs";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 import { IDEInstaller } from "./installer.js";
 
 /**
@@ -71,6 +72,10 @@ export class ClineAdapter extends GenericMCPAdapter {
       ["run"],
       { disabled: false, autoApprove: [] },
     );
+  }
+
+  installation(): AdapterInstallation {
+    return { mcp: { path: this.configPath, command: "sessionmem", args: ["run"] } };
   }
 
   async uninstall(): Promise<boolean> {

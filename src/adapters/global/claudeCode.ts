@@ -1,6 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 import {
   IDEInstaller,
   SESSIONMEM_HOOK_COMMAND,
@@ -33,16 +34,31 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
     return join(homedir(), ".claude", "settings.json");
   }
 
-  async install(): Promise<boolean> {
-    const configPath = join(homedir(), ".claude.json");
+  installation(): AdapterInstallation {
+    const isWindows = process.platform === "win32";
+    return {
+      mcp: {
+        path: join(homedir(), ".claude.json"),
+        command: isWindows ? "cmd" : "sessionmem",
+        args: isWindows ? ["/c", "sessionmem", "run"] : ["run"],
+      },
+      hooks: {
+        path: this.settingsPath(),
+        entries: [
+          { event: "SessionStart", command: SESSIONMEM_HOOK_COMMAND },
+          { event: "SessionEnd", command: SESSIONMEM_SESSION_END_HOOK_COMMAND },
+          { event: "PostToolUse", command: SESSIONMEM_POST_TOOL_HOOK_COMMAND, matcher: SESSIONMEM_POST_TOOL_MATCHER },
+        ],
+      },
+    };
+  }
 
+  async install(): Promise<boolean> {
     // On Windows, the globally-installed `sessionmem` bin is a `.cmd` shim.
     // Claude Code spawns MCP servers WITHOUT a shell, and `.cmd` shims require
     // cmd.exe to execute, so a bare `command: "sessionmem"` fails to start.
     // Route through `cmd /c sessionmem run` so the shim is resolved correctly.
-    const isWindows = process.platform === "win32";
-    const command = isWindows ? "cmd" : "sessionmem";
-    const args = isWindows ? ["/c", "sessionmem", "run"] : ["run"];
+    const { path: configPath, command, args } = this.installation().mcp;
 
     const mcpOk = await IDEInstaller.injectMcpConfig(
       configPath,

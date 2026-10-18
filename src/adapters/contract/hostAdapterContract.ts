@@ -15,6 +15,19 @@ export interface HostCapabilities {
   supportsTools: boolean;
 }
 
+export interface AdapterInstallation {
+  mcp: {
+    path: string;
+    command: string;
+    args: string[];
+    format?: "json" | "toml";
+  };
+  hooks?: {
+    path: string;
+    entries: Array<{ event: string; command: string; matcher?: string }>;
+  };
+}
+
 export interface HostAdapterContract {
   name: string;
   capabilities: HostCapabilities;
@@ -25,6 +38,8 @@ export interface HostAdapterContract {
   install?(): Promise<boolean>;
   uninstall?(): Promise<boolean>;
   startMcpServer?(): Promise<void>;
+  /** The same paths and commands used by install, exposed for offline checks. */
+  installation?(): AdapterInstallation;
   /**
    * Absolute paths to the host's agent-guidance file(s) (CLAUDE.md, AGENTS.md,
    * Cursor/Windsurf/Cline rule files, …) where the sessionmem instruction block

@@ -115,12 +115,13 @@ jobs:
         run: |
           TMP_HOME="$(mktemp -d)"
           export HOME="$TMP_HOME"
-          sessionmem install
+          sessionmem install --adapter claude-code
           if [ ! -f "$TMP_HOME/.sessionmem/config.json" ]; then
             echo "config.json was not written to isolated HOME ($TMP_HOME)"
             exit 1
           fi
           echo "config.json found at $TMP_HOME/.sessionmem/config.json"
+          sessionmem doctor --adapter claude-code
 
       - name: sessionmem install (isolated temp HOME, Windows)
         if: runner.os == 'Windows'
@@ -132,10 +133,11 @@ jobs:
           $env:USERPROFILE = $tmpHome
           $env:HOMEDRIVE = (Split-Path $tmpHome -Qualifier)
           $env:HOMEPATH = (Split-Path $tmpHome -NoQualifier)
-          sessionmem install
+          sessionmem install --adapter claude-code
           $configPath = Join-Path $tmpHome ".sessionmem\config.json"
           if (-not (Test-Path $configPath)) {
             Write-Error "config.json was not written to isolated HOME ($configPath)"
             exit 1
           }
           Write-Host "config.json found at $configPath"
+          sessionmem doctor --adapter claude-code

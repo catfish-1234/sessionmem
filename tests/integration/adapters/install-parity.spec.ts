@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, rmSync, readFileSync, existsSync } from "fs";
+import { mkdtempSync, mkdirSync, rmSync, readFileSync, existsSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join } from "path";
 
@@ -180,5 +180,19 @@ describe("adapter install() parity + generic path", () => {
       expect(result.error.code).toBe("INTERNAL");
       expect(result.error.message).toContain("not initialized");
     }
+  });
+
+  it("Codex reinstall repairs a stale server section and preserves other settings", async () => {
+    const adapter = new CodexAdapter();
+    const path = adapter.installation().mcp.path;
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, 'model = "example"\n[mcp_servers.sessionmem]\ncommand = "stale-command"\nargs = []\n\n[mcp_servers.other]\ncommand = "keep-this"\n');
+    expect(await adapter.install()).toBe(true);
+    const content = readFileSync(path, "utf8");
+    expect(content).toContain('model = "example"');
+    expect(content).toContain('[mcp_servers.other]\ncommand = "keep-this"');
+    expect(content).toContain('command = "sessionmem"');
+    expect(content).not.toContain("stale-command");
+    expect(content.match(/\[mcp_servers\.sessionmem\]/g)).toHaveLength(1);
   });
 });

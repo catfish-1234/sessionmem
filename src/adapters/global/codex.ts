@@ -1,6 +1,7 @@
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 
 /**
  * The TOML block Codex expects in ~/.codex/config.toml. Codex uses TOML, not
@@ -15,6 +16,10 @@ args = ["run"]
 export class CodexAdapter extends GenericMCPAdapter {
   name = "Codex";
 
+  installation(): AdapterInstallation {
+    return { mcp: { path: join(homedir(), ".codex", "config.toml"), command: "sessionmem", args: ["run"], format: "toml" } };
+  }
+
   // Capabilities inherited from GenericMCPAdapter (tools only).
 
   /** Codex reads AGENTS.md; the global one lives in ~/.codex/AGENTS.md. */
@@ -26,13 +31,12 @@ export class CodexAdapter extends GenericMCPAdapter {
     try {
       const { readFileSync, writeFileSync, existsSync, mkdirSync } =
         await import("fs");
-      const configPath = join(homedir(), ".codex", "config.toml");
+      const configPath = this.installation().mcp.path;
       const existing = existsSync(configPath)
         ? readFileSync(configPath, "utf-8")
         : "";
-      // Idempotent: skip if the sessionmem server section already exists.
-      // Anchor on line start so a commented/substring mention doesn't match.
-      if (existing.split("\n").some((line) => line.trimStart().startsWith("[mcp_servers.sessionmem]"))) return true;
+      // Replace our section so re-install also repairs stale launch commands.
+      const withoutServer = existing.replace(/^\s*\[mcp_servers\.sessionmem\][^\S\r\n]*\r?\n[\s\S]*?(?=^\s*\[|$(?![\s\S]))/m, "");
 
       const dir = dirname(configPath);
       if (!existsSync(dir)) {
@@ -40,7 +44,7 @@ export class CodexAdapter extends GenericMCPAdapter {
       }
       // Append the TOML block, trimming trailing whitespace to keep a single
       // blank-line separator before our section.
-      const updated = existing.trimEnd() + "\n" + CODEX_MCP_BLOCK;
+      const updated = withoutServer.trimEnd() + "\n" + CODEX_MCP_BLOCK;
       writeFileSync(configPath, updated, "utf-8");
       return true;
     } catch {
