@@ -80,14 +80,16 @@ program
 
 program
   .command("scan")
-  .description("Import existing Claude Code transcripts using local capture and summarization")
-  .option("--transcripts-dir <path>", "Transcript directory (default: ~/.claude/projects)")
+  .description("Import Claude Code and Codex transcripts using local capture and summarization")
+  .option("--transcripts-dir <path>", "Override transcript roots; detect the host from each file")
+  .option("--host <host>", "Select a transcript host: claude-code or codex")
   .action(async (options) => { await scanCommand(options); });
 
 program
   .command("watch")
-  .description("Poll Claude Code transcripts and capture new or updated sessions offline")
-  .option("--transcripts-dir <path>", "Transcript directory (default: ~/.claude/projects)")
+  .description("Poll Claude Code and Codex transcripts and capture sessions offline")
+  .option("--transcripts-dir <path>", "Override transcript roots; detect the host from each file")
+  .option("--host <host>", "Select a transcript host: claude-code or codex")
   .option("--once", "Run one sweep and exit")
   .option("--interval <seconds>", "Seconds between sweeps", "5")
   .action((options) => watchCommand(options));
@@ -103,7 +105,7 @@ program
 
 program
   .command("doctor")
-  .description("Check the local store, schema, hooks, adapter wiring, and recall offline")
+  .description("Check storage, transcript discovery, hooks, MCP wiring, and recall offline")
   .option("--adapter <name>", "Check a specific host instead of installed-host detection")
   .action(async (options) => { await doctorCommand(options); });
 

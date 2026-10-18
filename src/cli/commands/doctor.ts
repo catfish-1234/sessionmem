@@ -8,6 +8,7 @@ import { ADAPTER_NAMES, AdapterFactory } from "../../adapters/factory.js";
 import { createMemoryCoreService } from "../../core/api/memoryCoreService.js";
 import { inspectMigrations } from "../../core/schema/runMigrations.js";
 import { resolveDbPath, type CliContextOverrides } from "../context.js";
+import { inspectTranscriptDiscovery, TRANSCRIPT_HOSTS } from "../transcripts/index.js";
 
 const VERSION = (createRequire(import.meta.url)("../../../package.json") as { version: string }).version;
 
@@ -63,6 +64,13 @@ export async function doctorCommand(
   }
 
   const dbPath = resolveDbPath(overrides.dbPath);
+  for (const host of TRANSCRIPT_HOSTS) {
+    try {
+      report(`${host} transcripts`, true, await inspectTranscriptDiscovery(host));
+    } catch (err) {
+      report(`${host} transcripts`, false, message(err), `Check transcript directory permissions and format; run sessionmem scan --host ${host}`);
+    }
+  }
   let db: Database | undefined;
   let schemaOk = false;
   try {

@@ -80,15 +80,17 @@ function buildPayloadJson(
   text: string,
   input: Record<string, unknown> | undefined,
   cwd: string | undefined,
+  callId?: string,
 ): string {
   const full = JSON.stringify({
     tool: toolName,
     text,
     input: shrinkValue(input),
     cwd,
+    ...(callId ? { call_id: callId } : {}),
   });
   if (full.length <= MAX_HOOK_PAYLOAD_CHARS) return full;
-  return JSON.stringify({ tool: toolName, text, cwd, truncated: true });
+  return JSON.stringify({ tool: toolName, text, cwd, ...(callId ? { call_id: callId } : {}), truncated: true });
 }
 
 export function buildToolEvent(
@@ -100,5 +102,22 @@ export function buildToolEvent(
   return {
     eventType: `tool_use:${toolName.toLowerCase()}`,
     payloadJson: buildPayloadJson(toolName, describeToolUse(toolName, input), input, cwd),
+  };
+}
+
+/** Codex function calls retain their native name and call ID. */
+export function buildFunctionCallEvent(
+  name: string,
+  input: Record<string, unknown>,
+  callId: string,
+  cwd?: string,
+): { eventType: string; payloadJson: string } {
+  const command = input.command ?? input.cmd;
+  const text = ["exec_command", "shell_command", "shell"].includes(name)
+    ? describeToolUse("Bash", { command: Array.isArray(command) ? command.join(" ") : command })
+    : CAPTURED_TOOL_TYPES.has(name) ? describeToolUse(name, input) : truncate(`Called ${name}`, MAX_TEXT_CHARS);
+  return {
+    eventType: `tool_use:${name.toLowerCase()}`,
+    payloadJson: buildPayloadJson(name, text, input, cwd, callId),
   };
 }
