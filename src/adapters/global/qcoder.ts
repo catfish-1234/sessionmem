@@ -1,6 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 import { IDEInstaller } from "../ide/installer.js";
 
 // ⚠️ UNVERIFIED MCP CONFIG PATH — see audit round 18.
@@ -19,6 +20,10 @@ import { IDEInstaller } from "../ide/installer.js";
 export class QCoderAdapter extends GenericMCPAdapter {
   name = "QCoder";
 
+  installation(): AdapterInstallation {
+    return { mcp: { path: join(homedir(), ".qcoder", "config.json"), command: "sessionmem", args: ["run"] } };
+  }
+
   // Capabilities inherited from GenericMCPAdapter (tools only).
 
   /** QCoder reads AGENTS.md-style guidance from its global config dir. */
@@ -27,7 +32,7 @@ export class QCoderAdapter extends GenericMCPAdapter {
   }
 
   async install(): Promise<boolean> {
-    const configPath = join(homedir(), ".qcoder", "config.json");
+    const configPath = this.installation().mcp.path;
     return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
       "run",
     ]);

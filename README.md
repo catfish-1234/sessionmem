@@ -49,16 +49,25 @@ Run this in your project folder after configuring your AI tool (Claude Code, Cur
 
 ```bash
 sessionmem install
-# From a plain terminal, choose the host explicitly when needed:
+# Optional: select one host explicitly, including in automation:
 sessionmem install --adapter claude-code
 # Other names: cursor, cline, codex, windsurf, antigravity, qcoder, generic
 ```
 
-This initializes the database and, for supported adapters:
+`install` detects installed hosts from local executables, including from a plain
+terminal, and configures every host found. Automatic discovery currently supports
+Claude Code on `PATH` or in its standard native install locations. Use
+`--adapter <name>` for the other adapters or to override discovery. The existing
+`SESSIONMEM_ADAPTER` environment override also works; the flag takes precedence.
+If no supported host is found, the command says so and exits nonzero before
+creating files. Discovery and configuration work fully offline.
+
+This initializes the database and, for each selected adapter:
 
 - Registers `sessionmem` with your AI tool's MCP host so the host can start it automatically.
 - Creates `~/.sessionmem/config.json` with secret redaction enabled and a 90-day retention window, if the file doesn't already exist.
 - Adds instructions to the selected host's guidance file, such as `~/.claude/CLAUDE.md` for Claude Code or `~/.codex/AGENTS.md` for Codex. You can re-run the command without duplicating those instructions.
+- Installs Claude Code's SessionStart, SessionEnd, and PostToolUse hooks and prints what was configured per host. If a host fails, the remaining hosts are still attempted and the command exits nonzero.
 
 ### 3. Restart your AI tool
 
@@ -73,10 +82,12 @@ After restarting:
 - In Claude Code, the installed PostToolUse, SessionEnd, and SessionStart hooks capture supported tool events, summarize them, and load prior memories automatically.
 - Other MCP hosts use sessionmem's tools and installed instructions. Automatic capture and session lifecycle calls depend on the host or agent. MCP registration alone does not install Claude Code hooks there.
 
-Check that the local database is accessible:
+Check the installation offline:
 
 ```bash
-sessionmem ping
+sessionmem doctor
+# For an explicitly selected host:
+sessionmem doctor --adapter claude-code
 ```
 
 ---
@@ -213,7 +224,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 
 | Command | What it does |
 |---------|--------------|
-| `sessionmem install [--adapter <name>]` | Register sessionmem with the current MCP host and write default config. |
+| `sessionmem install [--adapter <name>]` | Detect installed hosts, register sessionmem with each, and write default config; the flag selects one host. |
+| `sessionmem doctor [--adapter <name>]` | Check the store, schema, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ping` | Check the local version and database reachability. |
@@ -253,7 +265,7 @@ for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings 
 
 `SESSIONMEM_PROJECT_ID` pins the project bucket (useful when moving a repository);
 otherwise it is derived from the repository root or working directory.
-`SESSIONMEM_ADAPTER` selects the install/uninstall host unless `--adapter` is set.
+`SESSIONMEM_ADAPTER` selects the install/doctor/uninstall host unless `--adapter` is set.
 `SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
 
 ---
@@ -372,12 +384,25 @@ Other tools that implement the [Model Context Protocol](https://modelcontextprot
 
 For install failures, adapter issues, missing session data, or `better-sqlite3` native-build problems, see [`docs/troubleshooting.md`](docs/troubleshooting.md).
 
-To refresh the installation and check for stored session data:
+Start with offline diagnostics:
 
 ```bash
-sessionmem install   # idempotent; Claude Code also installs all three hooks
-sessionmem stats     # memories, sessions, and session_events for the current project
+sessionmem doctor
+sessionmem doctor --adapter claude-code  # explicit host override
 ```
+
+`doctor` reports a separate PASS or FAIL for the memory store, schema, hook
+definitions shipped with the current version, configured MCP command, and a
+canary write/recall. It exits nonzero if any check fails and prints fix hints,
+including exact commands for safe repairs. It does not create a missing store or
+apply migrations. Its temporary canary is isolated from your projects and rolled
+back even on failure. The MCP check starts the installed local command and verifies
+its version, tools, and a stats response; it does not require a running agent.
+
+Use `sessionmem ping` to initialize a missing store or apply pending schema
+migrations, or `sessionmem install --adapter claude-code` to refresh Claude Code's
+MCP registration and hooks. Run repairs with the same `SESSIONMEM_DB_PATH` as
+doctor when using a custom store.
 
 If `stats` shows `sessions: 0` after real work, see [“0 sessions” / no session data recorded](docs/troubleshooting.md#0-sessions--no-session-data-recorded). Memories are keyed to the **repository root**, so every directory inside one repo shares a bucket; outside a repo the working directory itself is the key.
 

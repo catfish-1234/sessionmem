@@ -28,6 +28,23 @@ function listMigrationFiles(migrationsDir: string): string[] {
     .sort((left, right) => left.localeCompare(right));
 }
 
+/** Inspect migration history without creating tables or applying migrations. */
+export function inspectMigrations(db: Database, migrationsDir = DEFAULT_MIGRATIONS_DIR): {
+  pending: string[];
+  unknown: string[];
+} {
+  const expected = listMigrationFiles(migrationsDir);
+  if (expected.length === 0) throw new Error(`No schema migrations found in ${migrationsDir}`);
+  const hasHistory = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '_migrations'").get();
+  const applied = hasHistory
+    ? (db.prepare("SELECT name FROM _migrations").all() as Array<{ name: string }>).map((row) => row.name)
+    : [];
+  return {
+    pending: expected.filter((name) => !applied.includes(name)),
+    unknown: applied.filter((name) => !expected.includes(name)),
+  };
+}
+
 /**
  * Verify that every column an ADD COLUMN migration declares already exists in
  * its target table. Parses `ALTER TABLE <table> ADD COLUMN <name>` statements

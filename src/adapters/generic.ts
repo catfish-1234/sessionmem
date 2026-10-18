@@ -2,7 +2,7 @@ import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { ZodRawShape } from "zod";
-import type { HostAdapterContract, HostCapabilities, HostAdapterResult } from "./contract/hostAdapterContract.js";
+import type { AdapterInstallation, HostAdapterContract, HostCapabilities, HostAdapterResult } from "./contract/hostAdapterContract.js";
 import {
   batchStoreMemoryRequestSchema,
   forgetMemoryRequestSchema,
@@ -306,19 +306,23 @@ export class GenericMCPAdapter implements HostAdapterContract {
     return [join(process.cwd(), "AGENTS.md")];
   }
 
+  installation(): AdapterInstallation {
+    return { mcp: { path: join(process.cwd(), ".mcp.json"), command: "sessionmem", args: ["run"] } };
+  }
+
   /**
    * Fallback for hosts that aren't specifically detected: register sessionmem
    * in a project-local `.mcp.json` (the de-facto generic MCP config format).
    */
   async install(): Promise<boolean> {
-    const configPath = join(process.cwd(), ".mcp.json");
+    const configPath = this.installation().mcp.path;
     return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
       "run",
     ]);
   }
 
   async uninstall(): Promise<boolean> {
-    const configPath = join(process.cwd(), ".mcp.json");
+    const configPath = this.installation().mcp.path;
     return IDEInstaller.removeMcpConfig(configPath, "sessionmem");
   }
 

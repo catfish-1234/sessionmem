@@ -1,6 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 import { IDEInstaller } from "./installer.js";
 
 export class CursorAdapter extends GenericMCPAdapter {
@@ -24,6 +25,10 @@ export class CursorAdapter extends GenericMCPAdapter {
    */
   private get configPath(): string {
     return join(homedir(), ".cursor", "mcp.json");
+  }
+
+  installation(): AdapterInstallation {
+    return { mcp: { path: this.configPath, command: "sessionmem", args: ["run"] } };
   }
 
   async install(): Promise<boolean> {

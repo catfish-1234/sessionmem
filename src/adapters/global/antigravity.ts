@@ -1,6 +1,7 @@
 import { join } from "path";
 import { homedir } from "os";
 import { GenericMCPAdapter } from "../generic.js";
+import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
 import { IDEInstaller } from "../ide/installer.js";
 
 // ⚠️ UNVERIFIED: The MCP config path for "Antigravity" has not been confirmed
@@ -14,6 +15,10 @@ const ANTIGRAVITY_MCP_CONFIG = [".gemini", "config", "mcp_config.json"] as const
 export class AntigravityAdapter extends GenericMCPAdapter {
   name = "Antigravity";
 
+  installation(): AdapterInstallation {
+    return { mcp: { path: join(homedir(), ...ANTIGRAVITY_MCP_CONFIG), command: "sessionmem", args: ["run"] } };
+  }
+
   // Capabilities inherited from GenericMCPAdapter (tools only).
 
   /** Antigravity reads AGENTS.md-style guidance from its global config dir. */
@@ -22,7 +27,7 @@ export class AntigravityAdapter extends GenericMCPAdapter {
   }
 
   async install(): Promise<boolean> {
-    const configPath = join(homedir(), ...ANTIGRAVITY_MCP_CONFIG);
+    const configPath = this.installation().mcp.path;
     return IDEInstaller.injectMcpConfig(configPath, "sessionmem", "sessionmem", [
       "run",
     ]);

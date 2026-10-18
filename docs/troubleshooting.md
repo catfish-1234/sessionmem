@@ -2,6 +2,41 @@
 
 This guide covers install failures, adapter (MCP host) issues, and `better-sqlite3` native-build failures. Configuration lives in `~/.sessionmem/config.json`.
 
+## Run offline diagnostics
+
+```bash
+sessionmem doctor
+sessionmem doctor --adapter claude-code  # select one host explicitly
+```
+
+Doctor prints PASS or FAIL and a fix hint for each problem. Any failed check
+returns a nonzero exit status. It checks:
+
+- **Memory store:** the selected database exists, opens, and passes SQLite's quick integrity check. It does not create a missing database.
+- **Schema:** all bundled migrations have been applied. It reports pending or unrecognized migrations without changing the schema.
+- **Hooks, per host:** Claude Code's SessionStart, SessionEnd, and PostToolUse commands, types, matchers, and enabled state match the current version's definitions. Other hosts report that lifecycle hooks are not required.
+- **Adapter wiring, per host:** the installed MCP entry matches the installer, its local command starts, the server version matches, and the expected tools and stats response work. This tests the configured server process without starting the coding agent itself.
+- **Recall:** the real memory service writes and retrieves a canary in a separate temporary project. The transaction is rolled back on success or failure, including index and access-count changes.
+
+For Codex, the wiring check supports the installer-generated TOML command and
+args. Custom Codex launch settings require manual verification.
+
+All checks work offline, including when cloud summarization is enabled. Doctor
+does not summarize sessions or sync shared memories. It honors `SESSIONMEM_DB_PATH`
+and the same host overrides as install. Keep those environment settings when
+running a suggested repair.
+
+Safe repair commands printed by doctor include:
+
+```bash
+sessionmem ping                         # initialize a missing store / apply pending migrations
+sessionmem install --adapter claude-code # repair MCP registration and hook definitions
+```
+
+Re-run doctor after repair. A corrupt store, a database from a newer version,
+globally disabled hooks, or missing filesystem permissions needs the indicated
+manual repair first; doctor does not delete data or downgrade a schema.
+
 ## Install failures
 
 ### `config.json` not written
@@ -10,7 +45,17 @@ This guide covers install failures, adapter (MCP host) issues, and `better-sqlit
 
 ### Adapter not detected
 
-`install` registers sessionmem with the MCP host in the current directory. If install reports that it could not find a host, you are likely running it outside a project the host recognizes. `cd` into your project root (where the host's config lives) and re-run `sessionmem install`. Use `sessionmem install --adapter <name>` from a plain terminal (for example `--adapter cline` or `--adapter windsurf`, which cannot be reliably auto-detected). Run `sessionmem ping` afterward to check local database access; it does not probe the host's MCP connection.
+`install` discovers installed hosts from executables on the machine, including
+from a plain terminal. Automatic discovery currently supports Claude Code on
+`PATH`, `~/.local/bin/claude`, or `~/.claude/local/claude` (including Windows
+executable extensions). It does not rely on an active agent session or treat a
+leftover config directory as proof that the host is installed.
+
+If no supported host is found, install exits nonzero before creating files. Put
+Claude Code on `PATH` or select a host with `sessionmem install --adapter <name>`.
+Use the flag for other adapters, such as `--adapter cline` or `--adapter windsurf`,
+and for automation. Run `sessionmem doctor --adapter <name>` afterward. The
+`SESSIONMEM_ADAPTER` environment variable is also supported; the flag wins.
 
 ### Command not found
 
@@ -20,11 +65,14 @@ If `sessionmem` is not on your `PATH` after `npm install -g sessionmem`, your np
 
 Each MCP host uses its own adapter. If the server starts but memories are missing, check the host's configuration:
 
-- **Claude Code**: if memories are not injected at session start, confirm `sessionmem install` was run inside the project and that the MCP server entry exists in the host config. Use `sessionmem ping` to verify local database access, then check MCP connectivity in the host.
-- **Cursor**: Cursor must be pointed at the registered MCP server. Re-run `install` from the project root and restart Cursor so it reloads MCP servers.
+- **Claude Code**: if memories are not injected at session start, run `sessionmem doctor --adapter claude-code`. Re-run `sessionmem install --adapter claude-code` to refresh the registration in `~/.claude.json` and all three hooks in `~/.claude/settings.json`, then restart the agent.
+- **Cursor**: run `sessionmem doctor --adapter cursor`, repair registration with `sessionmem install --adapter cursor`, and restart Cursor so it reloads MCP servers.
 - **Generic MCP host**: for any other MCP-compatible host, ensure the host is configured to launch `sessionmem run` as the MCP server command. If the host starts but no memory appears, check that the working directory matches the project whose memories you expect.
 
-If commands hang after the host loads, run `sessionmem ping` to check local database access, then check the host's MCP connection.
+If commands hang after the host loads, run `sessionmem doctor --adapter <name>`
+to check the configured MCP command as well as local database access. A missing
+`sessionmem` executable, stale server version, or failed MCP response fails the
+adapter wiring check. Fix `PATH` for the environment that starts your host too.
 
 ## "0 sessions" / no session data recorded
 
