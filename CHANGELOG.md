@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-10-18
+
+### Added
+
+- Multi-host transcript imports: `sessionmem scan` and `sessionmem watch` now
+  sweep Claude Code, Codex CLI, and Cursor histories by default, with a
+  separate parser per host and an explicit unsupported-format error when a
+  claimed host's records cannot be parsed. `--host` selects one host.
+  ([#52], [#53])
+- Codex CLI support: dated rollout discovery, project and session identity from
+  session metadata, resume-file grouping with cross-file deduplication,
+  sub-agent session separation, native tool-call events, and filtering of
+  encrypted agent payloads and injected machine blocks. ([#52])
+- Cursor support: chat history read from Cursor's SQLite storage through
+  private snapshot copies opened read-only, covering both composer index
+  layouts, with per-composer checkpoints and live-update handling. ([#53])
+- `sessionmem doctor` now checks transcript discovery for each supported
+  host. ([#52], [#53])
+
 ## [1.5.0] - 2026-10-18
 
 ### Added
@@ -102,6 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.6.0]: https://github.com/catfish-1234/sessionmem/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/catfish-1234/sessionmem/compare/679b8954f0b49f197985c40da47f181c00060cd9...v1.5.0
 [#43]: https://github.com/catfish-1234/sessionmem/pull/43
 [#44]: https://github.com/catfish-1234/sessionmem/pull/44
@@ -112,6 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#49]: https://github.com/catfish-1234/sessionmem/pull/49
 [#50]: https://github.com/catfish-1234/sessionmem/pull/50
 [#51]: https://github.com/catfish-1234/sessionmem/pull/51
+[#52]: https://github.com/catfish-1234/sessionmem/pull/52
+[#53]: https://github.com/catfish-1234/sessionmem/pull/53
 [1.4.0]: https://github.com/catfish-1234/sessionmem/compare/a73f503123b1d33c35407ce66403f281ba3451ac...679b8954f0b49f197985c40da47f181c00060cd9
 [#22]: https://github.com/catfish-1234/sessionmem/pull/22
 [#23]: https://github.com/catfish-1234/sessionmem/pull/23
