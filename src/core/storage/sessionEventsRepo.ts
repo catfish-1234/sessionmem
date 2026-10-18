@@ -6,6 +6,7 @@ import type {
 
 interface SessionEventsRepoStatements {
   insertEvent: Statement;
+  updateEvent: Statement;
   listBySession: Statement;
   countAll: Statement;
   nextEventIndex: Statement;
@@ -18,6 +19,11 @@ function getSessionEventsStatements(db: Database): SessionEventsRepoStatements {
   if (stmts) return stmts;
 
   stmts = {
+    updateEvent: db.prepare(`
+      UPDATE session_events SET event_type = @event_type, payload_json = @payload_json
+      WHERE id = @id AND project_id = @project_id AND session_id = @session_id
+        AND (event_type != @event_type OR payload_json != @payload_json)
+    `),
     // INSERT OR IGNORE so re-ingesting an event with the same logical key
     // (project_id, session_id, event_index) — now a UNIQUE index, migration 009
     // — is a no-op rather than a duplicate row or a PK error.
@@ -50,13 +56,18 @@ function getSessionEventsStatements(db: Database): SessionEventsRepoStatements {
 /**
  * Insert a session event. Returns the number of rows written (1, or 0 when the
  * (project_id, session_id, event_index) key already exists and the insert was
- * ignored).
+ * ignored). Mutable transcript imports can opt in to refreshing the content of
+ * an existing ID in the same project/session, preserving its index and date.
+ * Returns 1 for either an insertion or a content update; unchanged replays are 0.
  */
 export function insertSessionEvent(
   db: Database,
   input: InsertSessionEventInput,
+  replaceExisting = false,
 ): number {
-  return getSessionEventsStatements(db).insertEvent.run(input).changes;
+  const statements = getSessionEventsStatements(db);
+  const updated = replaceExisting ? statements.updateEvent.run(input).changes : 0;
+  return updated + statements.insertEvent.run(input).changes;
 }
 
 /**

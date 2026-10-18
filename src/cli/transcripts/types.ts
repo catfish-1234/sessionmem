@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export type TranscriptHost = "claude-code" | "codex";
+export type TranscriptHost = "claude-code" | "codex" | "cursor";
 export type JsonObject = Record<string, unknown>;
 export interface TranscriptRecord { value: JsonObject; line: number }
 export interface CapturedEvent { id: string; eventType: string; payloadJson: string; createdAt?: string }

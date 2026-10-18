@@ -96,7 +96,7 @@ describe("offline setup and doctor CLI", () => {
 
     const result = run("doctor");
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(7);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(8);
     expect(result.stdout).toContain("Claude Code adapter wiring");
     expect(result.stdout).toContain("canary rolled back");
     const after = new BetterSqlite3(dbPath);
@@ -113,7 +113,7 @@ describe("offline setup and doctor CLI", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
     expect(result.stdout.match(/^FAIL /gm)).toHaveLength(5);
-    expect(result.stdout.match(/^PASS .* transcripts:/gm)).toHaveLength(2);
+    expect(result.stdout.match(/^PASS .* transcripts:/gm)).toHaveLength(3);
     expect(result.stdout).toContain("sessionmem ping");
     expect(existsSync(dbPath)).toBe(false);
   });
@@ -263,7 +263,7 @@ describe("offline setup and doctor CLI", () => {
     expect(installed.status, installed.stdout + installed.stderr).toBe(0);
     const result = run("doctor", "--adapter", adapter);
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(7);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(8);
     expect(result.stdout).toContain("no lifecycle hooks are required");
   });
 
@@ -287,6 +287,35 @@ describe("offline setup and doctor CLI", () => {
     const invalid = run("doctor");
     expect(invalid.status).toBe(1);
     expect(invalid.stdout).toContain("FAIL codex transcripts: unsupported format for codex");
+  });
+
+  it("checks Cursor transcript discovery and reports unsupported SQLite schemas without importing", () => {
+    install();
+    const user = process.platform === "darwin" ? join(home, "Library", "Application Support", "Cursor", "User")
+      : process.platform === "win32" ? join(home, "Cursor", "User") : join(home, ".config", "Cursor", "User");
+    const directory = join(user, "globalStorage");
+    mkdirSync(directory, { recursive: true });
+    const source = new BetterSqlite3(join(directory, "state.vscdb"));
+    source.exec("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value BLOB); CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value BLOB)");
+    source.prepare("INSERT INTO ItemTable VALUES (?, ?)").run("composer.composerHeaders", JSON.stringify([
+      { composerId: "cursor-composer", workspaceIdentifier: { uri: { fsPath: home } } },
+    ]));
+    source.prepare("INSERT INTO cursorDiskKV VALUES (?, ?)").run("composerData:cursor-composer", "{}");
+    source.prepare("INSERT INTO cursorDiskKV VALUES (?, ?)").run("bubbleId:cursor-composer:user", JSON.stringify({ type: 1, text: "Keep local history." }));
+    source.close();
+    const result = run("doctor");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("PASS cursor transcripts: 1 composer(s) found");
+    const store = new BetterSqlite3(dbPath);
+    expect(store.prepare("SELECT * FROM transcript_checkpoints").all()).toEqual([]);
+    expect(store.prepare("SELECT * FROM session_events").all()).toEqual([]);
+    store.close();
+    const broken = new BetterSqlite3(join(directory, "state.vscdb"));
+    broken.exec("DROP TABLE cursorDiskKV");
+    broken.close();
+    const invalid = run("doctor");
+    expect(invalid.status).toBe(1);
+    expect(invalid.stdout).toContain("FAIL cursor transcripts: unsupported format for cursor: missing cursorDiskKV");
   });
 
   it("rolls back a canary after recall fails", () => {
