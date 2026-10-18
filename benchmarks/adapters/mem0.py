@@ -112,7 +112,7 @@ try:
                              "capture_ms": (time.perf_counter() - start) * 1000})
             for question in conversation["questions"]:
                 start = time.perf_counter()
-                result = memory.search(question["question"], filters={"user_id": conversation["id"]}, limit=5)
+                result = memory.search(question["question"], filters={"user_id": conversation["id"]}, top_k=5)
                 elapsed = (time.perf_counter() - start) * 1000
                 rows.append({"id": question["id"], "retrieved": [r["metadata"]["turn_id"] for r in result["results"]],
                              "latency_ms": elapsed})
