@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-18
+
+### Added
+
+- `sessionmem scan` to import existing Claude Code transcripts into memory, and
+  `sessionmem watch` to capture new and updated sessions continuously. Both are
+  idempotent across reruns and restarts and work fully offline. ([#45])
+- Automatic host detection during `sessionmem install`, and a `sessionmem doctor`
+  command that checks the store, hooks, adapter wiring, and recall with fix
+  hints for each failure. ([#46])
+- Deterministic entity and relation extraction during capture and scan, a
+  `sessionmem entities` command, and entity overlap as a recall ranking
+  signal. ([#48])
+- Deterministic supersession handling: memories that replace an earlier fact are
+  linked with history, and recall prefers current facts while replaced ones stay
+  retrievable explicitly. ([#49])
+- `sessionmem ui`, a local read-only web viewer for memories, entities,
+  relations, and supersession history, served on localhost with no external
+  services. ([#50])
+- COMPARISON.md, a cited comparison with claude-mem, Mem0, and Zep, plus a draft
+  MCP registry listing. ([#51])
+- A reproducible offline LoCoMo evaluation: committed corpus with provenance and
+  checksums, and a runner reporting hit rate, precision, recall, and latency
+  with all network access blocked. ([#44])
+
+### Changed
+
+- Retrieval now ranks with SQLite FTS5 BM25 and Porter stemming over memory
+  content and summaries. Measured on the committed LoCoMo evaluation, top-5 hit
+  rate improved from 1.44% to 61.95%, and to 63.92% with entity overlap. ([#47], [#48])
+- The release workflow skips the npm publish when the version already exists on
+  the registry and creates the GitHub release with notes from this
+  changelog. ([#43])
+
 ## [1.4.0] - 2026-10-16
 
 ### Added
@@ -68,6 +102,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.5.0]: https://github.com/catfish-1234/sessionmem/compare/679b8954f0b49f197985c40da47f181c00060cd9...v1.5.0
+[#43]: https://github.com/catfish-1234/sessionmem/pull/43
+[#44]: https://github.com/catfish-1234/sessionmem/pull/44
+[#45]: https://github.com/catfish-1234/sessionmem/pull/45
+[#46]: https://github.com/catfish-1234/sessionmem/pull/46
+[#47]: https://github.com/catfish-1234/sessionmem/pull/47
+[#48]: https://github.com/catfish-1234/sessionmem/pull/48
+[#49]: https://github.com/catfish-1234/sessionmem/pull/49
+[#50]: https://github.com/catfish-1234/sessionmem/pull/50
+[#51]: https://github.com/catfish-1234/sessionmem/pull/51
 [1.4.0]: https://github.com/catfish-1234/sessionmem/compare/a73f503123b1d33c35407ce66403f281ba3451ac...679b8954f0b49f197985c40da47f181c00060cd9
 [#22]: https://github.com/catfish-1234/sessionmem/pull/22
 [#23]: https://github.com/catfish-1234/sessionmem/pull/23
