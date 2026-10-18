@@ -216,6 +216,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem ping` | Check the local version and database reachability. |
 | `sessionmem search <query> [--limit <n>]` | Search memories by text query (limit 1–100, default 10). |
 | `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
+| `sessionmem entities [--project <id>] [--json]` | List extracted entities, typed relations, and their source memory IDs. Defaults to the current project. |
 | `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
@@ -388,7 +389,7 @@ Old decisions and duplicate facts can accumulate in a memory store, causing the 
    sessionmem retention prune --force  # actually deletes
    ```
 
-2. **Importance-weighted ranking**: retrieval ranks memories by offline BM25 lexical relevance, recency, and importance. Older, less important notes rank lower even before they are pruned.
+2. **Importance-weighted ranking**: retrieval ranks memories by offline BM25 lexical relevance, entity overlap, recency, and importance. Older, less important notes rank lower even before they are pruned.
 
 3. **Token-budgeted injection**: only the highest-ranked memories are loaded, trimmed to a small token budget (see [benchmarks](#benchmark-results)). The context stays within that budget as the store grows.
 

@@ -31,6 +31,7 @@ import { dedupeCommand } from "./commands/dedupe.js";
 import { browseCommand } from "./commands/browse.js";
 import { scanCommand } from "./commands/scan.js";
 import { watchCommand } from "./commands/watch.js";
+import { entitiesCommand } from "./commands/entities.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -132,6 +133,13 @@ program
   .command("list")
   .description("List up to 200 recent memories for the current project")
   .action(() => listCommand());
+
+program
+  .command("entities")
+  .description("List extracted entities, typed relations, and source memory IDs for a project")
+  .option("--project <id>", "Project ID (default: current project)")
+  .option("--json", "Output entities and relations as JSON")
+  .action((options) => entitiesCommand(options));
 
 program
   .command("show <id>")

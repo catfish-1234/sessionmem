@@ -1,5 +1,7 @@
 import type { Database, Statement } from "better-sqlite3";
 import type { InsertMemoryInput, MemoryRecord } from "./types.js";
+import { indexMemoryKnowledge, replaceMemoryKnowledge } from "./knowledgeRepo.js";
+import type { Knowledge } from "../extract/knowledge.js";
 
 interface MemoryRepoStatements {
   insertMemory: Statement;
@@ -256,15 +258,23 @@ function toParams(input: InsertMemoryInput) {
 
 export function insertMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
-  getStatements(db).insertMemory.run(toParams(input));
+  db.transaction(() => {
+    getStatements(db).insertMemory.run(toParams(input));
+    indexMemoryKnowledge(db, input.id, input.content);
+  })();
 }
 
 export function upsertSessionSummaryMemory(
   db: Database,
   input: InsertMemoryInput,
+  knowledge?: Knowledge,
 ): void {
   assertImportance(input.importance);
-  getStatements(db).upsertSessionSummary.run(toParams({ ...input, kind: "summary" }));
+  db.transaction(() => {
+    getStatements(db).upsertSessionSummary.run(toParams({ ...input, kind: "summary" }));
+    if (knowledge) replaceMemoryKnowledge(db, input.id, knowledge);
+    else indexMemoryKnowledge(db, input.id, input.content);
+  })();
 }
 
 /**
@@ -275,7 +285,10 @@ export function upsertSessionSummaryMemory(
  */
 export function upsertImportedMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
-  getStatements(db).importUpsert.run(toParams(input));
+  db.transaction(() => {
+    getStatements(db).importUpsert.run(toParams(input));
+    indexMemoryKnowledge(db, input.id, input.content);
+  })();
 }
 
 /**
@@ -285,7 +298,10 @@ export function upsertImportedMemory(db: Database, input: InsertMemoryInput): vo
  */
 export function upsertPulledMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
-  getStatements(db).pullUpsert.run(toParams(input));
+  db.transaction(() => {
+    getStatements(db).pullUpsert.run(toParams(input));
+    indexMemoryKnowledge(db, input.id, input.content);
+  })();
 }
 
 export function listMemoriesByProject(
@@ -467,19 +483,19 @@ export function updateMemoryContent(
   // the existing embedding untouched (COALESCE keeps the prior value on null).
   newEmbedding?: { vector: number[]; dimension: number; embeddingVersion: string },
 ): void {
-  const result = getStatements(db).updateContent.run(
-    newContent,
-    newNormalizedContent ?? null,
-    newEmbedding ? JSON.stringify(newEmbedding.vector) : null,
-    newEmbedding?.dimension ?? null,
-    newEmbedding?.embeddingVersion ?? null,
-    projectId,
-    memoryId,
-  );
-
-  if (result.changes === 0) {
-    throw new Error(`Memory not found: ${memoryId}`);
-  }
+  db.transaction(() => {
+    const result = getStatements(db).updateContent.run(
+      newContent,
+      newNormalizedContent ?? null,
+      newEmbedding ? JSON.stringify(newEmbedding.vector) : null,
+      newEmbedding?.dimension ?? null,
+      newEmbedding?.embeddingVersion ?? null,
+      projectId,
+      memoryId,
+    );
+    if (result.changes === 0) throw new Error(`Memory not found: ${memoryId}`);
+    indexMemoryKnowledge(db, memoryId, newContent);
+  })();
 }
 
 export function incrementAccessCounts(

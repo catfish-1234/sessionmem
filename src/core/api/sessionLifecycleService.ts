@@ -23,6 +23,8 @@ import {
   type SummarizerResult,
 } from "../summarize/localSummarizer.js";
 import { resolveSummarizerMode } from "../summarize/strategySelector.js";
+import { extractEventText } from "../summarize/summaryShape.js";
+import { extractKnowledge, type Knowledge } from "../extract/knowledge.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
 
@@ -115,6 +117,7 @@ function storeSummaryMemory(
     sourceAdapter: string;
     summary: string;
     author: string;
+    knowledge: Knowledge;
   },
 ): void {
   const embedding = deterministicEmbed(input.summary, embeddingDimension);
@@ -133,7 +136,7 @@ function storeSummaryMemory(
     // Session summaries are locally authored.
     author: input.author,
     origin_project_id: null,
-  });
+  }, input.knowledge);
 }
 
 function buildMemoryId(request: HandleSessionEndRequest): string {
@@ -249,6 +252,9 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
 
     const mode = resolveSummarizerMode(request.config);
     const memoryId = buildMemoryId(request);
+    // Extract from the same event text as the summarizer, before its line/token
+    // caps. This remains deterministic even when cloud summaries are opted in.
+    const knowledge = extractKnowledge(events.map(extractEventText).join("\n"));
     const baseInput = {
       events,
       summaryTokenCap: request.config.summaryTokenCap,
@@ -271,6 +277,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           sourceAdapter: request.sourceAdapter,
           summary: cloudResult.summary,
           author,
+          knowledge,
         });
 
         runLightPrune(request.projectId);
@@ -308,6 +315,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           sourceAdapter: request.sourceAdapter,
           summary: fallbackResult.summary,
           author,
+          knowledge,
         });
 
         runLightPrune(request.projectId);
@@ -364,6 +372,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         sourceAdapter: request.sourceAdapter,
         summary: localResult.summary,
         author,
+        knowledge,
       });
 
       runLightPrune(request.projectId);

@@ -21,7 +21,7 @@ export function computeEffectiveImportance(
 }
 
 export interface ScoreMemoryCandidateInput {
-  /** Relevance: normalized BM25 for lexical matches, otherwise hash cosine. */
+  /** Relevance: normalized BM25 (or fallback cosine), with entity overlap. */
   semantic: number;
   updated_at: string;
   importance: number;
