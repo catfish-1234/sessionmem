@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import { entityOverlap } from "../storage/knowledgeRepo.js";
 
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { decayOldBoosts } from "./decay.js";
@@ -12,6 +13,9 @@ import {
 } from "../storage/memorySearchRepo.js";
 
 const DEFAULT_EMBEDDING_DIMENSION = 32;
+// Small, fixed contribution inside the existing relevance component. Keep the
+// public score shape/outer recency and importance weights unchanged.
+const ENTITY_RELEVANCE_WEIGHT = 0.10;
 
 export interface RetrieveMemoriesInput {
   db: Database;
@@ -104,6 +108,7 @@ export function retrieveMemories(
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
+  const overlap = entityOverlap(input.db, input.projectId, queryText, now);
 
   // FTS5 returns negative BM25 ranks; storage converts them to positive scores.
   // Normalize within this query so BM25 fits the existing relevance weight.
@@ -126,9 +131,12 @@ export function retrieveMemories(
           : cosineSimilarity(queryVector, candidate.embedding);
       // Hash cosine is useful for identical text, but adds noise to lexical
       // matches. Keep it as a diagnostic and as the no-match fallback only.
-      const relevance = maxLexicalScore > 0
+      const baseRelevance = maxLexicalScore > 0
         ? candidate.lexical_score / maxLexicalScore
         : semantic;
+      const relevance = overlap.size > 0
+        ? (1 - ENTITY_RELEVANCE_WEIGHT) * baseRelevance + ENTITY_RELEVANCE_WEIGHT * (overlap.get(candidate.id) ?? 0)
+        : baseRelevance;
       const score = scoreMemoryCandidate(
         {
           semantic: relevance,

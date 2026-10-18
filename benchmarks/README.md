@@ -46,8 +46,10 @@ Questions, answers, generated observations, and supplied session/event summaries
 never enter memory. Evidence IDs are metadata, not searchable memory content.
 The corpus contains these fields because the upstream file is preserved intact.
 
-This is a turn-level capture/retrieval evaluation. It does not measure automatic
-memory extraction, session-end summarization, answer generation, or the smaller
+This is a turn-level capture/retrieval evaluation. Capture also derives entities
+and relations through the normal offline rules, and recall uses entity overlap
+alongside BM25. The benchmark does not separately score entity/relation extraction
+accuracy, automatic memory selection, session-end summarization, answer generation, or the smaller
 token-budgeted startup injection. Recall latency includes the full public service
 call, including its normal startup-injection formatting, but evidence is scored
 against returned `memories`, not that formatted string.

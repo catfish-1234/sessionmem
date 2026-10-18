@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "description": "Offline LoCoMo comparison with a fixed 10% entity contribution inside the existing relevance component. No weight sweep or corpus changes.",
+  "dataset": {
+    "dataset": "LoCoMo",
+    "repository": "https://github.com/snap-research/locomo",
+    "commit": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376",
+    "source_path": "data/locomo10.json",
+    "git_blob": "d95b872480b413d935821fdc3c84f8a8f5f29e73",
+    "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+    "license": "CC-BY-NC-4.0",
+    "license_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0",
+    "modifications": "None. Dataset and license are byte-for-byte copies of upstream files.",
+    "conversations": 10,
+    "sessions": 272,
+    "turns": 5882,
+    "total_questions": 1986
+  },
+  "configuration": {
+    "top_k": 5,
+    "capture_clock": "2026-01-01T00:00:00.000Z",
+    "importance": 5,
+    "mode": "on-demand",
+    "depth": "default",
+    "capture_api": "storeMemory",
+    "recall_api": "retrieveMemories",
+    "embedding": "deterministicEmbed",
+    "network_attempts": 0
+  },
+  "baseline": {
+    "revision": "81f987ca851a8e7dc6370571ee0e1244236f3192",
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.4.0"
+    },
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6195153896529142,
+      "precision": 0.13451211525867568,
+      "recall": 0.5596356146270385,
+      "all_evidence_rate": 0.5114603798297315,
+      "latency_ms": {
+        "mean": 8.571458712508209,
+        "median": 7.274765000000116,
+        "p95": 21.038086999999905,
+        "max": 35.812558999999965
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.4676258992805755,
+        "precision": 0.13597122302158263,
+        "recall": 0.2506166427077068,
+        "all_evidence_rate": 0.08992805755395683,
+        "latency_ms": {
+          "mean": 8.532604956834524,
+          "median": 7.088161499999842,
+          "p95": 23.239364999999452,
+          "max": 31.338631999999052
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.69375,
+        "precision": 0.1437500000000003,
+        "recall": 0.6622395833333334,
+        "all_evidence_rate": 0.634375,
+        "latency_ms": {
+          "mean": 8.821969212500047,
+          "median": 7.279938499999616,
+          "p95": 22.525431000000026,
+          "max": 35.812558999999965
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.38202247191011235,
+        "precision": 0.08089887640449442,
+        "recall": 0.2824961445252258,
+        "all_evidence_rate": 0.20224719101123595,
+        "latency_ms": {
+          "mean": 7.489420235955075,
+          "median": 6.288527000000613,
+          "p95": 18.43082499999946,
+          "max": 23.52096899999924
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6666666666666666,
+        "precision": 0.13619047619047747,
+        "recall": 0.6521825396825397,
+        "all_evidence_rate": 0.6369047619047619,
+        "latency_ms": {
+          "mean": 8.603529436904784,
+          "median": 7.372564499999498,
+          "p95": 20.628969999999754,
+          "max": 28.691745000000083
+        }
+      }
+    }
+  },
+  "entity_overlap": {
+    "weight": 0.1,
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.4.0"
+    },
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.639161755075311,
+      "precision": 0.14053700065487715,
+      "recall": 0.5744538077851138,
+      "all_evidence_rate": 0.5225933202357563,
+      "latency_ms": {
+        "mean": 8.047359237721032,
+        "median": 7.583248999999796,
+        "p95": 14.943382999999812,
+        "max": 28.376042000000098
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5323741007194245,
+        "precision": 0.158273381294964,
+        "recall": 0.28584702982658305,
+        "all_evidence_rate": 0.10431654676258993,
+        "latency_ms": {
+          "mean": 7.870883672661892,
+          "median": 7.2965839999997115,
+          "p95": 14.87584400000003,
+          "max": 18.272281999999905
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 7.979464709374964,
+          "median": 7.533264999999801,
+          "p95": 14.633020000000215,
+          "max": 28.376042000000098
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.38202247191011235,
+        "precision": 0.08089887640449442,
+        "recall": 0.2824961445252258,
+        "all_evidence_rate": 0.20224719101123595,
+        "latency_ms": {
+          "mean": 6.6994691573033505,
+          "median": 6.348170000000209,
+          "p95": 12.022054000000026,
+          "max": 15.453070999999909
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6797619047619048,
+        "precision": 0.13928571428571562,
+        "recall": 0.665873015873016,
+        "all_evidence_rate": 0.6511904761904762,
+        "latency_ms": {
+          "mean": 8.274440991666694,
+          "median": 7.834932000000549,
+          "p95": 15.158388999999943,
+          "max": 22.955402999999933
+        }
+      }
+    }
+  },
+  "paired_comparison": {
+    "changed_rankings": 1031,
+    "hit_gains": 34,
+    "hit_losses": 4,
+    "precision_gains": 48,
+    "precision_losses": 5,
+    "recall_gains": 48,
+    "recall_losses": 5
+  },
+  "limitations": [
+    "Annotated-turn retrieval, not answer accuracy or extraction quality.",
+    "Same corpus as earlier BM25 development; not a held-out generalization estimate.",
+    "Single timed call per query with no warmup; latency is hardware/load dependent."
+  ]
+}

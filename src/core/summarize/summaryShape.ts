@@ -17,7 +17,7 @@ const MAX_FACT_LINES = 8;
  * carrying a one-line description ("Ran: npm test", "Edited src/foo.ts"); fall
  * back to the raw payload for events written by other producers.
  */
-function extractEventText(event: SessionEventRecord): string {
+export function extractEventText(event: SessionEventRecord): string {
   try {
     const parsed = JSON.parse(event.payload_json) as { text?: string };
     if (typeof parsed.text === "string" && parsed.text.trim().length > 0) {

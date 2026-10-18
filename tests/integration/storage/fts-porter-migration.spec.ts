@@ -16,10 +16,10 @@ describe("Porter FTS migration", () => {
     }
     const db = openDb({ migrationsDir: temp });
     try {
-      insertMemory(db, {
-        id: "legacy", project_id: "migration", session_id: "s", source_adapter: "test", kind: "summary",
-        content: "We enjoyed hiking and camping.", normalized_content: "we enjoyed hiking and camping.", importance: 4,
-      });
+      // Seed with the legacy schema, before repository writes require the new
+      // derived-knowledge tables introduced by migration 014.
+      db.prepare(`INSERT INTO memories (id, project_id, session_id, source_adapter, kind, content, normalized_content, importance)
+        VALUES ('legacy', 'migration', 's', 'test', 'summary', 'We enjoyed hiking and camping.', 'we enjoyed hiking and camping.', 4)`).run();
       const before = db.prepare("SELECT * FROM memories WHERE id = 'legacy'").get();
       const matches = (term: string) => db.prepare("SELECT rowid FROM memories_fts WHERE memories_fts MATCH ?").all(term);
       expect(matches("hike")).toHaveLength(0);

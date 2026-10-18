@@ -11,6 +11,7 @@ import { sweepTranscripts } from "../../../src/cli/transcriptSweep.js";
 import { listMemoriesByProject } from "../../../src/core/storage/memoryRepo.js";
 import { listSessionEventsBySession } from "../../../src/core/storage/sessionEventsRepo.js";
 import { buildToolEvent } from "../../../src/core/capture/toolEvent.js";
+import { listProjectKnowledge } from "../../../src/core/storage/knowledgeRepo.js";
 
 const execFileAsync = promisify(execFile);
 const cliPath = join(process.cwd(), "dist/cli/index.js");
@@ -69,6 +70,9 @@ describe("retroactive transcript capture", () => {
     expect(memories()).toHaveLength(1);
     expect(memories()[0].content).toContain("use sqlite for local storage");
     expect(events()).toHaveLength(3);
+    expect(listProjectKnowledge(context.db, projectId).relations).toContainEqual(expect.objectContaining({
+      sourceName: "user", relation: "uses", targetName: "sqlite", memoryIds: [memories()[0].id],
+    }));
     expect(events()[1].payload_json).toBe(buildToolEvent("Bash", { command: "npm test" }, cwd)?.payloadJson);
     expect(console.log).toHaveBeenCalledWith(expect.stringContaining("files found: 1; sessions imported: 1; memories created: 1; skipped: 0"));
 

@@ -5,7 +5,45 @@
 [benchmarks/README.md](../benchmarks/README.md) for the corpus license, selection
 rules, metric definitions, and detailed reproduction instructions.
 
-## Before and after
+## Entity overlap comparison
+
+The baseline was run first on current main at `81f987c`. A fixed 10% entity
+contribution inside the existing relevance component was then evaluated without
+a weight sweep. Both runs used Node v24.19.0, Linux x64, sessionmem 1.4.0, the
+same installed lockfile dependencies, top-5, fixed clocks, and the unchanged
+LoCoMo corpus and scoring rules. Each run scored 1,527 questions after capturing
+5,882 turns; both recorded zero network attempts.
+
+| Macro retrieval metric @5 | Main (BM25) | BM25 + entity overlap |
+| --- | ---: | ---: |
+| Hit rate | 61.95% | 63.92% |
+| Precision | 13.45% | 14.05% |
+| Recall | 55.96% | 57.45% |
+| All-evidence rate | 51.15% | 52.26% |
+
+| Recall latency | Main | Entity overlap |
+| --- | ---: | ---: |
+| Mean | 8.57 ms | 8.05 ms |
+| Median | 7.27 ms | 7.58 ms |
+| p95 | 21.04 ms | 14.94 ms |
+| Maximum | 35.81 ms | 28.38 ms |
+
+Entity overlap gained hits on 34 questions and lost hits on four, a net gain
+of 30. Precision and recall increased on 48 questions and decreased on five.
+The signal measurably improved retrieval on this corpus, so it is retained.
+Timing is one call per question without warmup and varies with load; the lower
+mean/p95 is not evidence that the added lookup makes retrieval faster. This
+does not establish generalization to other corpora or measure extraction accuracy.
+The rule vocabulary and fixed weight were not tuned against these results.
+
+[Recorded aggregate results](../benchmarks/entity-overlap-results.json) include
+the corpus checksum, shared configuration, runtime, category metrics, and paired
+question counts. To reproduce, run the commands below on `81f987c` with output
+`benchmarks/results/locomo-main.json`, then on this change with output
+`benchmarks/results/locomo-entities.json`. Full per-question reports remain ignored
+local artifacts.
+
+## Earlier BM25 comparison
 
 The baseline was run first on main at `c06857d`, before changing retrieval.
 Both runs used sessionmem 1.4.0, Node v24.19.0, Linux x64, top-5,

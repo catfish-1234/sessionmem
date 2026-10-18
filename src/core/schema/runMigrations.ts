@@ -2,6 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Database } from "better-sqlite3";
+import { indexMemoryKnowledge } from "../storage/knowledgeRepo.js";
+import { listSessionEventsBySession } from "../storage/sessionEventsRepo.js";
+import { extractEventText } from "../summarize/summaryShape.js";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -104,6 +107,23 @@ export function runMigrations(
     const filePath = path.join(migrationsDir, fileName);
     const sql = fs.readFileSync(filePath, "utf8");
     db.exec(sql);
+    if (fileName === "014_memory_entities.sql") {
+      // Backfill in the migration transaction: failures roll back both schema
+      // and derived data, and reopening never indexes legacy rows twice.
+      // Finish each read before nested write transactions; an active SQLite
+      // iterator prevents SAVEPOINT. Batches bound memory use on large stores.
+      const batch = db.prepare("SELECT id, content, kind, project_id, session_id FROM memories ORDER BY id LIMIT 256 OFFSET ?");
+      for (let offset = 0; ; offset += 256) {
+        const rows = batch.all(offset) as Array<{
+          id: string; content: string; kind: string; project_id: string; session_id: string;
+        }>;
+        for (const row of rows) {
+          const events = row.kind === "summary" ? listSessionEventsBySession(db, row.project_id, row.session_id) : [];
+          indexMemoryKnowledge(db, row.id, events.length ? events.map(extractEventText).join("\n") : row.content);
+        }
+        if (rows.length < 256) break;
+      }
+    }
     insertMigrationStmt.run(fileName);
   });
 
