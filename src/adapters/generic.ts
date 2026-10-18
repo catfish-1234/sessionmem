@@ -125,6 +125,9 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
       tags: retrieveMemoriesRequestSchema.shape.tags.describe(
         "Optional tag filter. When provided, only return memories that have ALL listed tags."
       ),
+      includeHistory: retrieveMemoriesRequestSchema.shape.includeHistory.describe(
+        "Include superseded facts for historical questions. Omit for current facts only."
+      ),
     },
   },
   {

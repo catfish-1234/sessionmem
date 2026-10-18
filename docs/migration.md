@@ -19,6 +19,8 @@ src/core/schema/migrations/
 
 At startup, the runner creates the `_migrations` tracking table if needed and sorts the `.sql` files by name. It applies each migration in its own transaction, skipping any already recorded in `_migrations`. Starting sessionmem again does not reapply completed migrations. There are no down-migrations.
 
+Migration `015_memory_supersessions.sql` adds derived fact claims, timestamped replacement links, and a view identifying fully superseded memories. It backfills existing records locally in the migration transaction, using full session events for summaries where available. Stored memory content and IDs are preserved. Recall then defaults to current facts; use `includeHistory: true` or `sessionmem search --include-history` to retrieve superseded facts, and `sessionmem history` to inspect their chains.
+
 ### Build-time copy: `copy-migrations`
 
 The TypeScript compiler does not copy `.sql` files. The build step `copy-migrations` runs `scripts/copy-migrations.mjs` to copy them from `src/core/schema/migrations/` to `dist/core/schema/migrations/`. This includes the migrations in the published package alongside the compiled code.

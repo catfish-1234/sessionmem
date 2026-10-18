@@ -214,9 +214,10 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ping` | Check the local version and database reachability. |
-| `sessionmem search <query> [--limit <n>]` | Search memories by text query (limit 1–100, default 10). |
+| `sessionmem search <query> [--limit <n>] [--include-history]` | Search current memories by text query (limit 1–100, default 10). Include superseded facts with `--include-history`. |
 | `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
 | `sessionmem entities [--project <id>] [--json]` | List extracted entities, typed relations, and their source memory IDs. Defaults to the current project. |
+| `sessionmem history [--project <id>] [--json]` | List supersession chains with old/new values, source memory IDs, reasons, and timestamps. |
 | `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
@@ -257,6 +258,10 @@ otherwise it is derived from the repository root or working directory.
 `SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
 
 ### Import existing sessions and watch for new ones
+
+When a fact changes, sessionmem can link its replacement locally. For example, “I use VS Code” followed by “I switched to Neovim” supersedes the earlier editor choice. Recall excludes fully superseded memories by default. `retrieveMemories` accepts the optional `includeHistory: true`; `sessionmem search --include-history` searches earlier facts too. `sessionmem history` shows what replaced what. The old memory stays available through show, list, and export.
+
+Detection uses deterministic entity/relation rules, shared purpose words, a small tool-category vocabulary, and explicit negation or replacement phrases. It needs no API or model. Unfamiliar wording can be missed, and ambiguous changes can be misclassified. A memory with independent claims remains searchable while any claim is current; history labels these partial supersessions. See [supersession details](docs/architecture.md#contradiction-and-supersession).
 
 Run a scan to capture Claude Code sessions from before sessionmem was installed:
 

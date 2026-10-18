@@ -80,6 +80,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
       embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = @projectId
+      AND (@includeHistory = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))
       AND (expires_at IS NULL OR expires_at > @now)
       AND (
         importance >= 8
@@ -97,6 +98,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
     JOIN memories m ON m.rowid = memories_fts.rowid
     WHERE memories_fts MATCH @match
       AND m.project_id = @projectId
+      AND (@includeHistory = 1 OR m.id NOT IN (SELECT memory_id FROM superseded_memories))
       AND (m.expires_at IS NULL OR m.expires_at > @now)
     ORDER BY rank, m.id
     LIMIT @limit
@@ -152,9 +154,11 @@ export function searchMemoryCandidates(
   db: Database,
   projectId: string,
   now: Date = new Date(),
+  includeHistory = false,
 ): MemorySearchCandidate[] {
   const rows = getSearchStatements(db).searchCandidates.all({
     projectId,
+    includeHistory: Number(includeHistory),
     now: toStorageTimestamp(now),
     recencyCutoff: toStorageTimestamp(
       new Date(now.getTime() - FALLBACK_RECENCY_DAYS * MS_PER_DAY),
@@ -207,10 +211,11 @@ export function searchMemoryCandidatesFTS(
   projectId: string,
   queryText: string,
   now: Date = new Date(),
+  includeHistory = false,
 ): MemorySearchCandidate[] {
   const sanitized = sanitizeFtsQuery(queryText);
   if (!sanitized) {
-    return searchMemoryCandidates(db, projectId, now);
+    return searchMemoryCandidates(db, projectId, now, includeHistory);
   }
 
   let rows: MemorySearchRow[];
@@ -218,19 +223,20 @@ export function searchMemoryCandidatesFTS(
     rows = getSearchStatements(db).searchCandidatesFTS.all({
       match: sanitized,
       projectId,
+      includeHistory: Number(includeHistory),
       now: toStorageTimestamp(now),
       limit: FTS_CANDIDATE_LIMIT,
     }) as MemorySearchRow[];
   } catch {
     // FTS5 MATCH can throw on malformed queries — fall back to full scan
-    return searchMemoryCandidates(db, projectId, now);
+    return searchMemoryCandidates(db, projectId, now, includeHistory);
   }
 
   if (rows.length >= FTS_FALLBACK_THRESHOLD) {
     return dedupById(mapRows(rows));
   }
 
-  const fallback = searchMemoryCandidates(db, projectId, now);
+  const fallback = searchMemoryCandidates(db, projectId, now, includeHistory);
   if (rows.length === 0) {
     return fallback;
   }

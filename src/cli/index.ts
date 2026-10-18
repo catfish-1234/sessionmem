@@ -32,6 +32,7 @@ import { browseCommand } from "./commands/browse.js";
 import { scanCommand } from "./commands/scan.js";
 import { watchCommand } from "./commands/watch.js";
 import { entitiesCommand } from "./commands/entities.js";
+import { historyCommand } from "./commands/history.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -127,6 +128,7 @@ program
   .command("search <query>")
   .description("Search memories by semantic query")
   .option("--limit <n>", "Maximum number of results (1-100)", "10")
+  .option("--include-history", "Include superseded facts")
   .action((query, options) => searchCommand(query, options));
 
 program
@@ -140,6 +142,13 @@ program
   .option("--project <id>", "Project ID (default: current project)")
   .option("--json", "Output entities and relations as JSON")
   .action((options) => entitiesCommand(options));
+
+program
+  .command("history")
+  .description("List supersession chains, source memory IDs, and timestamps")
+  .option("--project <id>", "Project ID (default: current project)")
+  .option("--json", "Output supersession links as JSON")
+  .action((options) => historyCommand(options));
 
 program
   .command("show <id>")

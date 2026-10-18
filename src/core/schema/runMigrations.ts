@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Database } from "better-sqlite3";
 import { indexMemoryKnowledge } from "../storage/knowledgeRepo.js";
+import { indexMemorySupersessions } from "../storage/supersessionRepo.js";
 import { listSessionEventsBySession } from "../storage/sessionEventsRepo.js";
 import { extractEventText } from "../summarize/summaryShape.js";
 
@@ -120,6 +121,18 @@ export function runMigrations(
         for (const row of rows) {
           const events = row.kind === "summary" ? listSessionEventsBySession(db, row.project_id, row.session_id) : [];
           indexMemoryKnowledge(db, row.id, events.length ? events.map(extractEventText).join("\n") : row.content);
+        }
+        if (rows.length < 256) break;
+      }
+    }
+    if (fileName === "015_memory_supersessions.sql") {
+      const batch = db.prepare("SELECT id, content, kind, project_id, session_id FROM memories ORDER BY created_at, rowid LIMIT 256 OFFSET ?");
+      for (let offset = 0; ; offset += 256) {
+        const rows = batch.all(offset) as Array<{ id: string; content: string; kind: string; project_id: string; session_id: string }>;
+        for (const row of rows) {
+          const events = row.kind === "summary" ? listSessionEventsBySession(db, row.project_id, row.session_id) : [];
+          indexMemorySupersessions(db, row.id, row.content,
+            events.length ? events.map(event => ({ text: extractEventText(event), observedAt: event.created_at })) : undefined);
         }
         if (rows.length < 256) break;
       }

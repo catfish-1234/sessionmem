@@ -22,7 +22,7 @@ export interface SweepSummary {
 }
 
 type JsonObject = Record<string, unknown>;
-type CapturedEvent = { id: string; eventType: string; payloadJson: string };
+type CapturedEvent = { id: string; eventType: string; payloadJson: string; createdAt?: string };
 
 function object(value: unknown): JsonObject | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -73,16 +73,20 @@ async function readTranscript(path: string): Promise<{
         const block = object(rawBlock);
         if (!block) continue;
         const key = typeof record.uuid === "string" ? record.uuid : `line-${index}`;
+        const timestamp = typeof record.timestamp === "string" ? Date.parse(record.timestamp) : NaN;
+        const createdAt = Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
         if (block.type === "tool_use" && typeof block.name === "string") {
           const event = buildToolEvent(block.name, object(block.input), result.cwd);
           if (event) result.events.push({
             id: typeof block.id === "string" ? `tool-${block.id}` : `${key}-${blockIndex}`,
             ...event,
+            createdAt,
           });
         } else if (block.type === "text" && typeof block.text === "string" && block.text.trim()) {
           result.events.push({
             id: `${key}-${blockIndex}`,
             eventType: `message:${record.type}`,
+            createdAt,
             payloadJson: JSON.stringify({ text: block.text.slice(0, 4000) }),
           });
         }

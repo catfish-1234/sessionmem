@@ -1,6 +1,8 @@
 import type { Database, Statement } from "better-sqlite3";
 import type { InsertMemoryInput, MemoryRecord } from "./types.js";
 import { indexMemoryKnowledge, replaceMemoryKnowledge } from "./knowledgeRepo.js";
+import { indexMemorySupersessions, reconcileProjectSupersessions } from "./supersessionRepo.js";
+import type { TimedFactSource } from "../extract/factClaims.js";
 import type { Knowledge } from "../extract/knowledge.js";
 
 interface MemoryRepoStatements {
@@ -261,6 +263,7 @@ export function insertMemory(db: Database, input: InsertMemoryInput): void {
   db.transaction(() => {
     getStatements(db).insertMemory.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
+    indexMemorySupersessions(db, input.id, input.content);
   })();
 }
 
@@ -268,12 +271,14 @@ export function upsertSessionSummaryMemory(
   db: Database,
   input: InsertMemoryInput,
   knowledge?: Knowledge,
+  factSource?: TimedFactSource[],
 ): void {
   assertImportance(input.importance);
   db.transaction(() => {
     getStatements(db).upsertSessionSummary.run(toParams({ ...input, kind: "summary" }));
     if (knowledge) replaceMemoryKnowledge(db, input.id, knowledge);
     else indexMemoryKnowledge(db, input.id, input.content);
+    indexMemorySupersessions(db, input.id, input.content, factSource);
   })();
 }
 
@@ -288,6 +293,7 @@ export function upsertImportedMemory(db: Database, input: InsertMemoryInput): vo
   db.transaction(() => {
     getStatements(db).importUpsert.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
+    indexMemorySupersessions(db, input.id, input.content);
   })();
 }
 
@@ -301,6 +307,7 @@ export function upsertPulledMemory(db: Database, input: InsertMemoryInput): void
   db.transaction(() => {
     getStatements(db).pullUpsert.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
+    indexMemorySupersessions(db, input.id, input.content);
   })();
 }
 
@@ -366,7 +373,11 @@ export function deleteMemoryById(
   projectId: string,
   memoryId: string,
 ): number {
-  return getStatements(db).deleteById.run(projectId, memoryId).changes;
+  return db.transaction(() => {
+    const deleted = getStatements(db).deleteById.run(projectId, memoryId).changes;
+    if (deleted) reconcileProjectSupersessions(db, projectId);
+    return deleted;
+  })();
 }
 
 /**
@@ -401,8 +412,11 @@ export function deleteMemoriesOlderThan(
   // Hard-delete scoped to the memories table only; never touches
   // session_events or memory_feedback. project_id and cutoff are bound, never
   // string-concatenated, to prevent SQL injection.
-  const result = getStatements(db).deleteOlderThan.run(projectId, cutoffIso);
-  return result.changes;
+  return db.transaction(() => {
+    const result = getStatements(db).deleteOlderThan.run(projectId, cutoffIso);
+    if (result.changes) reconcileProjectSupersessions(db, projectId);
+    return result.changes;
+  })();
 }
 
 // NOTE: no MCP tool, CLI command, or service method currently calls this. It is
@@ -495,6 +509,7 @@ export function updateMemoryContent(
     );
     if (result.changes === 0) throw new Error(`Memory not found: ${memoryId}`);
     indexMemoryKnowledge(db, memoryId, newContent);
+    indexMemorySupersessions(db, memoryId, newContent);
   })();
 }
 

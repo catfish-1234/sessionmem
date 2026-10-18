@@ -25,6 +25,7 @@ export interface RetrieveMemoriesInput {
   topK?: number;
   limit?: number;
   now?: Date;
+  includeHistory?: boolean;
 }
 
 export interface RetrievedMemoryCandidate {
@@ -104,6 +105,7 @@ export function retrieveMemories(
     input.projectId,
     queryText,
     now,
+    input.includeHistory,
   );
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
