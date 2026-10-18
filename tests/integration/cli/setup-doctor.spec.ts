@@ -96,7 +96,7 @@ describe("offline setup and doctor CLI", () => {
 
     const result = run("doctor");
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(5);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(7);
     expect(result.stdout).toContain("Claude Code adapter wiring");
     expect(result.stdout).toContain("canary rolled back");
     const after = new BetterSqlite3(dbPath);
@@ -109,10 +109,11 @@ describe("offline setup and doctor CLI", () => {
     expect(run("doctor").status).toBe(0);
   });
 
-  it("does not create a missing memory store and reports all five checks", () => {
+  it("does not create a missing memory store and reports storage, host, and discovery checks", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
     expect(result.stdout.match(/^FAIL /gm)).toHaveLength(5);
+    expect(result.stdout.match(/^PASS .* transcripts:/gm)).toHaveLength(2);
     expect(result.stdout).toContain("sessionmem ping");
     expect(existsSync(dbPath)).toBe(false);
   });
@@ -262,8 +263,30 @@ describe("offline setup and doctor CLI", () => {
     expect(installed.status, installed.stdout + installed.stderr).toBe(0);
     const result = run("doctor", "--adapter", adapter);
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(5);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(7);
     expect(result.stdout).toContain("no lifecycle hooks are required");
+  });
+
+  it("discovers dated Codex rollouts and reports unsupported formats without writing imports", () => {
+    install();
+    const directory = join(home, ".codex", "sessions", "2026", "10", "17");
+    mkdirSync(directory, { recursive: true });
+    const path = join(directory, "rollout-2026-10-17T10-00-00-session.jsonl");
+    writeFileSync(path, JSON.stringify({
+      timestamp: "2026-10-17T10:00:00.000Z", type: "session_meta", payload: { id: "codex-session", cwd: home },
+    }) + "\n");
+    const result = run("doctor");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("PASS codex transcripts: 1 transcript file(s) found");
+    expect(result.stdout).toContain("sample parsed as codex");
+    const db = new BetterSqlite3(dbPath);
+    expect(db.prepare("SELECT * FROM transcript_checkpoints").all()).toEqual([]);
+    expect(db.prepare("SELECT * FROM session_events").all()).toEqual([]);
+    db.close();
+    writeFileSync(path, '{"type":"user","message":{"content":"Wrong host"}}\n');
+    const invalid = run("doctor");
+    expect(invalid.status).toBe(1);
+    expect(invalid.stdout).toContain("FAIL codex transcripts: unsupported format for codex");
   });
 
   it("rolls back a canary after recall fails", () => {

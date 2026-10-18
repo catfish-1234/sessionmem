@@ -210,7 +210,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | Command | What it does |
 |---------|--------------|
 | `sessionmem install [--adapter <name>]` | Detect installed hosts, register sessionmem with each, and write default config; the flag selects one host. |
-| `sessionmem doctor [--adapter <name>]` | Check the store, schema, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
+| `sessionmem doctor [--adapter <name>]` | Check the store, schema, transcript discovery, hooks, MCP wiring, and canary recall offline; print PASS/FAIL and repair hints. |
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Remove sessionmem from the host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ui [--port N]` | Open the local read-only web viewer (default port 3777). |
@@ -223,8 +223,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
 | `sessionmem import <path> [--merge]` | Import up to 1000 valid records from UTF-8 JSON into the current project. Existing IDs are preserved, including with `--merge`; invalid records are skipped with warnings. |
-| `sessionmem scan [--transcripts-dir <path>]` | Import existing Claude Code JSONL transcripts into local session memories. Reports files found, sessions imported, memories created, skipped files, and errors. |
-| `sessionmem watch [--once] [--interval <seconds>] [--transcripts-dir <path>]` | Capture new or updated Claude Code transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
+| `sessionmem scan [--host <host>] [--transcripts-dir <path>]` | Import existing Claude Code and Codex JSONL transcripts into local session memories. Reports files found, sessions imported, memories created, skipped files, and errors. |
+| `sessionmem watch [--once] [--interval <seconds>] [--host <host>] [--transcripts-dir <path>]` | Capture new or updated Claude Code and Codex transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
 | `sessionmem stats` | Show memory statistics for the current project. |
 | `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
 | `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
@@ -297,7 +297,7 @@ When a fact changes, sessionmem can link its replacement locally. For example, â
 
 Detection uses deterministic entity/relation rules, shared purpose words, a small tool-category vocabulary, and explicit negation or replacement phrases. It needs no API or model. Unfamiliar wording can be missed, and ambiguous changes can be misclassified. A memory with independent claims remains searchable while any claim is current; history labels these partial supersessions. See [supersession details](docs/architecture.md#contradiction-and-supersession).
 
-Run a scan to capture Claude Code sessions from before sessionmem was installed:
+Run a scan to capture Claude Code and Codex CLI sessions from before sessionmem was installed:
 
 ```bash
 sessionmem scan
@@ -305,20 +305,41 @@ sessionmem watch --once
 sessionmem watch --interval 10
 ```
 
-Both commands recursively read `~/.claude/projects/**/*.jsonl`. Use
-`--transcripts-dir "/path/to/projects"` to select another transcript tree. They
-work fully offline without API keys and always use the local summarizer, even
-if cloud summarization is enabled elsewhere.
+Both commands sweep all detected transcript histories by default:
 
-Transcript user/assistant text and supported tool uses (Bash, Edit, Write,
-MultiEdit) pass through the existing event-ingestion, redaction, and session-summary
-pipeline. Each session gets one summary memory, including short sessions with
-only one event. Updated sessions refresh that summary. Project buckets come from
-each transcript's `cwd`, using its repository root when available; the directory
-where you run scan/watch does not select the project. `SESSIONMEM_PROJECT_ID`
-can explicitly pin all imports to one bucket. Transcripts without a working
-directory or capturable events are skipped; nested subagent files get separate
-session summaries.
+- Claude Code: `~/.claude/projects/**/*.jsonl`.
+- Codex CLI: `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`.
+
+Missing history directories are allowed. Use `--transcripts-dir "/path/to/history"`
+to select another transcript tree; each file's host is detected from its records.
+Use `--host codex` or `--host claude-code` to select one host, including when using
+a directory override. Files that do not match a supported format, or the selected
+host, produce an explicit `unsupported format` error.
+
+Both commands work offline without API keys and always use the local summarizer,
+even if cloud summarization is enabled elsewhere. `sessionmem doctor` checks
+transcript discovery for both hosts and parses a sample when history is present.
+
+Transcript user/assistant text, supported Claude tool uses (Bash, Edit, Write,
+MultiEdit), and Codex function calls pass through the existing event-ingestion,
+redaction, and session-summary pipeline. Codex tool events retain the native tool
+name and `call_id`. Encrypted `agent_message` payloads and obvious injected machine
+blocks, including plugin catalogues and environment context, are excluded. Each
+session gets one summary memory, including short sessions with only one event.
+Updated sessions refresh that summary. Project buckets come from
+each Claude transcript's `cwd` or Codex `session_meta.payload.cwd`, using its
+repository root when available; the directory where you run scan/watch does not
+select the project. `SESSIONMEM_PROJECT_ID` can explicitly pin all imports to one
+bucket. Transcripts without capturable events are skipped. Claude transcripts
+without a working directory are also skipped; Codex session metadata must contain
+an ID and working directory. Nested subagent files get separate session summaries.
+Summary memories record `sourceAdapter` as `claude-code` or
+`codex` according to the transcript host.
+
+Codex resumes create new rollout files. Files with the same session ID are grouped,
+and replayed events are deduplicated across files, sweeps, and restarts. A Codex
+sub-agent keeps its own `session_meta.payload.id`, even when `parent_thread_id`
+points to a parent session.
 
 Re-running either command does not duplicate memories or transcript events.
 File checkpoints live in the selected memory database, and unchanged files are
@@ -366,7 +387,7 @@ and adjust PATH for your Node install:
 
 ```ini
 [Unit]
-Description=Capture Claude Code transcripts with sessionmem
+Description=Capture Claude Code and Codex transcripts with sessionmem
 
 [Service]
 ExecStart=/usr/local/bin/sessionmem watch
@@ -511,8 +532,9 @@ sessionmem doctor
 sessionmem doctor --adapter claude-code  # explicit host override
 ```
 
-`doctor` reports a separate PASS or FAIL for the memory store, schema, hook
-definitions shipped with the current version, configured MCP command, and a
+`doctor` reports a separate PASS or FAIL for the memory store, schema, transcript
+discovery for Claude Code and Codex, hook definitions shipped with the current
+version, configured MCP command, and a
 canary write/recall. It exits nonzero if any check fails and prints fix hints,
 including exact commands for safe repairs. It does not create a missing store or
 apply migrations. Its temporary canary is isolated from your projects and rolled
