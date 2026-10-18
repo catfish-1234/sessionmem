@@ -30,7 +30,7 @@
 
 ### Core engine
 
-The core engine captures session events, summarizes them into stored memories at session end, ranks those memories, and selects which to inject. It uses the adapter layer for all communication with specific tools. Retrieval combines semantic similarity, recency, and importance into a relevance score.
+The core engine captures session events, summarizes them into stored memories at session end, ranks those memories, and selects which to inject. It uses the adapter layer for all communication with specific tools. Retrieval combines BM25 lexical relevance, recency, and importance into a relevance score.
 
 ### Adapters
 
@@ -46,7 +46,11 @@ SQLite stores memories, embeddings for vector search, raw session events, and fe
 
 ## Retrieval flow
 
-When an agent or `sessionmem search` submits a query, the core engine embeds it and runs a vector search over the `memories` table. It ranks candidates by semantic similarity, recency, and importance, then returns the memories with their scores.
+When an agent or `sessionmem search` submits a query, the core engine searches the SQLite FTS5 index over stored memory content, including summaries. It removes common English question words and matches any remaining term. SQLite's built-in Porter tokenizer matches English inflections such as “hike” and “hiking”. BM25 accounts for term rarity, frequency, and memory length; at most 50 lexical candidates are returned, ordered by BM25 and then ID.
+
+The ranker divides each positive BM25 score by the best score for that query and combines it with the existing recency and importance signals (weights 0.60, 0.25, and 0.15). Sparse lexical matches retain the recency/importance fallback union. If there are no lexical matches, the previous hash-vector ranking applies. Project scope and expiry checks apply to both paths. An automatic migration rebuilds existing FTS indexes without changing memory bodies or IDs.
+
+Public request and response fields are unchanged. The `semantic` field still reports hash cosine similarity. The legacy `score.raw.semantic` and `score.weighted.semantic` fields carry the relevance component used for ranking: normalized BM25 when lexical matches exist, otherwise the previous cosine value. Scores are relative to the current query's candidates, not calibrated probabilities. Retrieval needs no API keys, downloaded models, or new dependencies.
 
 ## Injection flow
 
