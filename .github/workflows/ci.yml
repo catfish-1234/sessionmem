@@ -1,4 +1,6 @@
 name: CI
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
 
 on:
   push:
