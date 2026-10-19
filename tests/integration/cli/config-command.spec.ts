@@ -25,6 +25,17 @@ describe("config get/set commands", () => {
     return configPath;
   }
 
+  it.each(["temporalRetrieval", "entityLinkBoost"])("sets and reads the %s switch", key => {
+    const path = freshPath();
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    configSetCommand(key, "true", { configPath: path });
+    configGetCommand(key, { configPath: path });
+    expect(JSON.parse(readFileSync(path, "utf8"))[key]).toBe(true);
+    expect(logSpy.mock.calls.some(call => call[0] === "true")).toBe(true);
+    configSetCommand(key, "false", { configPath: path });
+    expect(JSON.parse(readFileSync(path, "utf8"))[key]).toBe(false);
+  });
+
   it("get of retention.days with no prior set prints the default 90", () => {
     const path = freshPath();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});

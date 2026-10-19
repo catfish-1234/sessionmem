@@ -5,6 +5,13 @@
 [benchmarks/README.md](../benchmarks/README.md) for the corpus license, selection
 rules, metric definitions, and detailed reproduction instructions.
 
+## Compact tools, temporal retrieval and entity fusion
+
+See the [retrieval evaluation](../benchmarks/retrieval-gaps.md) for fresh 1.7.0
+baselines, per-category before/after tables, complete regression artifacts and
+measured compact-tool token costs. Temporal and source-informed additive experiments remain off by default. Entity
+coverage improves default BM25; optional hybrid results are preserved.
+
 ## Local semantic and competitor comparison
 
 The [measured comparison](../COMPARISON.md) records a new unchanged-main run,

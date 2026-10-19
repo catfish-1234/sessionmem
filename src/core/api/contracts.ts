@@ -206,6 +206,29 @@ export const getMemoryRequestSchema = z.object({
   memoryId: z.string().min(1).max(200),
 });
 
+export const searchMemoryIndexRequestSchema = retrieveMemoriesRequestSchema
+  .pick({ projectId: true, query: true, includeHistory: true, tags: true })
+  .extend({ limit: z.number().int().min(1).max(50).default(10) });
+
+export const memoryTimelineRequestSchema = z.object({
+  projectId: z.string().min(1),
+  memoryId: z.string().min(1).max(200).optional(),
+  fromDate: z.iso.datetime().optional(),
+  toDate: z.iso.datetime().optional(),
+  includeHistory: z.boolean().default(true),
+  limit: z.number().int().min(1).max(50).default(10),
+}).refine(value => value.memoryId !== undefined
+  ? value.fromDate === undefined && value.toDate === undefined
+  : value.fromDate !== undefined && value.toDate !== undefined && Date.parse(value.fromDate) <= Date.parse(value.toDate),
+{ message: "Provide memoryId alone, or fromDate and toDate in chronological order" });
+
+export const memoryIndexItemSchema = z.object({
+  id: z.string(), summary: z.string().max(160), kind: z.string(), date: z.string(), score: z.number().nullable(),
+});
+export const memoryIndexResponseSchema = z.object({
+  ok: z.literal(true), memories: z.array(memoryIndexItemSchema), hasMore: z.boolean(),
+});
+
 export const forgetMemoryRequestSchema = z.object({
   projectId: z.string().min(1),
   memoryId: z.string().min(1).max(200),
@@ -541,6 +564,8 @@ export type BatchStoreMemoryRequest = z.infer<typeof batchStoreMemoryRequestSche
 export type BatchStoreMemoryResponse = z.infer<typeof batchStoreMemoryResponseSchema>;
 
 export interface MemoryCoreRequestMap {
+  searchMemoryIndex: z.infer<typeof searchMemoryIndexRequestSchema>;
+  memoryTimeline: z.infer<typeof memoryTimelineRequestSchema>;
   ingestSessionEvents: IngestSessionEventsRequest;
   summarizeSessionToMemory: SummarizeSessionToMemoryRequest;
   handleSessionEnd: HandleSessionEndRequest;
@@ -560,6 +585,8 @@ export interface MemoryCoreRequestMap {
 }
 
 export interface MemoryCoreResponseMap {
+  searchMemoryIndex: z.infer<typeof memoryIndexResponseSchema>;
+  memoryTimeline: z.infer<typeof memoryIndexResponseSchema>;
   ingestSessionEvents: IngestSessionEventsResponse;
   summarizeSessionToMemory: SummarizeSessionToMemoryResponse;
   handleSessionEnd: HandleSessionEndResponse;

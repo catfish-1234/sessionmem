@@ -5,7 +5,7 @@ import type { Database } from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { resolveInstallAdapters } from "../../adapters/installedHosts.js";
-import { checkHooks, readMcpLaunch, probeMcpWiring } from "../../adapters/diagnostics.js";
+import { checkHooks, checkAgentGuidance, readMcpLaunch, probeMcpWiring } from "../../adapters/diagnostics.js";
 import { ADAPTER_NAMES, AdapterFactory } from "../../adapters/factory.js";
 import { createMemoryCoreService } from "../../core/api/memoryCoreService.js";
 import { inspectMigrations } from "../../core/schema/runMigrations.js";
@@ -66,18 +66,22 @@ export async function doctorCommand(
   }
 
   const dbPath = resolveDbPath(overrides.dbPath);
+  let autostartHealthy = false;
   const captureFix = "Run sessionmem autostart enable; inspect logs/watch.log beside the database and OS service logs, then run sessionmem doctor";
   try {
     const registration = createAutostart({ dbPath }).status();
     report("Auto-start registration", registration.registered, registration.detail, registration.registered ? undefined : captureFix);
     const invalid = registration.launch ? invalidLaunchPaths(registration.launch) : ["No registered binary"];
+    autostartHealthy = registration.registered && invalid.length === 0;
     report("Auto-start binary", invalid.length === 0, invalid.length ? invalid.join(", ") : "Registered Node binary and sessionmem entry point are readable", invalid.length ? "Reinstall sessionmem if needed, then run sessionmem autostart enable" : undefined);
   } catch (err) {
     report("Auto-start registration", false, message(err), captureFix);
     report("Auto-start binary", false, "Cannot inspect the registration", captureFix);
   }
+  let watcherHealthy = false;
   try {
     report("Watcher capture", true, inspectWatchCheckpoint(dbPath));
+    watcherHealthy = true;
   } catch (err) {
     report("Watcher capture", false, message(err), captureFix);
   }
@@ -85,7 +89,7 @@ export async function doctorCommand(
     try {
       report(`${host} transcripts`, true, await inspectTranscriptDiscovery(host));
     } catch (err) {
-      report(`${host} transcripts`, false, message(err), `Check transcript directory permissions and format; run sessionmem scan --host ${host}`);
+      report(`${host} transcripts`, false, message(err), `Check transcript directory permissions and format; check the watcher logs; imports retry automatically`);
     }
   }
   let db: Database | undefined;
@@ -132,8 +136,10 @@ export async function doctorCommand(
         report(`${adapter.name} adapter wiring`, false, "Adapter has no installation diagnostics", installFix);
         continue;
       }
+      let hooksHealthy = false, wiringHealthy = false, guidanceHealthy = false;
       try {
         report(`${adapter.name} hooks`, true, `${checkHooks(installation)}; sessionmem ${VERSION}`);
+        hooksHealthy = Boolean(installation.hooks);
       } catch (err) {
         report(`${adapter.name} hooks`, false, message(err), `Enable hooks in the host settings if disabled, then run ${installFix}`);
       }
@@ -142,9 +148,30 @@ export async function doctorCommand(
         if (!schemaOk) throw new Error("MCP launch probe blocked until the store and schema checks pass");
         await probeMcpWiring(launch, dbPath, VERSION);
         report(`${adapter.name} adapter wiring`, true, "Configured MCP command starts, matches this version, and answers stats");
+        wiringHealthy = true;
       } catch (err) {
         report(`${adapter.name} adapter wiring`, false, message(err), `Ensure sessionmem is on PATH, then run ${installFix}`);
       }
+      try {
+        report(`${adapter.name} agent instructions`, true, checkAgentGuidance(adapter));
+        guidanceHealthy = true;
+      } catch (err) {
+        report(`${adapter.name} agent instructions`, false, message(err), installFix);
+      }
+      const native = Boolean(installation.hooks);
+      const transcript = ["Claude Code", "Codex", "Cursor"].includes(adapter.name);
+      const unverifiedHost = ["Antigravity", "QCoder"].includes(adapter.name);
+      const capture = !unverifiedHost && schemaOk && (native ? hooksHealthy || (autostartHealthy && watcherHealthy) : transcript ? autostartHealthy && watcherHealthy : guidanceHealthy && wiringHealthy);
+      report(`${adapter.name} automatic capture`, capture,
+        unverifiedHost ? "Native adapter paths are unverified; automatic capture is not established" : native ? "Hook capture and transcript watcher configured; see hook and watcher checks"
+          : transcript ? "Login watcher imports supported transcripts; a healthy sweep is required"
+          : "Agent-driven saves only; no background transcript importer for this host",
+        capture ? undefined : unverifiedHost ? "Verify the native host MCP and guidance paths in its current settings, or select a verified host adapter" : transcript ? captureFix : `Enable memory tool calls and load the instructions from ${adapter.guidanceTargets?.().join(", ")}; ${installFix}`);
+      const recall = !unverifiedHost && schemaOk && wiringHealthy && (native ? hooksHealthy : guidanceHealthy);
+      report(`${adapter.name} automatic recall`, recall,
+        unverifiedHost ? "Native host loading is unverified; automatic recall is not established" : native ? "SessionStart and UserPromptSubmit hooks inject context"
+          : "Instruction-driven startup and prompt recall configured; agent execution is not verified by doctor",
+        recall ? undefined : unverifiedHost ? "Configure the MCP server and startup instructions in the native host settings; these adapter paths are unverified" : `Enable memory tools, load the installed instructions and run ${installFix}`);
     }
     if (!adapters.length) {
       report("Hook configuration", false, "No host selected", "sessionmem doctor --adapter <name>");

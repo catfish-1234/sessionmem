@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Claude Code prompt-time recall, startup transcript catch-up, MCP flow
+  instructions, and fresh-install capture-to-new-session CI coverage for Claude
+  Code, Codex and Cursor. Doctor reports capture and recall modes separately,
+  validates agent guidance, and provides repair hints. Install detects additional
+  host CLIs, fails on missing guidance, and installs Cursor rules in the project.
+  Cline preapproves local lookup and capture tools for the instructed flow.
+- Independent adaptive BM25, damped entity and normalized additive fusion
+  hypotheses based on the requested Mem0 source audit. All attempted variants
+  and their regressions are retained in the retrieval evaluation.
+- Compact MCP retrieval through `searchMemoryIndex`, `memoryTimeline`, and the
+  existing full-detail `getMemory`. New tools use bounded previews and limits,
+  preserve project and expiry filtering, and leave access counters unchanged.
+  Includes service and stdio tests and measured LoCoMo response-token costs.
+- Optional deterministic temporal retrieval using supersession and observation
+  timestamps for current and past queries. Uncued queries retain existing
+  behavior. Tests cover date boundaries, history overrides and semantic visibility.
+  Defaults off because pinned-clock LoCoMo quality did not improve.
+- Optional entity-link candidates and weighted fusion with BM25 and local
+  semantic scores. Includes alias, isolation and fusion tests. Coverage defaults
+  on for BM25
+  (64.44% hit, 14.32% precision, 58.27% recall) and off with active MiniLM
+  because hybrid hit rate and recall regressed. Explicit overrides remain available.
+- Repeatable ranking ablations, a three-metric regression gate, complete lost-hit
+  and lost-evidence accounting, public README references and before/after tables.
+  Default BM25 improves all three primary metrics; optional hybrid quality is
+  unchanged. See
+  [retrieval results](benchmarks/retrieval-gaps.md) and
+  [tool and ranking guide](docs/retrieval-tools.md).
+
 ## [1.7.0] - 2026-10-18
 
 ### Added

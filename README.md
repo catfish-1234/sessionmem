@@ -537,6 +537,43 @@ Details: [`docs/cloud-summarization.md`](docs/cloud-summarization.md).
 
 ---
 
+## Automatic memory by host
+
+After installation, the login-started watcher captures supported local
+transcripts. Recall on hosts without native hooks follows installed agent
+instructions, so it depends on the agent executing the memory tools.
+
+| Host | Capture | Recall |
+| --- | --- | --- |
+| Claude Code | Tool/end hooks and transcript watcher | SessionStart and UserPromptSubmit hooks inject context |
+| Codex | Rollout watcher | Global AGENTS.md and MCP instructions require startup and new-topic searches |
+| Cursor | Composer SQLite watcher | Project always-apply rule and MCP instructions require searches |
+| Windsurf, Cline | Instructed agent saves; no transcript importer | Installed rules and MCP instructions |
+| Antigravity, QCoder | Instructed saves; native adapter paths remain unverified | Instruction-driven, subject to host loading |
+| Generic MCP | Instructed saves if the host reads AGENTS.md or MCP instructions | Instruction-driven, subject to host support |
+
+Install detects available Claude Code, Codex, Cursor and Windsurf CLI executables.
+Other hosts use `--adapter` at setup. Missing guidance now fails installation.
+Doctor checks capture and recall separately, identifies instruction-driven modes,
+and provides repair hints. See [automatic memory](docs/automatic-memory.md) for
+exact scope, supported formats, tool permissions and the CI install-to-recall test.
+
+## Memory retrieval tools
+
+Use `searchMemoryIndex` for a compact list of matches, `memoryTimeline` to inspect
+nearby records, and `getMemory` for selected full details. Compact tools default
+to 10 results and cap one-line summaries at 160 characters. See
+[retrieval tools and optional ranking](docs/retrieval-tools.md) for inputs,
+visibility rules and measured token costs.
+
+Temporal retrieval defaults off because it did not improve the pinned-clock
+LoCoMo run. Entity coverage is enabled for BM25 and disabled when MiniLM is
+active. This raises default hit rate from 63.92% to 64.44%, precision from 14.05%
+to 14.32%, and recall from 57.45% to 58.27%; optional hybrid quality is preserved.
+The `entityLinkBoost` setting overrides this automatic choice. Source-informed
+adaptive and additive alternatives remain opt-in. See
+[all before/after results and losses](benchmarks/retrieval-gaps.md).
+
 ## Supported tools
 
 `sessionmem` works with any MCP-compatible host, including:
@@ -555,6 +592,8 @@ Other tools that implement the [Model Context Protocol](https://modelcontextprot
 
 ## Further documentation
 
+- [Automatic memory](docs/automatic-memory.md): capture and recall per host, diagnostics and CI evidence.
+- [Retrieval tools](docs/retrieval-tools.md): compact search, timeline, full details and optional ranking.
 - [Architecture](docs/architecture.md): how the core engine, adapters, CLI, and SQLite storage fit together.
 - [Benchmark](docs/benchmark.md): conversational retrieval results and reproduction steps.
 - [Privacy and retention](docs/privacy-and-retention.md): secret redaction, retention pruning, and config.

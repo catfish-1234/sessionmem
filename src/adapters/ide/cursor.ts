@@ -10,12 +10,12 @@ export class CursorAdapter extends GenericMCPAdapter {
   // Capabilities inherited from GenericMCPAdapter (tools only).
 
   /**
-   * Cursor reads project rules from `.cursor/rules/*.mdc`. A home-level rule
-   * file gives every project the sessionmem guidance. The injector seeds
+   * Cursor reads project rules from `.cursor/rules/*.mdc`. Install in this
+   * project; global MCP server instructions cover other projects. The injector seeds
    * `alwaysApply: true` frontmatter on creation so the rule is always active.
    */
   guidanceTargets(): string[] {
-    return [join(homedir(), ".cursor", "rules", "sessionmem.mdc")];
+    return [join(process.cwd(), ".cursor", "rules", "sessionmem.mdc")];
   }
 
   /**

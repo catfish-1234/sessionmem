@@ -1,0 +1,263 @@
+{
+  "base_commit": "4b5653227be673756eaf0e4c039730c6c4554227",
+  "source_and_build": {
+    "source_sha256": "e70964f01bfddc17a6c9f2b0ee689b578c45468a76be04e965324f3638705f5b",
+    "dist_sha256": "5e97d396f4109240b372baf714be0b2644c8536813369831e32636a5ccc70083",
+    "lockfile_sha256": "9ed8848ff34246517d14477e62efe00394a37ee4b26b7aee7ee62b16eb8801fb"
+  },
+  "lockfile_unchanged": true,
+  "archives": {
+    "main-after": {
+      "path": "benchmarks/measured/retrieval-gaps/main-after.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--output",
+        "work/shipping-default.json"
+      ],
+      "sha256": "b96484191a3f6fa01c6d6a923334ecde0d7a2fa87d7764731079aeb94a986639"
+    },
+    "hybrid-after": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-after.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--semantic",
+        "--output",
+        "work/shipping-hybrid.json"
+      ],
+      "sha256": "9a6afa320db4648e0216973325b5587c2110f8ae24704f96c7896fabc34a325e"
+    },
+    "bm25-legacy": {
+      "path": "benchmarks/measured/retrieval-gaps/bm25-legacy.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--output-dir",
+        "work/matrix-bm25"
+      ],
+      "sha256": "86098953e03893804f6072d11d7f4e8aca416bcde951ce362fd4104424829823"
+    },
+    "bm25-entity-coverage": {
+      "path": "benchmarks/measured/retrieval-gaps/bm25-entity-coverage.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--output-dir",
+        "work/matrix-bm25"
+      ],
+      "sha256": "39a3289782ad327ad43b528134ac033f9f4b18bd5c2978326ca7a5df6ca86a02"
+    },
+    "bm25-adaptive-bm25": {
+      "path": "benchmarks/measured/retrieval-gaps/bm25-adaptive-bm25.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--output-dir",
+        "work/matrix-bm25"
+      ],
+      "sha256": "4f7de9e4ad41ec23ccd06c8b32d8a572be70a9b1d68a0e7051edc6385d6a09df"
+    },
+    "bm25-hub-additive": {
+      "path": "benchmarks/measured/retrieval-gaps/bm25-hub-additive.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--output-dir",
+        "work/matrix-bm25"
+      ],
+      "sha256": "1ddcc98e6d651b43a3693b5d0e14558afee958ff018060cabcf1d8c351108e7b"
+    },
+    "bm25-adaptive-hub-additive": {
+      "path": "benchmarks/measured/retrieval-gaps/bm25-adaptive-hub-additive.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--output-dir",
+        "work/matrix-bm25"
+      ],
+      "sha256": "e6e98f519bcea5e3fa60aa10fe3fb5214fcd28a86643420646a5bf2a547e7076"
+    },
+    "hybrid-legacy": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-legacy.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--semantic",
+        "--output-dir",
+        "work/matrix-hybrid"
+      ],
+      "sha256": "941fb941d68e6aba9a46b892877720635f08ccdec6dcab8d7952d57743cda508"
+    },
+    "hybrid-entity-coverage": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-entity-coverage.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--semantic",
+        "--output-dir",
+        "work/matrix-hybrid"
+      ],
+      "sha256": "a977ced010e85ba1f0bed35e1cd4a2a8fcee457a8c50299a3e0eeb9d37e52628"
+    },
+    "hybrid-adaptive-bm25": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-adaptive-bm25.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--semantic",
+        "--output-dir",
+        "work/matrix-hybrid"
+      ],
+      "sha256": "23c6577625b478441d1d322e6bb87e3e4962b6ff245e655e1d29ddf1c293a0bc"
+    },
+    "hybrid-hub-additive": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-hub-additive.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--semantic",
+        "--output-dir",
+        "work/matrix-hybrid"
+      ],
+      "sha256": "30f7735e8afc9c6d300a8cd3c37d9679e9e62a13390cffe654c6738691d79b1f"
+    },
+    "hybrid-adaptive-hub-additive": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-adaptive-hub-additive.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-ranking-matrix.mjs",
+        "--semantic",
+        "--output-dir",
+        "work/matrix-hybrid"
+      ],
+      "sha256": "221f93e37e63188094495746e9961aa375623ab244498b07686b33f2bcd10255"
+    },
+    "fallback": {
+      "path": "benchmarks/measured/retrieval-gaps/fallback.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--semantic-unavailable",
+        "--output",
+        "work/shipping-fallback.json"
+      ],
+      "sha256": "883a1e457bb9bf33ae5e1d802747eec4a90d69cd9a822ad972d11df1feb9148f"
+    },
+    "temporal": {
+      "path": "benchmarks/measured/retrieval-gaps/temporal.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--temporal",
+        "--output",
+        "work/final-temporal.json"
+      ],
+      "sha256": "2e97324fd57760e93f88a3630c0740e43a2dc7dfe53225c47b10f6328264c921"
+    },
+    "temporal-coverage": {
+      "path": "benchmarks/measured/retrieval-gaps/temporal-coverage.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--temporal",
+        "--entity-links",
+        "--output",
+        "work/final-combined.json"
+      ],
+      "sha256": "b2863218a81efd8d921ed931373f5d7c4aa8f3dbebf58d49044190888e691553"
+    },
+    "hybrid-temporal": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-temporal.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--semantic",
+        "--temporal",
+        "--output",
+        "work/final-hybrid-temporal.json"
+      ],
+      "sha256": "3def2f0c54837d5b11ee14ac6f3ae84a0c7d0cad6a89966747890136e4343d9f"
+    },
+    "hybrid-temporal-coverage": {
+      "path": "benchmarks/measured/retrieval-gaps/hybrid-temporal-coverage.json.gz",
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--semantic",
+        "--temporal",
+        "--entity-links",
+        "--output",
+        "work/final-hybrid-combined.json"
+      ],
+      "sha256": "20bd0f00a7319bf85016edc559d2e00248594593156ca4798c44b0c61a6f1ad5"
+    },
+    "disclosure": {
+      "path": "benchmarks/measured/retrieval-gaps/disclosure.json.gz",
+      "command": [
+        "node",
+        "scripts/benchmark-disclosure.mjs"
+      ],
+      "sha256": "8ae6cb36a5c8e0f2aa7795c4de3ecba641ded666861748addec99a012dbb8de2"
+    }
+  },
+  "quality_selection": "All three overall primary metrics must be no worse than the corresponding main baseline. No category-specific or question-specific selection.",
+  "evaluation": "Shared-capture matrix with on-demand recall; same pinned clock and annotations. Explicit variants override defaults. Final defaults and fallback rerun separately.",
+  "latency": "Runs overlapped with local tests and other evaluations. Timing is retained for transparency, not a latency comparison.",
+  "public_readmes": [
+    {
+      "project": "claude-mem",
+      "commit": "9e4f313a89236f7fb593a639a77ee02e21e94469",
+      "url": "https://github.com/thedotmack/claude-mem/blob/9e4f313a89236f7fb593a639a77ee02e21e94469/README.md",
+      "sha256": "7756f33f9844f3eaf4540a7ada46bd4f299e02e0a368f582b86ed81d7eb555b6",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/thedotmack/claude-mem/blob/9e4f313a89236f7fb593a639a77ee02e21e94469/LICENSE"
+    },
+    {
+      "project": "mem0",
+      "commit": "0724291bd864cf807e88ee8981c8226644e8fb42",
+      "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/README.md",
+      "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/LICENSE"
+    },
+    {
+      "project": "graphiti",
+      "commit": "6e3e3cb98edfac4ca5be6129002d76cdf714ad09",
+      "url": "https://github.com/getzep/graphiti/blob/6e3e3cb98edfac4ca5be6129002d76cdf714ad09/README.md",
+      "sha256": "e3331e411e5532a0f9c32c2f0c7ca5e08639fa18dc1bc072c7fb3173ec0c9f41",
+      "license": "Apache-2.0",
+      "license_url": "https://github.com/getzep/graphiti/blob/6e3e3cb98edfac4ca5be6129002d76cdf714ad09/LICENSE"
+    }
+  ],
+  "source_followup": [
+    {
+      "path": "mem0/utils/scoring.py",
+      "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/mem0/utils/scoring.py",
+      "sha256": "9a4313fda723ad05cb52278e9ef0b9b5792b71fb3b41ba6318410121022e4527",
+      "license": "Apache-2.0",
+      "copied_or_adapted_code": false
+    },
+    {
+      "path": "mem0/memory/main.py",
+      "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/mem0/memory/main.py",
+      "sha256": "f329ca4a17af1fbefb32ac10d4cc7ae7ddbdb7435a87eb74c30915cff98b8b7c",
+      "license": "Apache-2.0",
+      "copied_or_adapted_code": false
+    }
+  ]
+}

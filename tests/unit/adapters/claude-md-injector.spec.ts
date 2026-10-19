@@ -7,6 +7,7 @@ import {
   SESSIONMEM_BLOCK_END,
   generateClaudeMdBlock,
   injectClaudeMdBlock,
+  injectGuidanceBlock,
   removeClaudeMdBlock,
   hasClaudeMdBlock,
 } from "../../../src/adapters/claudeMdInjector.js";
@@ -197,5 +198,29 @@ describe("hasClaudeMdBlock", () => {
     expect(hasClaudeMdBlock(filePath)).toBe(false);
 
     rmSync(dir, { recursive: true, force: true });
+  });
+});
+
+
+describe("automatic agent flow guidance", () => {
+  it("requires startup search and decision saves without a user reminder", () => {
+    const block = generateClaudeMdBlock();
+    expect(block).toContain("Before work in a new session");
+    expect(block).toContain("searchMemoryIndex");
+    expect(block).toContain("Save significant decisions");
+    expect(block).toContain("without waiting for the user to ask");
+    expect(block).not.toContain(String.fromCharCode(0x2014));
+  });
+  it("repairs a disabled Cursor always-apply rule and preserves other text", () => {
+    const dir = makeTmpDir();
+    try {
+      const path = join(dir, "sessionmem.mdc");
+      writeFileSync(path, "---\ndescription: keep this\nalwaysApply: false\n---\nExisting prose.\n");
+      expect(injectGuidanceBlock(path)).toBe(true);
+      const text = readFileSync(path, "utf8");
+      expect(text).toContain("alwaysApply: true");
+      expect(text).toContain("description: keep this");
+      expect(text).toContain("Existing prose.");
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });

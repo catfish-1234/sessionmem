@@ -6,6 +6,7 @@ import { tmpdir, homedir } from "os";
 import { join } from "path";
 import { randomUUID } from "crypto";
 import { existsSync, readFileSync, writeFileSync, rmSync, mkdtempSync } from "fs";
+import * as guidance from "../../../src/adapters/claudeMdInjector.js";
 import * as installedHosts from "../../../src/adapters/installedHosts.js";
 import { installCommand } from "../../../src/cli/commands/install.js";
 import { readPolicyConfig } from "../../../src/core/config/policyConfig.js";
@@ -40,6 +41,17 @@ describe("installCommand", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     rmSync(testHome.path, { recursive: true, force: true });
+  });
+
+  it("fails installation when automatic-recall guidance cannot be written", async () => {
+    const dbPath = join(testHome.path, "memories.db");
+    mockSuccessfulAdapter();
+    vi.spyOn(guidance, "injectGuidanceBlock").mockReturnValue(false);
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process, "exit").mockImplementation((code?: number) => { throw new Error(`exit ${code}`); });
+    await expect(installCommand({}, { dbPath })).rejects.toThrow("exit 1");
+    expect(error.mock.calls.flat().join(" ")).toContain("automatic recall is not configured");
   });
 
   it("prints ✓ checklist on successful DB init and adapter.install()", async () => {

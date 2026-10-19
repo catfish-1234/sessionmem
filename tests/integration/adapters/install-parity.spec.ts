@@ -5,7 +5,7 @@ import { dirname, join } from "path";
 
 import { CursorAdapter } from "../../../src/adapters/ide/cursor.js";
 import { WindsurfAdapter } from "../../../src/adapters/ide/windsurf.js";
-import { ClineAdapter } from "../../../src/adapters/ide/cline.js";
+import { AUTOMATIC_MEMORY_TOOLS, ClineAdapter } from "../../../src/adapters/ide/cline.js";
 import { CodexAdapter } from "../../../src/adapters/global/codex.js";
 import { GenericMCPAdapter } from "../../../src/adapters/generic.js";
 
@@ -132,8 +132,12 @@ describe("adapter install() parity + generic path", () => {
       command: "sessionmem",
       args: ["run"],
       disabled: false,
-      autoApprove: [],
+      autoApprove: AUTOMATIC_MEMORY_TOOLS,
     });
+    const approvals = (servers.sessionmem as { autoApprove: string[] }).autoApprove;
+    expect(approvals).toEqual(expect.arrayContaining(["searchMemoryIndex", "getMemory", "storeMemory", "batchStoreMemory"]));
+    expect(approvals).not.toContain("forgetMemory");
+    expect(approvals).not.toContain("exportMemories");
 
     expect(await adapter.uninstall()).toBe(true);
     expect(readMcpServers(configPath)).not.toHaveProperty("sessionmem");

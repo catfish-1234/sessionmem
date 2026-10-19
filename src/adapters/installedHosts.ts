@@ -14,6 +14,9 @@ export interface HostDetection {
 // Installed-host detection is deliberately separate from runtime session-env
 // detection. Add a row here when another host has a verified install probe.
 export const INSTALLED_HOSTS: readonly HostDetection[] = [
+  { adapter: "codex", executables: ["codex"] },
+  { adapter: "cursor", executables: ["cursor"] },
+  { adapter: "windsurf", executables: ["windsurf"] },
   {
     adapter: "claude-code",
     executables: ["claude"],
@@ -59,7 +62,7 @@ export function resolveInstallAdapters(options?: { adapter?: string }): {
   if (explicit) return { adapters: [AdapterFactory.forName(explicit)], forced: true };
   const adapters = detectInstalledAdapters();
   if (adapters.length === 0) {
-    throw new Error("No supported agent host found. Install Claude Code or use sessionmem install --adapter <name>.");
+    throw new Error("No supported agent host found. Install a supported host CLI or use sessionmem install --adapter <name>.");
   }
   return { adapters, forced: false };
 }

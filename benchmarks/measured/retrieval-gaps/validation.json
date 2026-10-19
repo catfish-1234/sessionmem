@@ -1,0 +1,26 @@
+{
+  "build": "passed",
+  "typecheck": "passed",
+  "lint": "passed",
+  "full_suite": {
+    "files": 126,
+    "tests": 788,
+    "status": "passed",
+    "command": "npm test"
+  },
+  "head_doctor_guards": {
+    "passed": 3,
+    "command": "npm test -- tests/integration/cli/setup-doctor.spec.ts -t 'Cline memory|fresh watcher|inactive Cursor'"
+  },
+  "head_adapter_permissions": {
+    "passed": 6,
+    "command": "npm test -- tests/integration/adapters/install-parity.spec.ts"
+  },
+  "quality_gates": {
+    "bm25": "passed",
+    "hybrid": "passed",
+    "fallback_ids_equal_default": true
+  },
+  "ci": "Workflow updated to run install-to-new-session test in the existing OS matrix; remote CI not yet observed",
+  "initial_contended_suite": "7 CLI harness timeouts while benchmarks ran concurrently; unchanged timeouts, quiet suite passed"
+}

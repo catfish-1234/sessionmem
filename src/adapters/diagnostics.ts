@@ -4,6 +4,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { AdapterInstallation } from "./contract/hostAdapterContract.js";
 import { IDEInstaller, isManagedClaudeHook } from "./ide/installer.js";
+import { AUTOMATIC_MEMORY_TOOLS } from "./ide/cline.js";
+import { generateClaudeMdBlock } from "./claudeMdInjector.js";
+import type { HostAdapterContract } from "./contract/hostAdapterContract.js";
 import { resolveDbPath } from "../cli/context.js";
 
 function object(value: unknown): Record<string, unknown> {
@@ -14,7 +17,7 @@ function object(value: unknown): Record<string, unknown> {
 
 export function checkHooks(installation: AdapterInstallation): string {
   const expected = installation.hooks;
-  if (!expected) return "This host uses MCP tools; no lifecycle hooks are required";
+  if (!expected) return "This host has no installed lifecycle hooks; recall uses agent instructions";
   const config = IDEInstaller.parseJsonc(readFileSync(expected.path, "utf8"));
   if (config.disableAllHooks === true) throw new Error("Claude Code has disableAllHooks enabled");
   const hooks = object(config.hooks);
@@ -30,7 +33,29 @@ export function checkHooks(installation: AdapterInstallation): string {
     });
     if (managed.length !== 1 || matches.length !== 1) throw new Error(`${spec.event} hook is missing, duplicated, or differs from the current definition`);
   }
-  return `SessionStart, SessionEnd, PostToolUse match current hook definitions (${expected.path})`;
+  return `${expected.entries.map(entry => entry.event).join(", ")} match current hook definitions (${expected.path})`;
+}
+
+export function checkAgentGuidance(adapter: HostAdapterContract): string {
+  const paths = adapter.guidanceTargets?.() ?? [];
+  if (!paths.length) throw new Error("No agent guidance target is configured");
+  for (const path of paths) {
+    const text = readFileSync(path, "utf8");
+    if (!text.includes(generateClaudeMdBlock())) throw new Error(`Agent guidance missing or stale (${path})`);
+    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+    if (path.endsWith(".mdc") && (!frontmatter || !/^alwaysApply:\s*true\s*$/m.test(frontmatter[1]))) {
+      throw new Error(`Cursor rule is not always active (${path})`);
+    }
+  }
+  if (adapter.name === "Cline") {
+    const installation = adapter.installation?.();
+    const config = IDEInstaller.parseJsonc(readFileSync(installation!.mcp.path, "utf8"));
+    const approved = object(object(config.mcpServers).sessionmem).autoApprove;
+    if (!Array.isArray(approved) || AUTOMATIC_MEMORY_TOOLS.some(tool => !approved.includes(tool))) {
+      throw new Error("Automatic memory tools require approval; reinstall to configure the local lookup and capture allowlist");
+    }
+  }
+  return `Current startup, prompt and decision-save instructions (${paths.join(", ")})`;
 }
 
 export interface McpLaunch {
@@ -85,7 +110,7 @@ export async function probeMcpWiring(launch: McpLaunch, dbPath: string, version:
   const transport = new StdioClientTransport({
     command: launch.command,
     args: launch.args,
-    env: { ...inherited, ...launch.env, SESSIONMEM_DB_PATH: dbPath },
+    env: { ...inherited, ...launch.env, SESSIONMEM_DB_PATH: dbPath, SESSIONMEM_DIAGNOSTIC_PROBE: "1" },
     stderr: "ignore",
   });
   try {
@@ -95,7 +120,7 @@ export async function probeMcpWiring(launch: McpLaunch, dbPath: string, version:
       throw new Error(`MCP server version does not match sessionmem ${version}`);
     }
     const tools = await client.listTools({}, { timeout: 5000 });
-    for (const name of ["stats", "storeMemory", "retrieveMemories"]) {
+    for (const name of ["stats", "storeMemory", "retrieveMemories", "searchMemoryIndex", "memoryTimeline", "getMemory"]) {
       if (!tools.tools.some((tool) => tool.name === name)) throw new Error(`MCP tool ${name} is missing`);
     }
     const result = await client.callTool({ name: "stats", arguments: {} }, undefined, { timeout: 5000 });

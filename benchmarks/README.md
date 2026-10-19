@@ -43,6 +43,32 @@ capture/graph/answer pipelines. The same `prepareCorpus`, `scoreQuestion` and
 `benchmarks/results/` is ignored by Git. API errors, bad options, and checksum
 mismatches produce a nonzero exit status; low retrieval scores are valid results.
 
+## Retrieval tooling and ranking experiments
+
+The [retrieval evaluation](retrieval-gaps.md) records fresh 1.7.0 baselines,
+compact tool token counts, temporal-only and entity-only ablations, their
+combination, and every lost hit by category. Reproduce the variants with:
+
+```bash
+npm run benchmark -- --no-entity-links --temporal --output benchmarks/results/temporal.json
+npm run benchmark -- --entity-links --output benchmarks/results/entities.json
+npm run benchmark -- --temporal --entity-links --output benchmarks/results/combined.json
+# Add --semantic to each command to evaluate the optional hybrid.
+node scripts/benchmark-disclosure.mjs --output benchmarks/results/disclosure.json
+node scripts/compare-retrieval.mjs --before before.json --after after.json --require-no-regression --output benchmarks/results/regressions.json
+```
+
+Use `--no-entity-links` for the original BM25 control and `--ranking` for the
+source-informed alternatives. `benchmark-ranking-matrix.mjs` measures all five
+prespecified ranking variants from one capture (`--semantic` adds MiniLM).
+
+`--temporal` and `--entity-links` enable independent experiments in the isolated
+benchmark config. Neither changes the user's settings. The comparison gate checks
+hit rate, precision and recall separately and preserves losses even when aggregate
+metrics improve. It rejects changed question sets, evidence, corpus checksums or
+retrieval budgets. The disclosure benchmark counts actual MCP text payloads using
+`cl100k_base` and chooses the first ranked detail without using relevance labels.
+
 ## Capture and recall
 
 The runner uses the public `createMemoryCoreService` methods used by MCP tools:

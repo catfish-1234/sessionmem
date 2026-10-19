@@ -36,7 +36,7 @@ describe("offline setup and doctor CLI", () => {
     env = {
       ...process.env,
       HOME: home, USERPROFILE: home, APPDATA: home,
-      PATH: bin + delimiter + (process.env.PATH ?? ""),
+      PATH: process.platform === "win32" ? bin + delimiter + join(process.env.SystemRoot ?? "C:\\Windows", "System32") : bin,
       SESSIONMEM_DB_PATH: dbPath,
       SESSIONMEM_ADAPTER: "",
       SESSIONMEM_PROJECT_ID: "doctor-test-project",
@@ -86,7 +86,7 @@ describe("offline setup and doctor CLI", () => {
   it("detects Claude from a plain terminal, configures hooks, and passes every diagnostic offline", async () => {
     expect(install().stdout).toContain("Detected host: Claude Code");
     const hooks = settings().hooks;
-    expect(Object.keys(hooks)).toEqual(["SessionStart", "SessionEnd", "PostToolUse"]);
+    expect(Object.keys(hooks)).toEqual(["SessionStart", "SessionEnd", "PostToolUse", "UserPromptSubmit"]);
     // A pre-existing user memory must survive the canary unchanged.
     const db = openDb({ dbPath });
     const service = createMemoryCoreService({ db });
@@ -96,7 +96,7 @@ describe("offline setup and doctor CLI", () => {
 
     const result = run("doctor");
     expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(11);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(14);
     expect(result.stdout).toContain("Claude Code adapter wiring");
     expect(result.stdout).toContain("canary rolled back");
     const after = new BetterSqlite3(dbPath);
@@ -112,7 +112,7 @@ describe("offline setup and doctor CLI", () => {
   it("does not create a missing memory store and reports storage, host, and discovery checks", () => {
     const result = run("doctor");
     expect(result.status).toBe(1);
-    expect(result.stdout.match(/^FAIL /gm)).toHaveLength(8);
+    expect(result.stdout.match(/^FAIL /gm)).toHaveLength(11);
     expect(result.stdout.match(/^PASS .* transcripts:/gm)).toHaveLength(3);
     expect(result.stdout).toContain("sessionmem ping");
     expect(existsSync(dbPath)).toBe(false);
@@ -262,9 +262,57 @@ describe("offline setup and doctor CLI", () => {
     const installed = run("install", "--adapter", adapter);
     expect(installed.status, installed.stdout + installed.stderr).toBe(0);
     const result = run("doctor", "--adapter", adapter);
-    expect(result.status, result.stdout + result.stderr).toBe(0);
-    expect(result.stdout.match(/^PASS /gm)).toHaveLength(11);
-    expect(result.stdout).toContain("no lifecycle hooks are required");
+    const unverified = ["antigravity", "qcoder"].includes(adapter);
+    expect(result.status, result.stdout + result.stderr).toBe(unverified ? 1 : 0);
+    expect(result.stdout.match(/^PASS /gm)).toHaveLength(unverified ? 12 : 14);
+    expect(result.stdout).toContain("no installed lifecycle hooks");
+    if (unverified) expect(result.stdout).toContain("automatic recall is not established");
+  });
+
+  it("reports an inactive Cursor rule even when its memory instructions are present", () => {
+    run("install", "--adapter", "cursor");
+    const path = join(home, ".cursor", "rules", "sessionmem.mdc");
+    writeFileSync(path, readFileSync(path, "utf8").replace("alwaysApply: true", "alwaysApply: false"));
+    const result = run("doctor", "--adapter", "cursor");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("Cursor rule is not always active");
+    expect(result.stdout).toContain("FAIL Cursor automatic recall");
+  });
+
+  it("does not treat a fresh watcher checkpoint as active capture after registration is disabled", () => {
+    run("install", "--adapter", "codex");
+    run("autostart", "disable");
+    const result = run("doctor", "--adapter", "codex");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("PASS Watcher capture");
+    expect(result.stdout).toContain("FAIL Codex automatic capture");
+    expect(result.stdout).toContain("sessionmem autostart enable");
+  });
+
+  it("reports Cline memory tools that still require per-call approval", () => {
+    run("install", "--adapter", "cline");
+    const base = process.platform === "win32" ? home : process.platform === "darwin"
+      ? join(home, "Library", "Application Support") : join(home, ".config");
+    const path = join(base, "Code", "User", "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json");
+    const config = JSON.parse(readFileSync(path, "utf8"));
+    config.mcpServers.sessionmem.autoApprove = [];
+    writeFileSync(path, JSON.stringify(config));
+    const result = run("doctor", "--adapter", "cline");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("Automatic memory tools require approval");
+    expect(result.stdout).toContain("FAIL Cline automatic capture");
+    expect(result.stdout).toContain("FAIL Cline automatic recall");
+  });
+
+  it.each(["missing", "stale"])("reports %s recall instructions with a repair hint", problem => {
+    install();
+    const path = join(home, ".claude", "CLAUDE.md");
+    if (problem === "missing") rmSync(path);
+    else writeFileSync(path, "<!-- sessionmem:start -->Old guidance<!-- sessionmem:end -->");
+    const result = run("doctor");
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("FAIL Claude Code agent instructions");
+    expect(result.stdout).toContain("sessionmem install --adapter claude-code");
   });
 
   it("discovers dated Codex rollouts and reports unsupported formats without writing imports", () => {

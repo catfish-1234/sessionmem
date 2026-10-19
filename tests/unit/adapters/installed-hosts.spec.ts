@@ -25,6 +25,11 @@ describe("installed host discovery", () => {
     return file;
   }
 
+  it.each([["codex", "Codex"], ["cursor", "Cursor"], ["windsurf", "Windsurf"]])("finds %s from a terminal without executing it", (executable, name) => {
+    binary(executable);
+    expect(detectInstalledAdapters().map(adapter => adapter.name)).toEqual([name]);
+  });
+
   it("finds Claude Code from an ordinary terminal without executing it", () => {
     binary("claude");
     expect(detectInstalledAdapters().map((adapter) => adapter.name)).toEqual(["Claude Code"]);

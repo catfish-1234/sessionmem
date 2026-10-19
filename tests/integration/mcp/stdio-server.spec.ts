@@ -163,8 +163,40 @@ describe("stdio MCP server (spawned dist/cli/index.js run)", () => {
     expect(result).toBeTruthy();
     expect(result.protocolVersion).toBeTruthy();
     expect(result.serverInfo?.name).toBe("sessionmem");
+    expect((init.result as { instructions?: string }).instructions).toContain("searchMemoryIndex");
+    expect((init.result as { instructions?: string }).instructions).toContain("storeMemory");
     client.notify("notifications/initialized", {});
   }
+
+  it("serves compact search, timeline and full detail over stdio", async () => {
+    const client = startServer();
+    await handshake(client);
+    const listed = await client.request("tools/list", {});
+    const tools = (listed.result as { tools: { name: string; inputSchema: { properties: Record<string, unknown> }; annotations?: { readOnlyHint?: boolean } }[] }).tools;
+    for (const name of ["searchMemoryIndex", "memoryTimeline", "getMemory"]) {
+      const tool = tools.find(tool => tool.name === name)!;
+      expect(tool).toBeDefined();
+      expect(tool.inputSchema.properties).not.toHaveProperty("projectId");
+      expect(tool.annotations?.readOnlyHint).toBe(true);
+    }
+    const memoryId = randomUUID();
+    async function callTool(name: string, args: Record<string, unknown>) {
+      const response = await client.request("tools/call", { name, arguments: args });
+      expect(response.error).toBeUndefined();
+      const result = response.result as { content: { text: string }[]; isError?: boolean };
+      expect(result.isError).not.toBe(true);
+      return JSON.parse(result.content[0].text);
+    }
+    const content = "Deployment settings.\n" + "Stored configuration details. ".repeat(100);
+    await callTool("storeMemory", { memoryId, sessionId: "test", sourceAdapter: "test", kind: "fact", content, importance: 5 });
+    const index = await callTool("searchMemoryIndex", { query: "deployment", limit: 1 });
+    expect(index.memories[0].id).toBe(memoryId);
+    expect(index.memories[0].summary.length).toBeLessThanOrEqual(160);
+    expect(index.memories[0]).not.toHaveProperty("content");
+    const timeline = await callTool("memoryTimeline", { memoryId, limit: 1 });
+    expect(timeline.memories[0].id).toBe(memoryId);
+    expect((await callTool("getMemory", { memoryId })).memory.content).toBe(content);
+  });
 
   it("completes the MCP initialize handshake", async () => {
     const client = startServer();
@@ -190,6 +222,8 @@ describe("stdio MCP server (spawned dist/cli/index.js run)", () => {
         "storeMemory",
         "listMemories",
         "getMemory",
+        "searchMemoryIndex",
+        "memoryTimeline",
         "forgetMemory",
         "stats",
       ]),

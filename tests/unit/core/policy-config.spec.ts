@@ -205,3 +205,20 @@ describe("policyConfig", () => {
     });
   });
 });
+
+describe("retrieval experiment settings", () => {
+  it("validates both overrides, leaves them unset by default, and salvages independent settings", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sessionmem-retrieval-config-"));
+    try {
+      const path = join(dir, "config.json");
+      expect(Boolean(readPolicyConfig(path).temporalRetrieval)).toBe(false);
+      expect(readPolicyConfig(path).entityLinkBoost).toBeUndefined();
+      expect(writePolicyConfig(path, { temporalRetrieval: true, entityLinkBoost: true }))
+        .toMatchObject({ temporalRetrieval: true, entityLinkBoost: true });
+      expect(() => writePolicyConfig(path, { temporalRetrieval: "yes" } as any)).toThrow();
+      writeFileSync(path, JSON.stringify({ temporalRetrieval: true, entityLinkBoost: "bad", retentionDays: 10 }));
+      expect(readPolicyConfig(path)).toMatchObject({ temporalRetrieval: true, retentionDays: 10 });
+      expect(readPolicyConfig(path).entityLinkBoost).toBeUndefined();
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});

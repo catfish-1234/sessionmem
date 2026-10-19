@@ -3,6 +3,7 @@ import { autostartCommand } from "./commands/autostart.js";
 import { Command } from "commander";
 import { createRequire } from "node:module";
 import { runMcpServer } from "./commands/run.js";
+import { promptSubmitCommand } from "./commands/promptSubmit.js";
 import { sessionStartCommand } from "./commands/sessionStart.js";
 import { sessionEndCommand } from "./commands/sessionEnd.js";
 import { installCommand } from "./commands/install.js";
@@ -64,6 +65,8 @@ program
     "Print prior memory context for the current project as Claude Code SessionStart hook output (invoked automatically by the hook installed during `sessionmem install`)",
   )
   .action(() => sessionStartCommand());
+
+program.command("prompt-submit").description("Inject relevant context for a UserPromptSubmit hook").action(() => promptSubmitCommand());
 
 program
   .command("session-end")
