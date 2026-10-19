@@ -13,7 +13,7 @@ const { values } = parseArgs({ options: {
   "model-dir": { type: "string" },
   "chroma-python": { type: "string" },
 } });
-if (!["mem0", "claude-sqlite", "claude-chroma"].includes(values.competitor) || !values.source || !values.output) {
+if (!["mem0", "claude-sqlite", "claude-chroma", "graphiti-episodes", "cognee-chunks"].includes(values.competitor) || !values.source || !values.output) {
   throw new Error("Required: --competitor mem0|claude-sqlite|claude-chroma --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH] [--chroma-python PATH]");
 }
 if (values.competitor === "claude-chroma" && (!values["chroma-python"] || !values["model-dir"])) throw new Error("Chroma requires --chroma-python and --model-dir");
@@ -36,10 +36,13 @@ try {
     sessions: c.sessions.map(s => ({ ...s, turns: s.turns.map(t => ({ ...t, content: applyRedaction(t.content, { redactionEnabled: true }).text })) })),
     questions: c.questions.filter(q => !q.excluded).map(({ id, question }) => ({ id, question })),
   }))));
-  const adapter = values.competitor === "mem0" ? "mem0.py" : "claude-sqlite.ts";
-  execFileSync(values.competitor === "mem0" ? values.python : values.bun,
+  const component = ["graphiti-episodes", "cognee-chunks"].includes(values.competitor);
+  const python = values.competitor === "mem0" || component;
+  const adapter = component ? "raw-components.py" : values.competitor === "mem0" ? "mem0.py" : "claude-sqlite.ts";
+  execFileSync(python ? values.python : values.bun,
     [new URL(`benchmarks/adapters/${adapter}`, root).pathname, "--input", input, "--output", output, "--source", source,
       ...(values["model-dir"] ? ["--model-dir", resolve(values["model-dir"])] : []),
+      ...(component ? ["--variant", values.competitor] : []),
       ...(values["chroma-python"] ? ["--chroma-python", resolve(values["chroma-python"])] : [])],
     { stdio: "inherit", cwd: temp, env: { ...process.env, MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
   const measured = JSON.parse(readFileSync(output));
