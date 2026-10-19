@@ -150,6 +150,17 @@ function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
   });
 }
 
+/** Hydrate a bounded semantic candidate list under the same visibility rules. */
+export function searchMemoryCandidatesByIds(db: Database, projectId: string, ids: string[], now: Date, includeHistory = false): MemorySearchCandidate[] {
+  if (!ids.length) return [];
+  const rows = db.prepare(`SELECT * FROM memories WHERE project_id = ?
+    AND id IN (${ids.map(() => "?").join(",")})
+    AND (expires_at IS NULL OR expires_at > ?)
+    AND (? = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))`)
+    .all(projectId, ...ids, now.toISOString(), Number(includeHistory)) as MemorySearchRow[];
+  return mapRows(rows);
+}
+
 export function searchMemoryCandidates(
   db: Database,
   projectId: string,

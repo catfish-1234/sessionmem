@@ -11,8 +11,9 @@ const { values } = parseArgs({ options: {
   competitor: { type: "string" }, source: { type: "string" }, output: { type: "string" },
   python: { type: "string", default: "python3" }, bun: { type: "string", default: "bun" },
   "model-dir": { type: "string" },
+  "chroma-python": { type: "string" },
 } });
-if (!["mem0", "claude-sqlite"].includes(values.competitor) || !values.source || !values.output) {
+if (!["mem0", "claude-sqlite", "claude-chroma"].includes(values.competitor) || !values.source || !values.output) {
   throw new Error("Required: --competitor mem0|claude-sqlite --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH]");
 }
 const root = new URL("../", import.meta.url);
@@ -36,7 +37,8 @@ try {
   const adapter = values.competitor === "mem0" ? "mem0.py" : "claude-sqlite.ts";
   execFileSync(values.competitor === "mem0" ? values.python : values.bun,
     [new URL(`benchmarks/adapters/${adapter}`, root).pathname, "--input", input, "--output", output, "--source", source,
-      ...(values["model-dir"] ? ["--model-dir", resolve(values["model-dir"])] : [])],
+      ...(values["model-dir"] ? ["--model-dir", resolve(values["model-dir"])] : []),
+      ...(values["chroma-python"] ? ["--chroma-python", resolve(values["chroma-python"])] : [])],
     { stdio: "inherit", env: { ...process.env, MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
   const measured = JSON.parse(readFileSync(output));
   const measuredRows = new Map(measured.questions.map(q => [q.id, q]));

@@ -2,6 +2,8 @@ import { userInfo } from "node:os";
 import type { Database } from "better-sqlite3";
 import { type z, ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
+import { loadLocalSemanticEmbedder, type LocalSemanticEmbedder } from "../embed/localSemanticEmbedder.js";
+import { indexSemanticMemories, searchSemanticMemories, type SemanticCandidate } from "../storage/semanticSearchRepo.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
 import { computeEffectiveImportance } from "../retrieve/score.js";
 import { formatStartupInjection } from "../injection/formatStartupInjection.js";
@@ -125,6 +127,8 @@ interface RetrievedMemoryDto extends MemoryDto {
 export interface CreateMemoryCoreServiceDeps {
   db: Database;
   embeddingDimension?: number;
+  /** Local inference test seam. null explicitly simulates unavailable optional packages. */
+  semanticEmbedder?: LocalSemanticEmbedder | null;
   /**
    * Local author identity stamped on every locally-authored write.
    * Defaults to the sanitized OS username; an explicit value is the test seam.
@@ -269,6 +273,19 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
   // Resolve the local author identity once per service instance.
   const localAuthor = resolveServiceUsername(deps.username);
   const policyConfigPath = deps.policyConfigPath ?? configFilePath();
+  let semanticWarningShown = false;
+  async function semanticEmbedder(): Promise<LocalSemanticEmbedder | null> {
+    if (!readPolicyConfig(policyConfigPath).semanticSearch) return null;
+    const embedder = deps.semanticEmbedder === undefined ? await loadLocalSemanticEmbedder() : deps.semanticEmbedder;
+    if (!embedder) semanticWarning();
+    return embedder;
+  }
+  function semanticWarning() {
+    if (!semanticWarningShown) {
+      console.error("Local semantic retrieval unavailable; using BM25.");
+      semanticWarningShown = true;
+    }
+  }
 
   /**
    * Resolve the effective redactionEnabled flag using precedence
@@ -442,6 +459,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         throw new DomainError("INTERNAL", "Memory insert did not persist");
       }
 
+      // Optional indexing never turns a successful durable capture into a failure.
+      try {
+        const embedder = await semanticEmbedder();
+        if (embedder) await indexSemanticMemories(db, parsed.projectId, embedder);
+      } catch { semanticWarning(); }
+
       return {
         ok: true,
         // Single-record write echo-back: return the FULL stored body (uncapped),
@@ -459,6 +482,12 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const parsed = parseRequest(retrieveMemoriesRequestSchema, request);
       const limit =
         parsed.depth === "deep" ? Math.min(parsed.limit * 2, DEEP_MODE_RETRIEVAL_CAP) : parsed.limit;
+      let semanticCandidates: SemanticCandidate[] | undefined;
+      try {
+        const embedder = await semanticEmbedder();
+        if (embedder) semanticCandidates = await searchSemanticMemories(db, parsed.projectId, parsed.query,
+          deps.now?.() ?? new Date(), parsed.includeHistory ?? false, embedder);
+      } catch { semanticWarning(); }
       const rankedAll = retrieveMemories({
         db,
         projectId: parsed.projectId,
@@ -466,6 +495,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         includeHistory: parsed.includeHistory,
         limit,
         now: deps.now?.(),
+        semanticCandidates,
       });
 
       // Optional tag filter: keep a memory only when its stored tags contain ALL

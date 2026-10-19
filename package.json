@@ -46,9 +46,12 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@huggingface/tokenizers": "0.2.0",
     "@types/better-sqlite3": "^9.6.0",
+    "@xcidos/genesis-memory-model": "0.1.0-alpha.1",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
+    "onnxruntime-node": "1.30.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
     "vitest": "^4.1.8"
@@ -59,5 +62,21 @@
   "bugs": {
     "url": "https://github.com/catfish-1234/sessionmem/issues"
   },
-  "homepage": "https://github.com/catfish-1234/sessionmem#readme"
+  "homepage": "https://github.com/catfish-1234/sessionmem#readme",
+  "peerDependencies": {
+    "@huggingface/tokenizers": "0.2.0",
+    "onnxruntime-node": "1.30.0",
+    "@xcidos/genesis-memory-model": "0.1.0-alpha.1"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/tokenizers": {
+      "optional": true
+    },
+    "onnxruntime-node": {
+      "optional": true
+    },
+    "@xcidos/genesis-memory-model": {
+      "optional": true
+    }
+  }
 }

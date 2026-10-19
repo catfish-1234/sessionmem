@@ -61,6 +61,7 @@ const policyConfigShape = {
   // built-in DEFAULT_INJECTION_CAP used by formatStartupInjection and the
   // `savings` analytics. Omitted by default so existing configs keep the default.
   injectionCap: z.number().int().min(100).max(10000).optional(),
+  semanticSearch: z.boolean().optional(),
   team: teamConfigShape.default({ enabled: false }),
 };
 
@@ -119,11 +120,13 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   const rd = s.retentionDays.safeParse(obj.retentionDays);
   const re = s.redactionEnabled.safeParse(obj.redactionEnabled);
   const ic = s.injectionCap.safeParse(obj.injectionCap);
+  const ss = s.semanticSearch.safeParse(obj.semanticSearch);
   const tm = s.team.safeParse(obj.team);
   return {
     retentionDays: rd.success ? rd.data : DEFAULT_POLICY_CONFIG.retentionDays,
     redactionEnabled: re.success ? re.data : DEFAULT_POLICY_CONFIG.redactionEnabled,
     injectionCap: ic.success ? ic.data : undefined,
+    semanticSearch: ss.success ? ss.data : undefined,
     team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
   };
 }
