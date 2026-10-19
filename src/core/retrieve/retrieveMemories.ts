@@ -134,11 +134,11 @@ export function retrieveMemories(
       // embedding whose length differs from the query vector (a stored
       // embedding from a different dimension) is treated the same way: passing
       // it to cosineSimilarity would return 0 and actively penalize the row.
-      const semantic = dense.get(candidate.id) ?? (
+      const semantic =
         candidate.embedding === null ||
         candidate.embedding.length !== queryVector.length
           ? 0.5
-          : cosineSimilarity(queryVector, candidate.embedding));
+          : cosineSimilarity(queryVector, candidate.embedding);
       // Hash cosine is useful for identical text, but adds noise to lexical
       // matches. Keep it as a diagnostic and as the no-match fallback only.
       const lexicalRelevance = maxLexicalScore > 0

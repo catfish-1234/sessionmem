@@ -15,11 +15,11 @@ function normalize(vector: number[], dimension: number): number[] {
 }
 
 /** Backfill from stored, already-redacted text; never from raw capture input. */
-export async function indexSemanticMemories(db: Database, projectId: string, embedder: LocalSemanticEmbedder): Promise<void> {
+export async function indexSemanticMemories(db: Database, projectId: string, embedder: LocalSemanticEmbedder, memoryId?: string): Promise<void> {
   const rows = db.prepare(`SELECT m.id, m.content FROM memories m
-    WHERE m.project_id = ? AND NOT EXISTS (SELECT 1 FROM semantic_embeddings s
+    WHERE m.project_id = ? AND (? IS NULL OR m.id = ?) AND NOT EXISTS (SELECT 1 FROM semantic_embeddings s
       WHERE s.memory_id = m.id AND s.model = ? AND s.dimension = ?)`)
-    .all(projectId, embedder.id, embedder.dimension) as Array<{ id: string; content: string }>;
+    .all(projectId, memoryId ?? null, memoryId ?? null, embedder.id, embedder.dimension) as Array<{ id: string; content: string }>;
   const insert = db.prepare(`INSERT OR REPLACE INTO semantic_embeddings(memory_id, model, dimension, vector)
     SELECT id, @model, @dimension, @vector FROM memories
     WHERE id = @id AND project_id = @project AND content = @content`);

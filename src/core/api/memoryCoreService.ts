@@ -462,7 +462,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // Optional indexing never turns a successful durable capture into a failure.
       try {
         const embedder = await semanticEmbedder();
-        if (embedder) await indexSemanticMemories(db, parsed.projectId, embedder);
+        if (embedder) await indexSemanticMemories(db, parsed.projectId, embedder, parsed.memoryId);
       } catch { semanticWarning(); }
 
       return {

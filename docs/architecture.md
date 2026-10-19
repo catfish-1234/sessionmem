@@ -77,7 +77,8 @@ With `semanticSearch=true` and the optional local packages installed, migration
 unions up to 50 exact-cosine semantic candidates with lexical candidates, blends
 normalized BM25 and positive cosine 2:1, and retains the existing entity and outer
 scoring weights. With no lexical match it uses cosine relevance. The `semantic`
-field reports learned cosine for dense candidates in this mode. The same project,
+field remains the legacy hash diagnostic, matching `embeddingDim` and
+`embeddingVersion`; learned cosine contributes to ranking. The same project,
 expiry, and supersession checks apply. Edits invalidate vectors and deletes
 cascade; missing vectors are backfilled from stored redacted content. This path
 does not change contradiction rules. Model loading/inference errors restore the
