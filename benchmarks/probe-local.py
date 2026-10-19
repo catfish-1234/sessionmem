@@ -8,7 +8,14 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-import urllib.request
+
+import requests
+
+
+PROBE_URLS = {
+    "gliner-weights": "https://huggingface.co/fastino/gliner2.5-base-v1/resolve/main/config.json",
+    "ollama-registry": "https://registry.ollama.ai/v2/",
+}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--sources", required=True)
@@ -36,11 +43,12 @@ with tempfile.TemporaryDirectory(prefix="memory-local-probes-") as temp:
         except Exception as error:
             results[name] = {"initialized": False, "error_type": type(error).__name__, "error": str(error)}
 
-for name, url in (("gliner-weights", "https://huggingface.co/fastino/gliner2.5-base-v1/resolve/main/config.json"),
-                  ("ollama-registry", "https://registry.ollama.ai/v2/")):
+for name, url in PROBE_URLS.items():
     try:
-        with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=15) as response:
-            results[name] = {"url": url, "status": response.status}
+        # Only probe the fixed HTTPS endpoints; do not follow redirects elsewhere.
+        with requests.head(url, timeout=15, allow_redirects=False) as response:
+            response.raise_for_status()
+            results[name] = {"url": url, "status": response.status_code}
     except Exception as error:
         results[name] = {"url": url, "error_type": type(error).__name__, "error": str(error)}
 
