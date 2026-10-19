@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -47,12 +48,26 @@ async def evaluate():
                           COGNEE_LOGS_DIR=temp + "/logs", DATA_ROOT_DIRECTORY=temp + "/data",
                           SYSTEM_ROOT_DIRECTORY=temp + "/system", ENABLE_BACKEND_ACCESS_CONTROL="false",
                           CACHING="false", TELEMETRY_DISABLED="1", LITELLM_LOCAL_MODEL_COST_MAP="True")
+        Path(temp + "/system/databases").mkdir(parents=True, exist_ok=True)
         model = None
         if args.variant == "cognee-chunks":
             model = LocalMiniLM(args.model_dir)
-            os.environ.update(EMBEDDING_PROVIDER="openai", EMBEDDING_MODEL="local-minilm",
+            # Populate the supported HF offline cache from the installed npm
+            # tokenizer, rather than allowing query-time tokenizer downloads.
+            hub = Path(temp) / "hf/hub"
+            repo = hub / "models--sentence-transformers--all-MiniLM-L6-v2"
+            revision = "c9745ed1d9f207416be6d2e6f8de32d1f16199bf"
+            snapshot = repo / "snapshots" / revision
+            snapshot.mkdir(parents=True)
+            (repo / "refs").mkdir()
+            (repo / "refs/main").write_text(revision)
+            shutil.copyfile(Path(args.model_dir) / "tokenizer.json", snapshot / "tokenizer.json")
+            (snapshot / "tokenizer_config.json").write_text(json.dumps({"model_max_length": 256}))
+            os.environ.update(EMBEDDING_PROVIDER="openai_compatible", EMBEDDING_MODEL="sentence-transformers/all-MiniLM-L6-v2",
                               EMBEDDING_DIMENSIONS="384", EMBEDDING_ENDPOINT=model.endpoint,
-                              EMBEDDING_API_KEY="local-unused", EMBEDDING_ENCODING_FORMAT="float")
+                              EMBEDDING_API_KEY="local-unused", EMBEDDING_ENCODING_FORMAT="float",
+                              GRAPH_DATABASE_PROVIDER="turso", HF_HUB_CACHE=str(hub), HF_HUB_OFFLINE="1",
+                              HF_HUB_DISABLE_TELEMETRY="1")
         attempts = block_external_network()
         if args.variant == "graphiti-episodes":
             from redislite.async_falkordb_client import AsyncFalkorDB
@@ -72,15 +87,26 @@ async def evaluate():
                     mapped[uid] = turn["id"]
                     await EpisodicNode(uuid=uid, name="", group_id=conversation["id"], source=EpisodeType.message,
                         source_description="", content=turn["content"], created_at=clock, valid_at=clock).save(driver)
+            stored, _, _ = await driver.execute_query("MATCH (e:Episodic) RETURN count(e) AS n")
+            if stored[0]["n"] != len(mapped):
+                raise RuntimeError("Incomplete Graphiti episode capture")
             capture_ms = (time.perf_counter() - start) * 1000
             for question in conversation["questions"]:
                 start = time.perf_counter()
-                hits, _ = await episode_search(driver, None, question["question"], [], [conversation["id"]],
+                # Each process owns exactly one conversation's graph. Leave the
+                # optional full-text group filter unset; isolation supplies scope.
+                hits, _ = await episode_search(driver, None, question["question"], [], None,
                     EpisodeSearchConfig(search_methods=[EpisodeSearchMethod.bm25], reranker=EpisodeReranker.rrf),
                     SearchFilters(), limit=5)
                 rows.append({"id": question["id"], "retrieved": [mapped[h.uuid] for h in hits],
                              "latency_ms": (time.perf_counter() - start) * 1000})
             await driver.close()
+            # The embedded server's async client needs explicit shutdown; its
+            # inherited synchronous destructor cannot await this coroutine.
+            try:
+                await client.client.shutdown(save=False)
+            except ConnectionError:
+                pass
         elif args.variant == "cognee-chunks":
             from cognee.modules.chunking.models.DocumentChunk import DocumentChunk
             from cognee.modules.data.processing.document_types.Document import Document
@@ -94,7 +120,7 @@ async def evaluate():
                     uid = uuid5(NAMESPACE_URL, turn["id"])
                     mapped[str(uid)] = turn["id"]
                     chunks.append(DocumentChunk(id=uid, text=turn["content"], chunk_size=len(turn["content"]),
-                        chunk_index=index, cut_type="raw-turn", is_part_of=document,
+                        chunk_index=index, cut_type="raw-turn", is_part_of=document, contains=[],
                         created_at=int(clock.timestamp() * 1000), updated_at=int(clock.timestamp() * 1000)))
             start = time.perf_counter()
             await add_data_points(chunks)

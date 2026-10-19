@@ -54,15 +54,17 @@ class LocalMiniLM:
                 if isinstance(texts, str):
                     texts = [texts]
                 vectors = []
+                token_count = 0
                 for text in texts:
                     encoded = tokenizer.encode(text)
+                    token_count += len(encoded.ids)
                     ids = np.array([encoded.ids], dtype=np.int64)
                     hidden = session.run(None, {"input_ids": ids, "attention_mask": np.ones_like(ids),
                                                "token_type_ids": np.zeros_like(ids)})[0]
                     vector = hidden.mean(axis=1)[0]
                     vector /= max(float(np.linalg.norm(vector)), 1e-12)
                     vectors.append(vector.tolist())
-                raw = json.dumps({"object": "list", "model": "local-minilm", "usage": {"prompt_tokens": 0, "total_tokens": 0},
+                raw = json.dumps({"object": "list", "model": "local-minilm", "usage": {"prompt_tokens": token_count, "total_tokens": token_count},
                     "data": [{"object": "embedding", "index": i, "embedding": v} for i, v in enumerate(vectors)]}).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
