@@ -7,14 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-18
+
 ### Added
 
+- Automatic transcript capture at login: per-user login services on macOS,
+  Linux, and Windows keep `sessionmem watch` running after install, so new
+  sessions are captured without a manual command. ([#54])
 - Optional local MiniLM retrieval complements FTS5 with learned semantic
   candidates. Installed model files are verified locally; unavailable inference
   falls back to BM25. The feature defaults off. See [setup](docs/local-semantic.md).
+  ([#55])
 - Pinned competitor source reviews, local raw-turn LoCoMo comparisons, complete
-  result archives, and per-question retrieval regressions. See
-  [measured comparison](COMPARISON.md).
+  result archives, and per-question retrieval regressions. Measured on LoCoMo:
+  hit rate 63.92% to 66.47%, precision 14.05% to 14.77%, recall 57.45% to
+  59.76%. See [measured comparison](COMPARISON.md). ([#55])
 
 ## [1.6.0] - 2026-10-18
 
@@ -132,7 +139,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.7.0]: https://github.com/catfish-1234/sessionmem/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/catfish-1234/sessionmem/compare/v1.5.0...v1.6.0
+[#54]: https://github.com/catfish-1234/sessionmem/pull/54
+[#55]: https://github.com/catfish-1234/sessionmem/pull/55
 [1.5.0]: https://github.com/catfish-1234/sessionmem/compare/679b8954f0b49f197985c40da47f181c00060cd9...v1.5.0
 [#43]: https://github.com/catfish-1234/sessionmem/pull/43
 [#44]: https://github.com/catfish-1234/sessionmem/pull/44
