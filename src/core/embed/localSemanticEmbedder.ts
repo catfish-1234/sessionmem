@@ -43,8 +43,9 @@ async function load(): Promise<LocalSemanticEmbedder> {
       const input = new ort.Tensor("int64", BigInt64Array.from(ids, BigInt), [1, ids.length]);
       const ones = new ort.Tensor("int64", new BigInt64Array(ids.length).fill(1n), [1, ids.length]);
       const zeros = new ort.Tensor("int64", new BigInt64Array(ids.length), [1, ids.length]);
-      const output = await session.run({ input_ids: input, attention_mask: ones, token_type_ids: zeros });
+      let output: Awaited<ReturnType<typeof session.run>> | undefined;
       try {
+        output = await session.run({ input_ids: input, attention_mask: ones, token_type_ids: zeros });
         const hidden = output.last_hidden_state.data as Float32Array;
         const vector = new Array<number>(384).fill(0);
         for (let token = 0; token < ids.length; token++) {
@@ -54,7 +55,7 @@ async function load(): Promise<LocalSemanticEmbedder> {
         return vector.map(v => v / (norm || 1));
       } finally {
         input.dispose(); ones.dispose(); zeros.dispose();
-        for (const tensor of Object.values(output)) tensor.dispose();
+        for (const tensor of Object.values(output ?? {})) tensor.dispose();
       }
     },
   };

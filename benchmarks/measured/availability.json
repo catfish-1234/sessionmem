@@ -1,0 +1,48 @@
+{
+  "command": [
+    "/workspace/work/cognee-venv/bin/python",
+    "benchmarks/probe-local.py",
+    "--sources",
+    "/workspace/work/competitors",
+    "--output",
+    "benchmarks/measured/availability.json"
+  ],
+  "harness_commit": "01c943609d2f127c3561932911d9f6b69549542c",
+  "source_commits": {
+    "graphiti": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e",
+    "zep-python": "980092a27003f3ae45b76581ee2568f0c5e2b727",
+    "cognee": "37f788bd287750e10d7610173e5332b3843f6ebd"
+  },
+  "versions": {
+    "graphiti-core": "0.31.1",
+    "zep-cloud": "4.0.0",
+    "cognee": "1.6.5"
+  },
+  "probes": {
+    "graphiti-default": {
+      "initialized": false,
+      "error_type": "OpenAIError",
+      "error": "Missing credentials. Please pass an `api_key`, `workload_identity`, `admin_api_key`, or set the `OPENAI_API_KEY` or `OPENAI_ADMIN_KEY` environment variable."
+    },
+    "zep-sdk": {
+      "initialized": false,
+      "error_type": "ApiError",
+      "error": "headers: None, status_code: None, body: The client must be instantiated be either passing in api_key or setting ZEP_API_KEY"
+    },
+    "cognee-gliner-runtime": {
+      "initialized": false,
+      "error_type": "KeylessExtractorNotInstalledError",
+      "error": "KeylessExtractorNotInstalledError: Cognify would extract the graph with the local GLiNER demo model, but its runtime (gliner2 + torch) is not installed and GLINER_AUTO_INSTALL is false. (Status code: 500) Fix: Install cognee with the GLiNER extra: pip install \"cognee[gliner]\" (or set LLM_API_KEY to extract with an LLM)."
+    },
+    "gliner-weights": {
+      "url": "https://huggingface.co/fastino/gliner2.5-base-v1/resolve/main/config.json",
+      "error_type": "URLError",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    "ollama-registry": {
+      "url": "https://registry.ollama.ai/v2/",
+      "error_type": "URLError",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    }
+  }
+}

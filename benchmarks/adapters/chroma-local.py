@@ -18,6 +18,18 @@ args, rest = parser.parse_known_args()
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 os.environ["HF_HUB_OFFLINE"] = "1"
 from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
+import onnxruntime as ort
+
+# Match the one-thread CPU inference setting used by the other local adapters.
+# Chroma does not expose this SessionOptions field through chroma-mcp settings.
+original_session = ort.InferenceSession
+def cpu_session(*args, **kwargs):
+    options = kwargs.get("sess_options") or ort.SessionOptions()
+    options.intra_op_num_threads = 1
+    options.inter_op_num_threads = 1
+    kwargs["sess_options"] = options
+    return original_session(*args, **kwargs)
+ort.InferenceSession = cpu_session
 
 cache = Path(args.cache_dir)
 target = cache / ONNXMiniLM_L6_V2.EXTRACTED_FOLDER_NAME
