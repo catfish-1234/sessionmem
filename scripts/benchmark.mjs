@@ -25,6 +25,8 @@ async function main() {
   }
   const topK = Number(values["top-k"]);
   if (!Number.isInteger(topK) || topK < 1 || topK > 100) throw new Error("--top-k must be an integer from 1 to 100");
+  if (values.semantic && values["semantic-unavailable"]) throw new Error("Choose one semantic mode");
+  const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   const offline = blockNetwork();
   const temp = mkdtempSync(join(tmpdir(), "sessionmem-locomo-"));
   try {
@@ -77,7 +79,7 @@ async function main() {
     for (const question of excluded) excludedCounts[question.excluded] = (excludedCounts[question.excluded] ?? 0) + 1;
     const report = {
       schema_version: 1,
-      source_commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+      source_commit: sourceCommit,
       command: ["npm", "run", "benchmark", "--", ...process.argv.slice(2)],
       dataset: { ...provenance, conversations: corpus.length, sessions: conversations.reduce((n, c) => n + c.sessions, 0),
         turns: conversations.reduce((n, c) => n + c.memories, 0), total_questions: rows.length + excluded.length },

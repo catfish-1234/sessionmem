@@ -25,6 +25,7 @@ const corpus = prepareCorpus(JSON.parse(raw));
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 const source = resolve(values.source);
 const sourceCommit = git("-C", source, "rev-parse", "HEAD");
+const harnessCommit = git("rev-parse", "HEAD");
 if (git("-C", source, "status", "--porcelain", "--untracked-files=no")) throw new Error("Competitor source must be unmodified");
 const temp = mkdtempSync(join(tmpdir(), "locomo-compare-"));
 try {
@@ -53,7 +54,7 @@ try {
   });
   if (rows.length !== measured.questions.length) throw new Error("Missing/extra question results");
   const report = { schema_version: 1, competitor: values.competitor,
-    source_commit: sourceCommit, harness_commit: git("rev-parse", "HEAD"),
+    source_commit: sourceCommit, harness_commit: harnessCommit,
     command: ["node", "scripts/compare.mjs", ...process.argv.slice(2)],
     dataset: provenance, configuration: { top_k: 5, capture: "raw dialogue turns", redaction: true },
     overall: aggregate(rows), by_category: Object.fromEntries([1, 2, 3, 4].map(cat => [CATEGORY_NAMES[cat], aggregate(rows.filter(q => q.category === cat))])),
