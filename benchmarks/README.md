@@ -21,7 +21,7 @@ npm run benchmark -- --semantic-unavailable --output benchmarks/results/locomo-f
 ```
 
 The build and evaluation work without network access or API keys after dependencies
-are installed. No model weights or additional dependencies are downloaded. The
+are installed. No weights or dependencies are downloaded during evaluation. The
 runner blocks HTTP, fetch, TCP/TLS, UDP, and DNS access before loading sessionmem.
 Any attempted network access fails the run, even if a fallback catches the error.
 Results are printed to stdout; `--output` additionally writes per-question JSON.
@@ -75,9 +75,10 @@ Capture timestamps and retrieval time are both pinned to
 `2026-01-01T00:00:00.000Z`. All turns therefore have equal recency regardless of
 ingestion order. Original conversation dates remain in the text for temporal
 questions. Retention is disabled; this benchmark does not test time decay.
-The production BM25 candidate/ranking code runs unchanged. The hash-based
-`deterministicEmbed` remains a diagnostic and no-match fallback. No semantic model
-or answer-aware ranking is substituted.
+The default runs the production BM25 candidate/ranking code. The hash-based
+`deterministicEmbed` remains a diagnostic and no-match fallback. `--semantic`
+adds the production learned candidate pool and hybrid ranking. Neither mode uses
+answers to select or rank memories.
 
 ## Metrics
 

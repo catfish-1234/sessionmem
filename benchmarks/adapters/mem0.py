@@ -24,6 +24,7 @@ args = parser.parse_args()
 sys.path.insert(0, args.source)
 os.environ["MEM0_TELEMETRY"] = "false"
 os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
 
 import numpy as np
 import onnxruntime as ort

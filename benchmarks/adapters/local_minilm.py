@@ -1,5 +1,6 @@
 """Evaluation-only local OpenAI-compatible embedding transport; no remote calls."""
 import json
+import os
 from pathlib import Path
 import socket
 import threading
@@ -34,6 +35,7 @@ def block_external_network():
 
 class LocalMiniLM:
     def __init__(self, model_dir):
+        os.environ["ORT_DISABLE_TELEMETRY"] = "1"
         import numpy as np
         import onnxruntime as ort
         from tokenizers import Tokenizer

@@ -3,7 +3,7 @@
 Reviewed on 2026-10-18. These are observations about the pinned source below,
 not measured quality claims. No competitor implementation or prompt was copied.
 Names of public APIs and standard retrieval algorithms identify approaches only.
-All four reviewed source trees declare Apache-2.0 at these commits. sessionmem
+The four OSS projects and the Zep Python SDK declare Apache-2.0 at these commits. sessionmem
 remains MIT; model and dataset licenses are separate.
 
 The sessionmem feature gaps below describe unchanged main

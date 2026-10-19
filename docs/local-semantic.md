@@ -20,6 +20,8 @@ from these installed packages; they never download a model, contact a model
 server, or send memory text over a network. Missing packages, checksum mismatches,
 unsupported native runtimes, and inference errors fall back to BM25 and emit one
 diagnostic per service instance. Restart after installing or repairing packages.
+Before loading ONNX Runtime, sessionmem sets the process-wide
+`ORT_DISABLE_TELEMETRY=1` to suppress its native POSIX telemetry uploader.
 The benchmark's `--semantic` mode instead fails if the model cannot load, to
 prevent accidentally publishing fallback scores as semantic results.
 

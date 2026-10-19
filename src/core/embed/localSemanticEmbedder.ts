@@ -28,6 +28,10 @@ async function load(): Promise<LocalSemanticEmbedder> {
       throw new Error("Local semantic model checksum mismatch");
     }
   }
+  // ORT 1.30 can initialize a native HTTP telemetry uploader on POSIX.
+  // Its full opt-out must be set before the native environment is created;
+  // JavaScript network guards cannot intercept native library sockets.
+  process.env.ORT_DISABLE_TELEMETRY = "1";
   const ort = await import("onnxruntime-node");
   const { Tokenizer } = await import("@huggingface/tokenizers");
   const tokenizer = new Tokenizer(JSON.parse(readFileSync(tokenizerPath, "utf8")), {});

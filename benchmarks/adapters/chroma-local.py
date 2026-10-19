@@ -17,6 +17,7 @@ parser.add_argument("--cache-dir", required=True)
 args, rest = parser.parse_known_args()
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ["ORT_DISABLE_TELEMETRY"] = "1"
 from chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2 import ONNXMiniLM_L6_V2
 import onnxruntime as ort
 
