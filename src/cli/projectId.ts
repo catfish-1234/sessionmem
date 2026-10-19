@@ -132,7 +132,7 @@ export function deriveProjectId(cwd = process.cwd()): string {
  */
 function canonicalDir(dir: string): string {
   try {
-    return realpathSync.native(dir);
+    return realpathSync(dir);
   } catch {
     return dir;
   }
