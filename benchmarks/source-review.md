@@ -6,6 +6,9 @@ Names of public APIs and standard retrieval algorithms identify approaches only.
 All four reviewed source trees declare Apache-2.0 at these commits. sessionmem
 remains MIT; model and dataset licenses are separate.
 
+The sessionmem feature gaps below describe unchanged main
+`c4ebced00784c77d2c926c625a3b196afe560b28`, before this PR's optional semantic path.
+
 ## claude-mem
 
 Source: [thedotmack/claude-mem at b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0](https://github.com/thedotmack/claude-mem/tree/b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0).

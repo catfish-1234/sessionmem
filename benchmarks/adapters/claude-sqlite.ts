@@ -18,6 +18,7 @@ const { SessionStore } = await import(pathToFileURL(`${values.source}/src/servic
 const { SessionSearch } = await import(pathToFileURL(`${values.source}/src/services/sqlite/SessionSearch.ts`).href);
 const corpus = JSON.parse(readFileSync(values.input!, "utf8"));
 const rows = [], captures = [];
+const strategies: Record<string, number> = {};
 let client: Client | undefined, ChromaSync, SearchOrchestrator;
 const cache = join(process.env.CLAUDE_MEM_DATA_DIR!, "model-cache");
 if (values["chroma-python"]) {
@@ -75,10 +76,17 @@ for (const conversation of corpus) {
     captures.push({ id: conversation.id, memories: turnIds.size, capture_ms: performance.now() - start });
     for (const question of conversation.questions) {
       const start = performance.now();
-      const result = orchestrator
-        ? (await orchestrator.search({ query: question.question, project: conversation.id, limit: 5,
-          orderBy: "relevance", searchType: "observations", ignoreDefaultRecencyWindow: true })).results.observations
-        : search.searchObservations(question.question, { project: conversation.id, limit: 5, orderBy: "relevance" });
+      let result;
+      if (orchestrator) {
+        const response = await orchestrator.search({ query: question.question, project: conversation.id, limit: 5,
+          orderBy: "relevance", searchType: "observations", ignoreDefaultRecencyWindow: true });
+        strategies[response.strategy] = (strategies[response.strategy] ?? 0) + 1;
+        if (!response.usedChroma) throw new Error("Configured Chroma evaluation silently fell back to SQLite");
+        result = response.results.observations;
+      } else {
+        result = search.searchObservations(question.question, { project: conversation.id, limit: 5, orderBy: "relevance" });
+        strategies.sqlite = (strategies.sqlite ?? 0) + 1;
+      }
       rows.push({ id: question.id, retrieved: result.map((r: { id: number }) => turnIds.get(r.id)), latency_ms: performance.now() - start });
     }
     console.error(`Finished ${conversation.id}`);
@@ -86,5 +94,5 @@ for (const conversation of corpus) {
 }
 offline.assertOffline();
 if (existsSync(join(cache, "external-network-attempts.txt"))) throw new Error("Chroma attempted external network access");
-writeFileSync(values.output!, JSON.stringify({ questions: rows, conversations: captures, runtime: { bun: Bun.version }, external_network_attempts: 0 }));
+writeFileSync(values.output!, JSON.stringify({ questions: rows, conversations: captures, query_strategies: strategies, runtime: { bun: Bun.version }, external_network_attempts: 0 }));
 } finally { await client?.close(); }
