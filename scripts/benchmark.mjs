@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { execFileSync } from "node:child_process";
 import { aggregate, captureConversation, recallConversation, prepareCorpus, CATEGORY_NAMES } from "../benchmarks/lib/evaluation.mjs";
 import { blockNetwork } from "../benchmarks/lib/offline.mjs";
 
@@ -15,13 +16,17 @@ async function main() {
     "top-k": { type: "string", default: "5" },
     output: { type: "string" },
     help: { type: "boolean", short: "h" },
+    semantic: { type: "boolean" },
+    "semantic-unavailable": { type: "boolean" },
   } });
   if (values.help) {
-    console.log("Usage: npm run benchmark -- [--top-k 5] [--output benchmarks/results/locomo.json]");
+    console.log("Usage: npm run benchmark -- [--top-k 5] [--semantic | --semantic-unavailable] [--output benchmarks/results/locomo.json]");
     return;
   }
   const topK = Number(values["top-k"]);
   if (!Number.isInteger(topK) || topK < 1 || topK > 100) throw new Error("--top-k must be an integer from 1 to 100");
+  if (values.semantic && values["semantic-unavailable"]) throw new Error("Choose one semantic mode");
+  const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   const offline = blockNetwork();
   const temp = mkdtempSync(join(tmpdir(), "sessionmem-locomo-"));
   try {
@@ -37,10 +42,19 @@ async function main() {
     const digest = createHash("sha256").update(raw).digest("hex");
     if (digest !== provenance.sha256) throw new Error("Corpus checksum does not match provenance.json");
     const corpus = prepareCorpus(JSON.parse(raw));
+    let semanticEmbedder;
+    const modelStart = performance.now();
+    if (values.semantic) {
+      const { loadLocalSemanticEmbedder } = await import("../dist/core/embed/localSemanticEmbedder.js");
+      semanticEmbedder = await loadLocalSemanticEmbedder();
+      if (!semanticEmbedder) throw new Error("Local semantic model unavailable; evaluation must not silently fall back");
+    }
+    if (values["semantic-unavailable"]) semanticEmbedder = null;
+    const model_load_ms = performance.now() - modelStart;
     // Never read the user's config or touch their database. Equal capture times
     // isolate retrieval from import order and wall-clock recency effects.
     const policyConfigPath = join(temp, "config.json");
-    writeFileSync(policyConfigPath, JSON.stringify({ retentionDays: 0, redactionEnabled: true, team: { enabled: false } }));
+    writeFileSync(policyConfigPath, JSON.stringify({ retentionDays: 0, redactionEnabled: true, team: { enabled: false }, semanticSearch: Boolean(values.semantic || values["semantic-unavailable"]) }));
     const rows = [], excluded = [], conversations = [];
     for (const conversation of corpus) {
       const db = openDb();
@@ -49,6 +63,7 @@ async function main() {
           db, username: "benchmark", policyConfigPath,
           policyConfig: { localOnly: true, allowExternalProviders: false },
           now: () => new Date(CAPTURE_CLOCK),
+          semanticEmbedder,
         });
         const start = performance.now();
         const memories = await captureConversation(service, conversation);
@@ -64,10 +79,13 @@ async function main() {
     for (const question of excluded) excludedCounts[question.excluded] = (excludedCounts[question.excluded] ?? 0) + 1;
     const report = {
       schema_version: 1,
+      source_commit: sourceCommit,
+      command: ["npm", "run", "benchmark", "--", ...process.argv.slice(2)],
       dataset: { ...provenance, conversations: corpus.length, sessions: conversations.reduce((n, c) => n + c.sessions, 0),
         turns: conversations.reduce((n, c) => n + c.memories, 0), total_questions: rows.length + excluded.length },
       configuration: { top_k: topK, capture_clock: CAPTURE_CLOCK, importance: 5, mode: "on-demand", depth: "default",
-        capture_api: "storeMemory", recall_api: "retrieveMemories", embedding: "deterministicEmbed", network_attempts: 0 },
+        capture_api: "storeMemory", recall_api: "retrieveMemories", embedding: semanticEmbedder?.id ?? "deterministicEmbed",
+        semantic_requested: Boolean(values.semantic || values["semantic-unavailable"]), model_load_ms, network_attempts: 0 },
       runtime: { node: process.version, platform: process.platform, arch: process.arch,
         sessionmem_version: JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version },
       overall: aggregate(rows),

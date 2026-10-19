@@ -1,5 +1,6 @@
 import type { Database } from "better-sqlite3";
 import { entityOverlap } from "../storage/knowledgeRepo.js";
+import type { SemanticCandidate } from "../storage/semanticSearchRepo.js";
 
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { decayOldBoosts } from "./decay.js";
@@ -26,6 +27,7 @@ export interface RetrieveMemoriesInput {
   limit?: number;
   now?: Date;
   includeHistory?: boolean;
+  semanticCandidates?: SemanticCandidate[];
 }
 
 export interface RetrievedMemoryCandidate {
@@ -100,13 +102,19 @@ export function retrieveMemories(
 
   // FTS5 retrieves up to 50 BM25 matches; sparse matches retain the existing
   // recency/importance fallback. The public request schema validates queryText.
-  const candidates = searchMemoryCandidatesFTS(
+  const lexicalCandidates = searchMemoryCandidatesFTS(
     input.db,
     input.projectId,
     queryText,
     now,
     input.includeHistory,
   );
+  const candidates = [...lexicalCandidates];
+  const ids = new Set(candidates.map(c => c.id));
+  for (const { candidate } of input.semanticCandidates ?? []) {
+    if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
+  }
+  const dense = new Map(input.semanticCandidates?.map(c => [c.candidate.id, c.similarity]));
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
@@ -133,9 +141,16 @@ export function retrieveMemories(
           : cosineSimilarity(queryVector, candidate.embedding);
       // Hash cosine is useful for identical text, but adds noise to lexical
       // matches. Keep it as a diagnostic and as the no-match fallback only.
-      const baseRelevance = maxLexicalScore > 0
+      const lexicalRelevance = maxLexicalScore > 0
         ? candidate.lexical_score / maxLexicalScore
         : semantic;
+      // The local dense variant was weaker alone. Preserve lexical dominance
+      // while admitting candidates absent from FTS, using a fixed 2:1 blend.
+      const baseRelevance = input.semanticCandidates?.length
+        ? maxLexicalScore > 0
+          ? (2 * lexicalRelevance + Math.max(0, dense.get(candidate.id) ?? 0)) / 3
+          : Math.max(0, dense.get(candidate.id) ?? 0)
+        : lexicalRelevance;
       const relevance = overlap.size > 0
         ? (1 - ENTITY_RELEVANCE_WEIGHT) * baseRelevance + ENTITY_RELEVANCE_WEIGHT * (overlap.get(candidate.id) ?? 0)
         : baseRelevance;

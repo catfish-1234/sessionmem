@@ -1,0 +1,16 @@
+{
+  "source_commit": "72920732f79a47d0568757e9d48eaad7e29e61aa",
+  "command": "strace -f -e trace=network -o /workspace/work/semantic-network.trace node --input-type=module -e 'const {loadLocalSemanticEmbedder}=await import(\"./dist/core/embed/localSemanticEmbedder.js\"); const e=await loadLocalSemanticEmbedder(); if(!e)throw Error(\"unavailable\"); const v=await e.embed(\"A motor car was repaired.\"); if(v.length!==384)throw Error(\"dimension\"); console.log(JSON.stringify({dimension:v.length,telemetry:process.env.ORT_DISABLE_TELEMETRY}));' > /workspace/work/native-offline-run.log 2>&1",
+  "scope": "Fresh process: local model load and one embedding; not a trace of the complete LoCoMo run",
+  "trace": "40291 +++ exited with 0 +++\n40290 +++ exited with 0 +++\n40289 +++ exited with 0 +++\n40292 +++ exited with 0 +++\n40288 +++ exited with 0 +++\n40293 +++ exited with 0 +++\n40287 +++ exited with 0 +++\n",
+  "stdout": "{\"dimension\":384,\"telemetry\":\"1\"}\n",
+  "network_syscalls": 0,
+  "runtime_source_review": {
+    "repository": "https://github.com/microsoft/onnxruntime",
+    "commit": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+    "paths": [
+      "onnxruntime/core/platform/posix/telemetry.cc",
+      "onnxruntime/core/platform/telemetry_environment.h"
+    ]
+  }
+}

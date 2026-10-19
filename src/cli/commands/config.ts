@@ -70,6 +70,7 @@ const CONFIG_KEYS: Record<string, ConfigKeyDef> = {
   retentionDays: { field: "retentionDays", coerce: coerceRetentionDays },
   redactionEnabled: { field: "redactionEnabled", coerce: coerceBool },
   injectionCap: { field: "injectionCap", coerce: coerceInjectionCap },
+  semanticSearch: { field: "semanticSearch", coerce: coerceBool },
 };
 
 function resolvePath(options?: ConfigCommandOptions): string {

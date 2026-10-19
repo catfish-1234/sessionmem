@@ -29,6 +29,12 @@ WITH sessionmem:
 
 `sessionmem` is an MCP server that stores decisions, warnings, and project context across sessions. Claude Code hooks capture supported tool events and load relevant memories automatically. Other hosts use its MCP tools and installed instructions; session automation depends on the host. It works with Claude Code, Cursor, Cline, Codex, Windsurf, and other [MCP](https://modelcontextprotocol.io) hosts.
 
+Default retrieval uses SQLite FTS5 BM25 and entity overlap. An optional
+[local MiniLM model](docs/local-semantic.md) adds semantic candidates. Weights are
+installed separately; queries make no network calls and fall back to BM25 when
+local inference is unavailable. See [measured comparisons](COMPARISON.md) for
+quality gains, missed questions, and latency costs.
+
 By default, everything stays on your machine. You don't need an account or a cloud service. Data only leaves your computer if you enable sharing or cloud summarization.
 
 ---

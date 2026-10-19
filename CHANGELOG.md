@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Optional local MiniLM retrieval complements FTS5 with learned semantic
+  candidates. Installed model files are verified locally; unavailable inference
+  falls back to BM25. The feature defaults off. See [setup](docs/local-semantic.md).
+- Pinned competitor source reviews, local raw-turn LoCoMo comparisons, complete
+  result archives, and per-question retrieval regressions. See
+  [measured comparison](COMPARISON.md).
+
 ## [1.6.0] - 2026-10-18
 
 ### Added

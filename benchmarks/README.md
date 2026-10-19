@@ -16,13 +16,30 @@ npm run build
 npm run benchmark
 npm run benchmark -- --output benchmarks/results/locomo.json
 npm run benchmark -- --top-k 10 --output benchmarks/results/locomo-k10.json
+npm run benchmark -- --semantic --output benchmarks/results/locomo-semantic.json
+npm run benchmark -- --semantic-unavailable --output benchmarks/results/locomo-fallback.json
 ```
 
 The build and evaluation work without network access or API keys after dependencies
-are installed. No model weights or additional dependencies are downloaded. The
+are installed. No weights or dependencies are downloaded during evaluation. The
 runner blocks HTTP, fetch, TCP/TLS, UDP, and DNS access before loading sessionmem.
 Any attempted network access fails the run, even if a fallback catches the error.
 Results are printed to stdout; `--output` additionally writes per-question JSON.
+
+The default command uses no learned model. `--semantic` uses the optional local
+packages described in [local semantic setup](../docs/local-semantic.md), and
+fails if they cannot load. The model is initialized before capture; capture
+includes embedding/indexing, and per-query timing includes query inference and
+local search. Model load time is recorded separately. `--semantic-unavailable`
+enables the feature with an unavailable provider to exercise fallback. Its
+retrieved IDs and quality should equal default BM25. No query-time downloads are
+allowed in any mode. For developer installs use
+`ONNXRUNTIME_NODE_INSTALL=skip npm ci` to skip optional CUDA binaries.
+
+The [source review](source-review.md), [head-to-head results](../COMPARISON.md),
+and [measured artifacts](measured/) distinguish raw-turn adapters from complete
+capture/graph/answer pipelines. The same `prepareCorpus`, `scoreQuestion` and
+`aggregate` functions score every adapter. No vendor-published scores are mixed in.
 `benchmarks/results/` is ignored by Git. API errors, bad options, and checksum
 mismatches produce a nonzero exit status; low retrieval scores are valid results.
 
@@ -58,9 +75,10 @@ Capture timestamps and retrieval time are both pinned to
 `2026-01-01T00:00:00.000Z`. All turns therefore have equal recency regardless of
 ingestion order. Original conversation dates remain in the text for temporal
 questions. Retention is disabled; this benchmark does not test time decay.
-The production BM25 candidate/ranking code runs unchanged. The hash-based
-`deterministicEmbed` remains a diagnostic and no-match fallback. No semantic model
-or answer-aware ranking is substituted.
+The default runs the production BM25 candidate/ranking code. The hash-based
+`deterministicEmbed` remains a diagnostic and no-match fallback. `--semantic`
+adds the production learned candidate pool and hybrid ranking. Neither mode uses
+answers to select or rank memories.
 
 ## Metrics
 
