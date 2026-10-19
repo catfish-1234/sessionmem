@@ -14,7 +14,7 @@ const { values } = parseArgs({ options: {
   "chroma-python": { type: "string" },
 } });
 if (!["mem0", "claude-sqlite", "claude-chroma", "graphiti-episodes", "cognee-chunks"].includes(values.competitor) || !values.source || !values.output) {
-  throw new Error("Required: --competitor mem0|claude-sqlite|claude-chroma --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH] [--chroma-python PATH]");
+  throw new Error("Required: --competitor mem0|claude-sqlite|claude-chroma|graphiti-episodes|cognee-chunks --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH] [--chroma-python PATH]");
 }
 if (values.competitor === "claude-chroma" && (!values["chroma-python"] || !values["model-dir"])) throw new Error("Chroma requires --chroma-python and --model-dir");
 const root = new URL("../", import.meta.url);
@@ -27,6 +27,17 @@ const source = resolve(values.source);
 const sourceCommit = git("-C", source, "rev-parse", "HEAD");
 const harnessCommit = git("rev-parse", "HEAD");
 if (git("-C", source, "status", "--porcelain", "--untracked-files=no")) throw new Error("Competitor source must be unmodified");
+const modelFiles = {};
+if (values["model-dir"]) {
+  for (const [file, expected] of Object.entries({
+    "onnx/model.onnx": "6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452",
+    "tokenizer.json": "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+  })) {
+    const digest = createHash("sha256").update(readFileSync(join(resolve(values["model-dir"]), file))).digest("hex");
+    if (digest !== expected) throw new Error(`Unexpected local model file: ${file}`);
+    modelFiles[file] = digest;
+  }
+}
 const temp = mkdtempSync(join(tmpdir(), "locomo-compare-"));
 try {
   const input = join(temp, "input.json"), output = join(temp, "output.json");
@@ -47,11 +58,13 @@ try {
     { stdio: "inherit", cwd: temp, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
   const measured = JSON.parse(readFileSync(output));
   const measuredRows = new Map(measured.questions.map(q => [q.id, q]));
+  if (measuredRows.size !== measured.questions.length) throw new Error("Duplicate question results");
   const rows = corpus.flatMap(c => {
     const allowed = new Set(c.sessions.flatMap(s => s.turns.map(t => t.id)));
     return c.questions.filter(q => !q.excluded).map(q => {
       const result = measuredRows.get(q.id);
-      if (!result || result.retrieved.length > 5 || result.retrieved.some(id => !allowed.has(id)) || !Number.isFinite(result.latency_ms)) throw new Error(`Invalid result: ${q.id}`);
+      if (!result || result.retrieved.length > 5 || new Set(result.retrieved).size !== result.retrieved.length ||
+          result.retrieved.some(id => !allowed.has(id)) || !Number.isFinite(result.latency_ms) || result.latency_ms < 0) throw new Error(`Invalid result: ${q.id}`);
       return { ...q, ...result, ...scoreQuestion(q.evidence, result.retrieved) };
     });
   });
@@ -59,7 +72,8 @@ try {
   const report = { schema_version: 1, competitor: values.competitor,
     source_commit: sourceCommit, harness_commit: harnessCommit,
     command: ["node", "scripts/compare.mjs", ...process.argv.slice(2)],
-    dataset: provenance, configuration: { top_k: 5, capture: "raw dialogue turns", redaction: true },
+    dataset: provenance, configuration: { top_k: 5, capture: "raw dialogue turns", redaction: true,
+      model_files: modelFiles, native_onnx_telemetry_disabled: true },
     overall: aggregate(rows), by_category: Object.fromEntries([1, 2, 3, 4].map(cat => [CATEGORY_NAMES[cat], aggregate(rows.filter(q => q.category === cat))])),
     ...measured, questions: rows,
     excluded_questions: corpus.flatMap(c => c.questions.filter(q => q.excluded)),
