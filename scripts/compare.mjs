@@ -55,7 +55,7 @@ try {
       ...(values["model-dir"] ? ["--model-dir", resolve(values["model-dir"])] : []),
       ...(component ? ["--variant", values.competitor] : []),
       ...(values["chroma-python"] ? ["--chroma-python", resolve(values["chroma-python"])] : [])],
-    { stdio: "inherit", cwd: temp, env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1", MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
+    { stdio: "inherit", cwd: temp, env: { ...process.env, ORT_DISABLE_TELEMETRY: "1", PYTHONDONTWRITEBYTECODE: "1", MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
   const measured = JSON.parse(readFileSync(output));
   const measuredRows = new Map(measured.questions.map(q => [q.id, q]));
   if (measuredRows.size !== measured.questions.length) throw new Error("Duplicate question results");
