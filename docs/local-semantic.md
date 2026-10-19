@@ -36,8 +36,9 @@ and the package's provenance README. No competitor code or prompt is included.
 
 Learned vectors are a separate SQLite BLOB index, keyed by memory and complete
 model/tokenizer/pooling version. Content edits invalidate vectors; deletes cascade.
-Only stored, already-redacted text is embedded. Capture through `storeMemory`
-indexes it immediately. Existing memories and other write paths are backfilled
+Only stored text is embedded, after the configured capture redaction policy.
+Capture through `storeMemory` indexes it immediately. Existing memories are
+embedded as stored; other write paths are backfilled
 on the next semantic query, so the first query on a large existing store can be
 slow. Model initialization and indexing cost are distinct from warm retrieval.
 

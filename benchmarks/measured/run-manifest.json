@@ -1,0 +1,124 @@
+{
+  "runs": [
+    {
+      "artifact": "main.json.gz",
+      "source_commit": "c4ebced00784c77d2c926c625a3b196afe560b28",
+      "harness_commit": null,
+      "command": "npm run build && npm run benchmark -- --output /workspace/work/locomo-main-before.json",
+      "metadata_origin": "checkout and recorded shell command"
+    },
+    {
+      "artifact": "main-final.json.gz",
+      "source_commit": "c4ebced00784c77d2c926c625a3b196afe560b28",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --output /workspace/work/locomo-main-final.json",
+      "metadata_origin": "checkout and recorded shell command"
+    },
+    {
+      "artifact": "claude-sqlite.json.gz",
+      "source_commit": "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0",
+      "harness_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "command": "node scripts/compare.mjs --competitor claude-sqlite --source /workspace/work/competitors/claude-mem --bun /workspace/work/tools/node_modules/@oven/bun-linux-x64/bin/bun --output benchmarks/measured/claude-sqlite.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "claude-chroma.json.gz",
+      "source_commit": "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0",
+      "harness_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "command": "node scripts/compare.mjs --competitor claude-chroma --source /workspace/work/competitors/claude-mem --bun /workspace/work/tools/node_modules/@oven/bun-linux-x64/bin/bun --chroma-python /workspace/work/chroma-venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/claude-chroma.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "mem0-faiss.json.gz",
+      "source_commit": "0724291bd864cf807e88ee8981c8226644e8fb42",
+      "harness_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "command": "node scripts/compare.mjs --competitor mem0 --source /workspace/work/competitors/mem0 --python /workspace/work/venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/mem0-faiss.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "graphiti-episodes.json.gz",
+      "source_commit": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e",
+      "harness_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "command": "node scripts/compare.mjs --competitor graphiti-episodes --source /workspace/work/competitors/graphiti --python /workspace/work/probes-venv/bin/python --output benchmarks/measured/graphiti-episodes.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "cognee-chunks.json.gz",
+      "source_commit": "37f788bd287750e10d7610173e5332b3843f6ebd",
+      "harness_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "command": "node scripts/compare.mjs --competitor cognee-chunks --source /workspace/work/competitors/cognee --python /workspace/work/cognee-venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/cognee-chunks.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "hybrid-final.json.gz",
+      "source_commit": "72920732f79a47d0568757e9d48eaad7e29e61aa",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --semantic --output benchmarks/measured/hybrid-final.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "fallback.json.gz",
+      "source_commit": "bfc2777b07cdcda13f8578b5ffcf21f8be79d319",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --semantic-unavailable --output benchmarks/measured/fallback.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "hybrid-initial.json.gz",
+      "source_commit": "01c943609d2f127c3561932911d9f6b69549542c",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --semantic --output benchmarks/measured/hybrid-initial.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "hybrid-before-telemetry-optout.json.gz",
+      "source_commit": "18cd50c9fe32e15c81dcb853b65bb2266dfaa895",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --semantic --output benchmarks/measured/hybrid-final.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "main-lockfile-contended.json.gz",
+      "source_commit": "c4ebced00784c77d2c926c625a3b196afe560b28",
+      "harness_commit": null,
+      "command": "npm run benchmark -- --output /workspace/work/locomo-main-lockfile.json",
+      "metadata_origin": "checkout and recorded shell command"
+    },
+    {
+      "artifact": "claude-sqlite-initial.json.gz",
+      "source_commit": "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0",
+      "harness_commit": "68533df64518ed22241072cd6fe000d6258adfa6",
+      "command": "node scripts/compare.mjs --competitor claude-sqlite --source /workspace/work/competitors/claude-mem --bun /workspace/work/tools/node_modules/@oven/bun-linux-x64/bin/bun --output benchmarks/measured/claude-sqlite.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "claude-chroma-initial.json.gz",
+      "source_commit": "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0",
+      "harness_commit": "894100b68b633a551d18520650fbe1469bf04ee0",
+      "command": "node scripts/compare.mjs --competitor claude-chroma --source /workspace/work/competitors/claude-mem --bun /workspace/work/tools/node_modules/@oven/bun-linux-x64/bin/bun --chroma-python /workspace/work/chroma-venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/claude-chroma.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "mem0-faiss-initial.json.gz",
+      "source_commit": "0724291bd864cf807e88ee8981c8226644e8fb42",
+      "harness_commit": "3b26b6184c1196cb8ec60c6d6ee84a794d42665a",
+      "command": "node scripts/compare.mjs --competitor mem0 --source /workspace/work/competitors/mem0 --python /workspace/work/venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/mem0-faiss.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "graphiti-episodes-initial.json.gz",
+      "source_commit": "417c3a125ae3ac53c19b8e53fffaccf3e665a88e",
+      "harness_commit": "2e95d2a83f38b5ce1c0adba414f4b0491356d7df",
+      "command": "node scripts/compare.mjs --competitor graphiti-episodes --source /workspace/work/competitors/graphiti --python /workspace/work/probes-venv/bin/python --output benchmarks/measured/graphiti-episodes.json",
+      "metadata_origin": "original report"
+    },
+    {
+      "artifact": "cognee-chunks-initial.json.gz",
+      "source_commit": "37f788bd287750e10d7610173e5332b3843f6ebd",
+      "harness_commit": "2771927f8c82843c689864413b93110a7bed29b9",
+      "command": "node scripts/compare.mjs --competitor cognee-chunks --source /workspace/work/competitors/cognee --python /workspace/work/cognee-venv/bin/python --model-dir /workspace/work/embeddings/minilm/package --output benchmarks/measured/cognee-chunks.json",
+      "metadata_origin": "original report"
+    }
+  ],
+  "summary_command": "node scripts/summarize-comparison.mjs benchmarks/measured/main.json.gz benchmarks/measured/main-final.json.gz benchmarks/measured/claude-sqlite.json.gz benchmarks/measured/claude-chroma.json.gz benchmarks/measured/mem0-faiss.json.gz benchmarks/measured/graphiti-episodes.json.gz benchmarks/measured/cognee-chunks.json.gz benchmarks/measured/fallback.json.gz benchmarks/measured/hybrid-initial.json.gz benchmarks/measured/hybrid-before-telemetry-optout.json.gz benchmarks/measured/main-lockfile-contended.json.gz benchmarks/measured/claude-sqlite-initial.json.gz benchmarks/measured/claude-chroma-initial.json.gz benchmarks/measured/mem0-faiss-initial.json.gz benchmarks/measured/graphiti-episodes-initial.json.gz benchmarks/measured/cognee-chunks-initial.json.gz benchmarks/measured/hybrid-final.json.gz"
+}

@@ -14,7 +14,7 @@ function normalize(vector: number[], dimension: number): number[] {
   return vector.map(v => v / norm);
 }
 
-/** Backfill from stored, already-redacted text; never from raw capture input. */
+/** Backfill from stored text after normal capture policy; never raw capture input. */
 export async function indexSemanticMemories(db: Database, projectId: string, embedder: LocalSemanticEmbedder, memoryId?: string): Promise<void> {
   const rows = db.prepare(`SELECT m.id, m.content FROM memories m
     WHERE m.project_id = ? AND (? IS NULL OR m.id = ?) AND NOT EXISTS (SELECT 1 FROM semantic_embeddings s

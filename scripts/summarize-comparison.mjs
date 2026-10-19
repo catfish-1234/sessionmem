@@ -1,5 +1,7 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { basename } from "node:path";
 import { gunzipSync } from "node:zlib";
+import { scoreQuestion } from "../benchmarks/lib/evaluation.mjs";
 
 const paths = process.argv.slice(2);
 if (!paths.length) throw new Error("Usage: node scripts/summarize-comparison.mjs REPORT.json[.gz] ...");
@@ -9,20 +11,27 @@ const reports = paths.map(path => {
 });
 const base = reports[0].report;
 const baseline = new Map(base.questions.map(q => [q.id, q]));
+const manifestPath = "benchmarks/measured/run-manifest.json";
+const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath)).runs : [];
 const summary = reports.map(({ path, report }) => {
   if (report.dataset.sha256 !== base.dataset.sha256 || report.questions.length !== baseline.size ||
       new Set(report.questions.map(q => q.id)).size !== baseline.size) throw new Error(`Incomparable corpus/questions: ${path}`);
   let recovered = 0, lost = 0, improvedRecall = 0, regressedRecall = 0;
   for (const row of report.questions) {
     const before = baseline.get(row.id);
-    if (!before || row.retrieved.length > 5) throw new Error(`Invalid question: ${row.id}`);
+    if (!before || row.retrieved.length > 5 || new Set(row.retrieved).size !== row.retrieved.length) throw new Error(`Invalid question: ${row.id}`);
+    const expected = scoreQuestion(before.evidence, row.retrieved);
+    for (const key of ["hit", "precision", "recall", "all_evidence"]) {
+      if (row[key] !== expected[key]) throw new Error(`Invalid score ${key}: ${path} ${row.id}`);
+    }
     if (row.hit && !before.hit) recovered++;
     if (!row.hit && before.hit) lost++;
     if (row.recall > before.recall) improvedRecall++;
     if (row.recall < before.recall) regressedRecall++;
   }
-  return { path, source_commit: report.source_commit ?? null, harness_commit: report.harness_commit ?? null,
-    command: report.command ?? null, configuration: report.configuration, overall: report.overall,
+  const recorded = manifest.find(r => r.artifact === basename(path));
+  return { path, source_commit: report.source_commit ?? recorded?.source_commit ?? null, harness_commit: report.harness_commit ?? null,
+    command: report.command ?? recorded?.command ?? null, configuration: report.configuration, overall: report.overall,
     by_category: report.by_category, paired_vs_first: { recovered_hits: recovered, lost_hits: lost,
       improved_recall_questions: improvedRecall, regressed_recall_questions: regressedRecall } };
 });

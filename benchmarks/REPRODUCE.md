@@ -7,11 +7,16 @@ ordinary gzip-compressed JSON, with complete per-question evidence, results and
 timings. `gzip -dc FILE.json.gz` reads one without modifying it.
 
 The measured environment was Linux x64, Node 24.19.0, Python 3.12.14, Bun 1.4.3,
-with a two-CPU quota and 8 GiB memory limit. Local neural inference used one CPU
+on Intel Xeon Platinum 8573C, three visible CPUs with a two-CPU quota
+(`cpu.max = 200000 100000`) and 8 GiB memory limit. Local neural inference used one CPU
 thread. Timing is a single pass in original question order, without warmup
 queries. Model startup and index construction happen before retrieval timing;
 sessionmem records model load and capture times separately. Runtime/library
 versions are pinned in the lockfile and the `measured/*-requirements.txt` files.
+The first main run used the workspace's preprovisioned dependency tree, before
+the optional packages normalized it to the lockfile. The later quiet main run
+uses the same installed tree as the final hybrid and reproduces every retrieved
+ID and quality score. Its latency is reported separately from the first run.
 
 ## Provisioning
 
@@ -56,6 +61,11 @@ Package installation may use the network. Evaluation uses no paid keys or model
 services. `local-unused` is a placeholder accepted only by the loopback embedding
 server, which runs the actual local ONNX model. Python adapters reject external
 connections; the Node adapter and sessionmem runner also block network APIs.
+Final repeats additionally set `ORT_DISABLE_TELEMETRY=1` before native inference
+initialization. Application guards do not intercept native sockets. The separate
+[native smoke trace](measured/native-offline.json) records model loading and one
+embedding with zero network system calls; it is not a trace of every evaluation
+query. Initial reports predate the explicit native opt-out and remain archived.
 
 ## What each adapter measures
 

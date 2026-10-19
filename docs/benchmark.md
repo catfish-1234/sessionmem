@@ -5,6 +5,15 @@
 [benchmarks/README.md](../benchmarks/README.md) for the corpus license, selection
 rules, metric definitions, and detailed reproduction instructions.
 
+## Local semantic and competitor comparison
+
+The [measured comparison](../COMPARISON.md) records a new unchanged-main run,
+local raw-turn retrieval variants from claude-mem, Mem0 OSS, Graphiti and cognee,
+and the optional MiniLM hybrid. It includes exact commands and commits, complete
+per-question archives, latency costs and regressions. These component scores do
+not evaluate full capture/graph/answer pipelines. The comparisons below are
+earlier changes on earlier commits; their timings are not the new baseline.
+
 ## Entity overlap comparison
 
 The baseline was run first on current main at `81f987c`. A fixed 10% entity
