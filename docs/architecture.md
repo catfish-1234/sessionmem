@@ -70,7 +70,18 @@ When an agent or `sessionmem search` submits a query, the core engine searches t
 
 The ranker divides each positive BM25 score by the best score for that query. If the query contains known entity names in this project, relevance is `0.90 * base relevance + 0.10 * entity overlap`. Overlap is the fraction of distinct matched query names linked to the candidate memory; names are matched as literal token sequences (up to eight tokens), including lowercase questions. With no known query entities, relevance is unchanged. This reranks the existing candidates; it does not expand the FTS candidate pool or traverse relations. The outer relevance, recency, and importance weights stay 0.60, 0.25, and 0.15. Sparse lexical matches retain the recency/importance fallback union. If there are no lexical matches, base relevance uses the previous hash-vector ranking. Project scope and expiry checks apply to both paths. Automatic migrations preserve memory bodies and IDs.
 
-Existing public request fields and all response fields are unchanged; `includeHistory` is an optional addition. The `semantic` field still reports hash cosine similarity. The legacy `score.raw.semantic` and `score.weighted.semantic` fields carry the relevance component used for ranking, including entity overlap when query entities match. Scores are relative to the current query's candidates, not calibrated probabilities. Retrieval needs no API keys, downloaded models, or new dependencies.
+Existing public request fields and all response fields are unchanged; `includeHistory` is an optional addition. With default retrieval, the `semantic` field reports hash cosine similarity. The legacy `score.raw.semantic` and `score.weighted.semantic` fields carry the relevance component used for ranking, including entity overlap when query entities match. Scores are relative to the current query's candidates, not calibrated probabilities. Default retrieval needs no API keys, downloaded models, or new dependencies.
+
+With `semanticSearch=true` and the optional local packages installed, migration
+016 stores versioned learned vectors separately from hash embeddings. Retrieval
+unions up to 50 exact-cosine semantic candidates with lexical candidates, blends
+normalized BM25 and positive cosine 2:1, and retains the existing entity and outer
+scoring weights. With no lexical match it uses cosine relevance. The `semantic`
+field reports learned cosine for dense candidates in this mode. The same project,
+expiry, and supersession checks apply. Edits invalidate vectors and deletes
+cascade; missing vectors are backfilled from stored redacted content. This path
+does not change contradiction rules. Model loading/inference errors restore the
+default retrieval path. See [installation and limitations](local-semantic.md).
 
 ## Injection flow
 

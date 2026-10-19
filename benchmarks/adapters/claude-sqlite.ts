@@ -66,8 +66,11 @@ for (const conversation of corpus) {
       }
     }
     if (chroma) {
-      const outcome = await chroma.ensureBackfilled(conversation.id, store);
-      if (outcome !== "completed") throw new Error(`Incomplete Chroma backfill: ${JSON.stringify(outcome)}`);
+      // Batch the same upstream document formatter used by sync/backfill.
+      // Live capture's row-at-a-time IPC is outside this retrieval evaluation.
+      const stored = db.prepare("SELECT * FROM observations ORDER BY id").all();
+      const documents = stored.flatMap(row => chroma.formatObservationDocs(row));
+      if (await chroma.addDocuments(documents) !== documents.length) throw new Error("Incomplete Chroma capture");
     }
     captures.push({ id: conversation.id, memories: turnIds.size, capture_ms: performance.now() - start });
     for (const question of conversation.questions) {
