@@ -1,0 +1,387 @@
+{
+  "dataset_sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "reports": [
+    {
+      "path": "benchmarks/measured/main.json.gz",
+      "source_commit": null,
+      "harness_commit": null,
+      "command": null,
+      "configuration": {
+        "top_k": 5,
+        "capture_clock": "2026-01-01T00:00:00.000Z",
+        "importance": 5,
+        "mode": "on-demand",
+        "depth": "default",
+        "capture_api": "storeMemory",
+        "recall_api": "retrieveMemories",
+        "embedding": "deterministicEmbed",
+        "network_attempts": 0
+      },
+      "overall": {
+        "questions": 1527,
+        "hit_rate": 0.639161755075311,
+        "precision": 0.14053700065487715,
+        "recall": 0.5744538077851138,
+        "all_evidence_rate": 0.5225933202357563,
+        "latency_ms": {
+          "mean": 13.439159220694192,
+          "median": 12.664646999997785,
+          "p95": 24.42982800000027,
+          "max": 39.093393999999535
+        }
+      },
+      "by_category": {
+        "multi-hop": {
+          "questions": 278,
+          "hit_rate": 0.5323741007194245,
+          "precision": 0.158273381294964,
+          "recall": 0.28584702982658305,
+          "all_evidence_rate": 0.10431654676258993,
+          "latency_ms": {
+            "mean": 13.396052848920847,
+            "median": 12.624781999999982,
+            "p95": 25.641826999999466,
+            "max": 35.51327299999957
+          }
+        },
+        "temporal": {
+          "questions": 320,
+          "hit_rate": 0.696875,
+          "precision": 0.1450000000000003,
+          "recall": 0.66640625,
+          "all_evidence_rate": 0.6375,
+          "latency_ms": {
+            "mean": 13.271195100000039,
+            "median": 12.310357500000464,
+            "p95": 24.8440640000008,
+            "max": 37.355638
+          }
+        },
+        "open-domain": {
+          "questions": 89,
+          "hit_rate": 0.38202247191011235,
+          "precision": 0.08089887640449442,
+          "recall": 0.2824961445252258,
+          "all_evidence_rate": 0.20224719101123595,
+          "latency_ms": {
+            "mean": 11.512858269662932,
+            "median": 10.25462399999924,
+            "p95": 22.536481999999978,
+            "max": 25.811326999999437
+          }
+        },
+        "single-hop": {
+          "questions": 840,
+          "hit_rate": 0.6797619047619048,
+          "precision": 0.13928571428571562,
+          "recall": 0.665873015873016,
+          "all_evidence_rate": 0.6511904761904762,
+          "latency_ms": {
+            "mean": 13.721507880952407,
+            "median": 12.990146999999752,
+            "p95": 24.437959999999293,
+            "max": 39.093393999999535
+          }
+        }
+      },
+      "paired_vs_first": {
+        "recovered_hits": 0,
+        "lost_hits": 0,
+        "improved_recall_questions": 0,
+        "regressed_recall_questions": 0
+      }
+    },
+    {
+      "path": "benchmarks/measured/mem0-faiss.json.gz",
+      "source_commit": "0724291bd864cf807e88ee8981c8226644e8fb42",
+      "harness_commit": "3b26b6184c1196cb8ec60c6d6ee84a794d42665a",
+      "command": [
+        "node",
+        "scripts/compare.mjs",
+        "--competitor",
+        "mem0",
+        "--source",
+        "/workspace/work/competitors/mem0",
+        "--python",
+        "/workspace/work/venv/bin/python",
+        "--model-dir",
+        "/workspace/work/embeddings/minilm/package",
+        "--output",
+        "benchmarks/measured/mem0-faiss.json"
+      ],
+      "configuration": {
+        "top_k": 5,
+        "capture": "raw dialogue turns",
+        "redaction": true
+      },
+      "overall": {
+        "questions": 1527,
+        "hit_rate": 0.4263261296660118,
+        "precision": 0.09207596594630023,
+        "recall": 0.37223074952368695,
+        "all_evidence_rate": 0.3320235756385069,
+        "latency_ms": {
+          "mean": 23.69299663653989,
+          "median": 21.827408000035575,
+          "p95": 30.73320999999396,
+          "max": 1656.53681099991
+        }
+      },
+      "by_category": {
+        "multi-hop": {
+          "questions": 278,
+          "hit_rate": 0.41007194244604317,
+          "precision": 0.10863309352517972,
+          "recall": 0.2001667428873034,
+          "all_evidence_rate": 0.0539568345323741,
+          "latency_ms": {
+            "mean": 22.255910942446214,
+            "median": 21.387289000017518,
+            "p95": 29.75857800004178,
+            "max": 61.354016999985106
+          }
+        },
+        "temporal": {
+          "questions": 320,
+          "hit_rate": 0.496875,
+          "precision": 0.10312499999999977,
+          "recall": 0.4638020833333333,
+          "all_evidence_rate": 0.434375,
+          "latency_ms": {
+            "mean": 27.958521290624457,
+            "median": 21.75541200006137,
+            "p95": 31.093781999970815,
+            "max": 1656.53681099991
+          }
+        },
+        "open-domain": {
+          "questions": 89,
+          "hit_rate": 0.20224719101123595,
+          "precision": 0.0404494382022472,
+          "recall": 0.1385767790262172,
+          "all_evidence_rate": 0.0898876404494382,
+          "latency_ms": {
+            "mean": 24.545867471903385,
+            "median": 22.16704900001787,
+            "p95": 38.08165600003122,
+            "max": 44.60148999999092
+          }
+        },
+        "single-hop": {
+          "questions": 840,
+          "hit_rate": 0.42857142857142855,
+          "precision": 0.08785714285714341,
+          "recall": 0.41904761904761906,
+          "all_evidence_rate": 0.4107142857142857,
+          "latency_ms": {
+            "mean": 22.45327809999663,
+            "median": 21.977180500016402,
+            "p95": 29.65486300001885,
+            "max": 48.157264000110445
+          }
+        }
+      },
+      "paired_vs_first": {
+        "recovered_hits": 120,
+        "lost_hits": 445,
+        "improved_recall_questions": 131,
+        "regressed_recall_questions": 478
+      }
+    },
+    {
+      "path": "benchmarks/measured/claude-sqlite.json.gz",
+      "source_commit": "b85cd123daf8e5bd59edb2d1c7b98e0bba28b3a0",
+      "harness_commit": "68533df64518ed22241072cd6fe000d6258adfa6",
+      "command": [
+        "node",
+        "scripts/compare.mjs",
+        "--competitor",
+        "claude-sqlite",
+        "--source",
+        "/workspace/work/competitors/claude-mem",
+        "--bun",
+        "/workspace/work/tools/node_modules/@oven/bun-linux-x64/bin/bun",
+        "--output",
+        "benchmarks/measured/claude-sqlite.json"
+      ],
+      "configuration": {
+        "top_k": 5,
+        "capture": "raw dialogue turns",
+        "redaction": true
+      },
+      "overall": {
+        "questions": 1527,
+        "hit_rate": 0.5108055009823183,
+        "precision": 0.10831696136214763,
+        "recall": 0.4625571129009243,
+        "all_evidence_rate": 0.4263261296660118,
+        "latency_ms": {
+          "mean": 2.351545757039942,
+          "median": 2.168673000000126,
+          "p95": 3.939926999999898,
+          "max": 7.289842000000135
+        }
+      },
+      "by_category": {
+        "multi-hop": {
+          "questions": 278,
+          "hit_rate": 0.3057553956834532,
+          "precision": 0.07913669064748192,
+          "recall": 0.13965723525076043,
+          "all_evidence_rate": 0.03597122302158273,
+          "latency_ms": {
+            "mean": 2.1899903453237486,
+            "median": 1.9752309999998943,
+            "p95": 3.6835470000005444,
+            "max": 6.43746699999997
+          }
+        },
+        "temporal": {
+          "questions": 320,
+          "hit_rate": 0.58125,
+          "precision": 0.11937499999999994,
+          "recall": 0.5486979166666666,
+          "all_evidence_rate": 0.51875,
+          "latency_ms": {
+            "mean": 2.291005506249981,
+            "median": 2.148931000000175,
+            "p95": 3.67769700000008,
+            "max": 6.630760000000009
+          }
+        },
+        "open-domain": {
+          "questions": 89,
+          "hit_rate": 0.2696629213483146,
+          "precision": 0.06516853932584273,
+          "recall": 0.19756554307116103,
+          "all_evidence_rate": 0.1348314606741573,
+          "latency_ms": {
+            "mean": 2.4590869775280697,
+            "median": 2.400952999999845,
+            "p95": 4.296888999999737,
+            "max": 5.3023559999996905
+          }
+        },
+        "single-hop": {
+          "questions": 840,
+          "hit_rate": 0.5773809523809523,
+          "precision": 0.11833333333333435,
+          "recall": 0.5646825396825397,
+          "all_evidence_rate": 0.5511904761904762,
+          "latency_ms": {
+            "mean": 2.4166816095238066,
+            "median": 2.2062585000005583,
+            "p95": 4.01958599999989,
+            "max": 7.289842000000135
+          }
+        }
+      },
+      "paired_vs_first": {
+        "recovered_hits": 48,
+        "lost_hits": 244,
+        "improved_recall_questions": 51,
+        "regressed_recall_questions": 280
+      }
+    },
+    {
+      "path": "benchmarks/measured/hybrid-initial.json.gz",
+      "source_commit": "01c943609d2f127c3561932911d9f6b69549542c",
+      "harness_commit": null,
+      "command": [
+        "npm",
+        "run",
+        "benchmark",
+        "--",
+        "--semantic",
+        "--output",
+        "benchmarks/measured/hybrid-initial.json"
+      ],
+      "configuration": {
+        "top_k": 5,
+        "capture_clock": "2026-01-01T00:00:00.000Z",
+        "importance": 5,
+        "mode": "on-demand",
+        "depth": "default",
+        "capture_api": "storeMemory",
+        "recall_api": "retrieveMemories",
+        "embedding": "minilm-l6-v2:6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452:be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037:mean256-v1",
+        "semantic_requested": true,
+        "model_load_ms": 1069.788948,
+        "network_attempts": 0
+      },
+      "overall": {
+        "questions": 1527,
+        "hit_rate": 0.664702030124427,
+        "precision": 0.14774066797642246,
+        "recall": 0.5975847086018792,
+        "all_evidence_rate": 0.5442043222003929,
+        "latency_ms": {
+          "mean": 34.193060244269915,
+          "median": 30.39437999999791,
+          "p95": 62.987212000007275,
+          "max": 230.65097099999548
+        }
+      },
+      "by_category": {
+        "multi-hop": {
+          "questions": 278,
+          "hit_rate": 0.579136690647482,
+          "precision": 0.17697841726618702,
+          "recall": 0.32387179798198346,
+          "all_evidence_rate": 0.1366906474820144,
+          "latency_ms": {
+            "mean": 33.88431008633103,
+            "median": 31.094637500005774,
+            "p95": 59.61052099999506,
+            "max": 102.20366800000193
+          }
+        },
+        "temporal": {
+          "questions": 320,
+          "hit_rate": 0.728125,
+          "precision": 0.15250000000000036,
+          "recall": 0.6950520833333332,
+          "all_evidence_rate": 0.6625,
+          "latency_ms": {
+            "mean": 33.452591787499856,
+            "median": 29.216935499996907,
+            "p95": 63.31107399999746,
+            "max": 88.14381100000173
+          }
+        },
+        "open-domain": {
+          "questions": 89,
+          "hit_rate": 0.4044943820224719,
+          "precision": 0.08539325842696634,
+          "recall": 0.2965410883454505,
+          "all_evidence_rate": 0.21348314606741572,
+          "latency_ms": {
+            "mean": 31.34308667415744,
+            "median": 27.640572000003885,
+            "p95": 59.5820090000052,
+            "max": 76.70284500000707
+          }
+        },
+        "single-hop": {
+          "questions": 840,
+          "hit_rate": 0.6964285714285714,
+          "precision": 0.14285714285714424,
+          "recall": 0.6829365079365081,
+          "all_evidence_rate": 0.669047619047619,
+          "latency_ms": {
+            "mean": 34.879286551190674,
+            "median": 30.89822650000133,
+            "p95": 64.27538899998763,
+            "max": 230.65097099999548
+          }
+        }
+      },
+      "paired_vs_first": {
+        "recovered_hits": 72,
+        "lost_hits": 33,
+        "improved_recall_questions": 93,
+        "regressed_recall_questions": 42
+      }
+    }
+  ]
+}

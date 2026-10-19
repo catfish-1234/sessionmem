@@ -14,8 +14,9 @@ const { values } = parseArgs({ options: {
   "chroma-python": { type: "string" },
 } });
 if (!["mem0", "claude-sqlite", "claude-chroma"].includes(values.competitor) || !values.source || !values.output) {
-  throw new Error("Required: --competitor mem0|claude-sqlite --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH]");
+  throw new Error("Required: --competitor mem0|claude-sqlite|claude-chroma --source PATH --output PATH [--model-dir PATH] [--python PATH] [--bun PATH] [--chroma-python PATH]");
 }
+if (values.competitor === "claude-chroma" && (!values["chroma-python"] || !values["model-dir"])) throw new Error("Chroma requires --chroma-python and --model-dir");
 const root = new URL("../", import.meta.url);
 const provenance = JSON.parse(readFileSync(new URL("benchmarks/data/provenance.json", root)));
 const raw = readFileSync(new URL("benchmarks/data/locomo10.json", root));
@@ -39,7 +40,7 @@ try {
     [new URL(`benchmarks/adapters/${adapter}`, root).pathname, "--input", input, "--output", output, "--source", source,
       ...(values["model-dir"] ? ["--model-dir", resolve(values["model-dir"])] : []),
       ...(values["chroma-python"] ? ["--chroma-python", resolve(values["chroma-python"])] : [])],
-    { stdio: "inherit", env: { ...process.env, MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
+    { stdio: "inherit", cwd: temp, env: { ...process.env, MEM0_DIR: temp, CLAUDE_MEM_DATA_DIR: join(temp, "claude"), CLAUDE_MEM_LOG_LEVEL: "SILENT" } });
   const measured = JSON.parse(readFileSync(output));
   const measuredRows = new Map(measured.questions.map(q => [q.id, q]));
   const rows = corpus.flatMap(c => {

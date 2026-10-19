@@ -28,3 +28,12 @@ const summary = reports.map(({ path, report }) => {
 });
 writeFileSync("benchmarks/measured/summary.json", JSON.stringify({ dataset_sha256: base.dataset.sha256, reports: summary }, null, 2) + "\n");
 for (const row of summary) console.log(row.path, JSON.stringify({ ...row.overall, paired: row.paired_vs_first }));
+const after = reports.at(-1).report;
+writeFileSync("benchmarks/measured/regressions.json", JSON.stringify({
+  baseline: reports[0].path, after: reports.at(-1).path,
+  questions: after.questions.filter(row => row.recall < baseline.get(row.id).recall).map(row => ({
+    id: row.id, question: row.question, evidence: row.evidence,
+    before: { retrieved: baseline.get(row.id).retrieved, recall: baseline.get(row.id).recall },
+    after: { retrieved: row.retrieved, recall: row.recall },
+  })),
+}, null, 2) + "\n");
