@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-19
+
 ### Added
 
 - Claude Code prompt-time recall, startup transcript catch-up, MCP flow
@@ -37,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unchanged. See
   [retrieval results](benchmarks/retrieval-gaps.md) and
   [tool and ranking guide](docs/retrieval-tools.md).
+
+### Fixed
+
+- Prompt-time recall now resolves symlinks before deriving the project id, so
+  hook payload paths and the working directory map to the same memory (this
+  affected macOS temp and symlinked directories). ([#57])
 
 ## [1.7.0] - 2026-10-18
 
@@ -170,6 +178,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.8.0]: https://github.com/catfish-1234/sessionmem/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/catfish-1234/sessionmem/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/catfish-1234/sessionmem/compare/v1.5.0...v1.6.0
 [#54]: https://github.com/catfish-1234/sessionmem/pull/54
@@ -200,3 +209,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#34]: https://github.com/catfish-1234/sessionmem/pull/34
 [#40]: https://github.com/catfish-1234/sessionmem/pull/40
 [62765a7]: https://github.com/catfish-1234/sessionmem/commit/62765a7
+[#57]: https://github.com/catfish-1234/sessionmem/pull/57
