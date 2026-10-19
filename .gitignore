@@ -2,6 +2,7 @@ node_modules/
 *.log
 dist/
 benchmarks/results/
+__pycache__/
 
 # SQLite WAL mode auxiliary files
 *.db-wal
