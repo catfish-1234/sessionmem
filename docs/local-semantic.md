@@ -1,6 +1,8 @@
 # Optional local semantic retrieval
 
-The default is BM25 plus entity overlap. To add a learned semantic candidate pool,
+The default is BM25 with entity-link coverage. Active MiniLM retains the existing
+entity-overlap fusion because stronger coverage lowered its hit rate and recall.
+To add a learned semantic candidate pool,
 install the optional packages beside sessionmem and enable it:
 
 ```bash

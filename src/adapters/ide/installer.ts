@@ -35,6 +35,8 @@ export const SESSIONMEM_POST_TOOL_HOOK_COMMAND = _isWindows
   ? "cmd /c sessionmem ingest-hook"
   : "sessionmem ingest-hook";
 
+export const SESSIONMEM_PROMPT_HOOK_COMMAND = _isWindows ? "cmd /c sessionmem prompt-submit" : "sessionmem prompt-submit";
+
 /** Tool matcher for the PostToolUse auto-ingest hook. */
 export const SESSIONMEM_POST_TOOL_MATCHER = "Bash|Edit|Write|MultiEdit";
 

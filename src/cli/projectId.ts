@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 /** Safety bound on the upward walk in {@link findProjectRoot}. */
@@ -120,5 +120,20 @@ export function deriveProjectId(cwd = process.cwd()): string {
       return sanitized;
     }
   }
-  return projectIdFromCwd(findProjectRoot(cwd) ?? cwd);
+  const canonical = canonicalDir(cwd);
+  return projectIdFromCwd(findProjectRoot(canonical) ?? canonical);
+}
+
+/**
+ * Resolve symlinks so the same directory hashes to one id however it is
+ * spelled. process.cwd() is already symlink-resolved, but a hook payload cwd is
+ * not (on macOS /var/... vs /private/var/...). Falls back to the input when the
+ * path does not exist.
+ */
+function canonicalDir(dir: string): string {
+  try {
+    return realpathSync(dir);
+  } catch {
+    return dir;
+  }
 }

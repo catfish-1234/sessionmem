@@ -71,6 +71,12 @@ const CONFIG_KEYS: Record<string, ConfigKeyDef> = {
   redactionEnabled: { field: "redactionEnabled", coerce: coerceBool },
   injectionCap: { field: "injectionCap", coerce: coerceInjectionCap },
   semanticSearch: { field: "semanticSearch", coerce: coerceBool },
+  temporalRetrieval: { field: "temporalRetrieval", coerce: coerceBool },
+  entityLinkBoost: { field: "entityLinkBoost", coerce: coerceBool },
+  retrievalRanking: { field: "retrievalRanking", coerce: raw => {
+    if (!["legacy", "adaptive-bm25", "hub-additive", "adaptive-hub-additive"].includes(raw)) throw new Error("Unknown retrieval ranking");
+    return raw as PolicyConfig["retrievalRanking"];
+  } },
 };
 
 function resolvePath(options?: ConfigCommandOptions): string {

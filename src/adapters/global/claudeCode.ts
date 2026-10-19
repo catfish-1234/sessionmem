@@ -8,6 +8,7 @@ import {
   SESSIONMEM_SESSION_END_HOOK_COMMAND,
   SESSIONMEM_POST_TOOL_HOOK_COMMAND,
   SESSIONMEM_POST_TOOL_MATCHER,
+  SESSIONMEM_PROMPT_HOOK_COMMAND,
 } from "../ide/installer.js";
 
 export class ClaudeCodeAdapter extends GenericMCPAdapter {
@@ -46,6 +47,7 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
         path: this.settingsPath(),
         entries: [
           { event: "SessionStart", command: SESSIONMEM_HOOK_COMMAND },
+          { event: "UserPromptSubmit", command: SESSIONMEM_PROMPT_HOOK_COMMAND },
           { event: "SessionEnd", command: SESSIONMEM_SESSION_END_HOOK_COMMAND },
           { event: "PostToolUse", command: SESSIONMEM_POST_TOOL_HOOK_COMMAND, matcher: SESSIONMEM_POST_TOOL_MATCHER },
         ],
@@ -99,7 +101,8 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
       SESSIONMEM_POST_TOOL_MATCHER,
     );
 
-    return mcpOk && startHookOk && endHookOk && postToolOk;
+    const promptOk = await IDEInstaller.injectClaudeHook(this.settingsPath(), SESSIONMEM_PROMPT_HOOK_COMMAND, "UserPromptSubmit");
+    return mcpOk && startHookOk && endHookOk && postToolOk && promptOk;
   }
 
   async uninstall(): Promise<boolean> {
@@ -121,6 +124,7 @@ export class ClaudeCodeAdapter extends GenericMCPAdapter {
       SESSIONMEM_POST_TOOL_HOOK_COMMAND,
       "PostToolUse",
     );
-    return mcpOk && startOk && endOk && postToolOk;
+    const promptOk = await IDEInstaller.removeClaudeHook(this.settingsPath(), SESSIONMEM_PROMPT_HOOK_COMMAND, "UserPromptSubmit");
+    return mcpOk && startOk && endOk && postToolOk && promptOk;
   }
 }

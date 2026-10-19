@@ -1,3 +1,4 @@
+import { sweepTranscripts } from "../transcriptSweep.js";
 import { createCliContext, type CliContext } from "../context.js";
 
 /**
@@ -28,8 +29,13 @@ const STARTUP_QUERY =
  *    starts clean.
  */
 export async function sessionStartCommand(ctx?: CliContext): Promise<void> {
+  let context: CliContext | undefined;
   try {
-    const context = ctx ?? createCliContext();
+    context = ctx ?? createCliContext();
+    if (!ctx) {
+      try { await sweepTranscripts(context, {}); }
+      catch { /* Existing recall still works when transcript discovery fails. */ }
+    }
     const result = await context.service.call("retrieveMemories", {
       projectId: context.projectId,
       query: STARTUP_QUERY,
@@ -52,6 +58,8 @@ export async function sessionStartCommand(ctx?: CliContext): Promise<void> {
       process.stdout.write(JSON.stringify(payload));
     }
   } catch {
-    // Never block session start — emit nothing on any failure.
+    // Never block session start.
+  } finally {
+    if (!ctx) context?.db.close();
   }
 }

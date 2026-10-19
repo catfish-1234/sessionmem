@@ -42,6 +42,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Automatic install, capture and new-session recall
+        run: npm test -- tests/integration/cli/automatic-memory-flow.spec.ts
+
       - name: Conversational benchmark (offline runner)
         if: runner.os == 'Linux' && matrix.node == 22
         run: npm run benchmark

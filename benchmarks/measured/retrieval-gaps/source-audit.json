@@ -1,0 +1,16 @@
+[
+  {
+    "path": "mem0/utils/scoring.py",
+    "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/mem0/utils/scoring.py",
+    "sha256": "9a4313fda723ad05cb52278e9ef0b9b5792b71fb3b41ba6318410121022e4527",
+    "license": "Apache-2.0",
+    "copied_or_adapted_code": false
+  },
+  {
+    "path": "mem0/memory/main.py",
+    "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/mem0/memory/main.py",
+    "sha256": "f329ca4a17af1fbefb32ac10d4cc7ae7ddbdb7435a87eb74c30915cff98b8b7c",
+    "license": "Apache-2.0",
+    "copied_or_adapted_code": false
+  }
+]

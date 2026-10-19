@@ -1,0 +1,26 @@
+[
+  {
+    "project": "claude-mem",
+    "commit": "9e4f313a89236f7fb593a639a77ee02e21e94469",
+    "url": "https://github.com/thedotmack/claude-mem/blob/9e4f313a89236f7fb593a639a77ee02e21e94469/README.md",
+    "sha256": "7756f33f9844f3eaf4540a7ada46bd4f299e02e0a368f582b86ed81d7eb555b6",
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/thedotmack/claude-mem/blob/9e4f313a89236f7fb593a639a77ee02e21e94469/LICENSE"
+  },
+  {
+    "project": "mem0",
+    "commit": "0724291bd864cf807e88ee8981c8226644e8fb42",
+    "url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/README.md",
+    "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/mem0ai/mem0/blob/0724291bd864cf807e88ee8981c8226644e8fb42/LICENSE"
+  },
+  {
+    "project": "graphiti",
+    "commit": "6e3e3cb98edfac4ca5be6129002d76cdf714ad09",
+    "url": "https://github.com/getzep/graphiti/blob/6e3e3cb98edfac4ca5be6129002d76cdf714ad09/README.md",
+    "sha256": "e3331e411e5532a0f9c32c2f0c7ca5e08639fa18dc1bc072c7fb3173ec0c9f41",
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/getzep/graphiti/blob/6e3e3cb98edfac4ca5be6129002d76cdf714ad09/LICENSE"
+  }
+]

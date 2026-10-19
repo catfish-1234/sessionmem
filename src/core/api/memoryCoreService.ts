@@ -4,6 +4,9 @@ import { type z, ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { loadLocalSemanticEmbedder, type LocalSemanticEmbedder } from "../embed/localSemanticEmbedder.js";
 import { indexSemanticMemories, searchSemanticMemories, type SemanticCandidate } from "../storage/semanticSearchRepo.js";
+import { detectTemporalIntent } from "../retrieve/temporalIntent.js";
+import { memoryIndexItem } from "../retrieve/memoryIndex.js";
+import { memoryTimeline } from "../storage/timelineRepo.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
 import { computeEffectiveImportance } from "../retrieve/score.js";
 import { formatStartupInjection } from "../injection/formatStartupInjection.js";
@@ -56,6 +59,8 @@ import {
   redactExistingRequestSchema,
   resetAccessCountsRequestSchema,
   retrieveMemoriesRequestSchema,
+  searchMemoryIndexRequestSchema,
+  memoryTimelineRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
   summarizeSessionToMemoryRequestSchema,
@@ -310,6 +315,49 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     deleteOldMemories: deps.deleteOldMemories,
   });
 
+  async function rankMemories(parsed: { projectId: string; query: string; includeHistory?: boolean; tags?: string[] }, limit: number) {
+    const now = deps.now?.() ?? new Date();
+    const config = readPolicyConfig(policyConfigPath);
+    const intent = config.temporalRetrieval ? detectTemporalIntent(parsed.query, now) : { kind: "none" };
+    const includeHistory = parsed.includeHistory ?? intent.kind === "past";
+    let semanticCandidates: SemanticCandidate[] | undefined;
+    try {
+      const embedder = await semanticEmbedder();
+      if (embedder) semanticCandidates = await searchSemanticMemories(db, parsed.projectId, parsed.query,
+        now, includeHistory, embedder);
+    } catch { semanticWarning(); }
+    const rankedAll = retrieveMemories({
+      db,
+      projectId: parsed.projectId,
+      queryText: parsed.query,
+      includeHistory,
+      temporalRetrieval: config.temporalRetrieval,
+      // Measured mode-specific default: coverage helps BM25, but regresses
+      // MiniLM recall. An explicit override always wins, including false.
+      entityLinkBoost: config.entityLinkBoost ?? (!semanticCandidates?.length && (!config.retrievalRanking || config.retrievalRanking === "legacy")),
+      ranking: config.retrievalRanking,
+      limit,
+      now,
+      semanticCandidates,
+    });
+
+    // Optional tag filter: keep a memory only when its stored tags contain ALL
+    // requested tags. The semantic candidate projection omits tags, so re-read
+    // each row's tags by id (this is an explicit, infrequent filter path).
+    const ranked =
+      parsed.tags && parsed.tags.length > 0
+        ? rankedAll.filter((m) => {
+          const rec = getMemoryRecordById(db, parsed.projectId, m.id);
+          const recTags: string[] = rec?.tags
+            ? (JSON.parse(rec.tags) as string[])
+            : [];
+          return parsed.tags!.every((t) => recTags.includes(t));
+        })
+        : rankedAll;
+
+    return ranked.slice(0, limit);
+  }
+
   const methods: {
     [M in MemoryCoreMethod]: (
       request: MemoryCoreRequest<M>,
@@ -482,35 +530,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const parsed = parseRequest(retrieveMemoriesRequestSchema, request);
       const limit =
         parsed.depth === "deep" ? Math.min(parsed.limit * 2, DEEP_MODE_RETRIEVAL_CAP) : parsed.limit;
-      let semanticCandidates: SemanticCandidate[] | undefined;
-      try {
-        const embedder = await semanticEmbedder();
-        if (embedder) semanticCandidates = await searchSemanticMemories(db, parsed.projectId, parsed.query,
-          deps.now?.() ?? new Date(), parsed.includeHistory ?? false, embedder);
-      } catch { semanticWarning(); }
-      const rankedAll = retrieveMemories({
-        db,
-        projectId: parsed.projectId,
-        queryText: parsed.query,
-        includeHistory: parsed.includeHistory,
-        limit,
-        now: deps.now?.(),
-        semanticCandidates,
-      });
-
-      // Optional tag filter: keep a memory only when its stored tags contain ALL
-      // requested tags. The semantic candidate projection omits tags, so re-read
-      // each row's tags by id (this is an explicit, infrequent filter path).
-      const ranked =
-        parsed.tags && parsed.tags.length > 0
-          ? rankedAll.filter((m) => {
-              const rec = getMemoryRecordById(db, parsed.projectId, m.id);
-              const recTags: string[] = rec?.tags
-                ? (JSON.parse(rec.tags) as string[])
-                : [];
-              return parsed.tags!.every((t) => recTags.includes(t));
-            })
-          : rankedAll;
+      const ranked = await rankMemories(parsed, limit);
 
       if (ranked.length > 0 && parsed.mode !== "on-demand") {
         // Only boost access counts for startup injection (mode='auto'), not for
@@ -532,6 +552,19 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
           tokenCap: injectionCap,
         }),
       };
+    },
+
+    async searchMemoryIndex(request) {
+      const parsed = parseRequest(searchMemoryIndexRequestSchema, request);
+      const ranked = await rankMemories(parsed, parsed.limit + 1);
+      return { ok: true, memories: ranked.slice(0, parsed.limit).map(row => memoryIndexItem(row, row.score.total)),
+        hasMore: ranked.length > parsed.limit };
+    },
+
+    async memoryTimeline(request) {
+      const parsed = parseRequest(memoryTimelineRequestSchema, request);
+      const { rows, hasMore } = memoryTimeline(db, parsed, deps.now?.() ?? new Date());
+      return { ok: true, memories: rows.map(row => memoryIndexItem(row)), hasMore };
     },
 
     async listMemories(request) {

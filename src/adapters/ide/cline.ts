@@ -3,6 +3,8 @@ import { homedir } from "os";
 import { existsSync } from "fs";
 import { GenericMCPAdapter } from "../generic.js";
 import type { AdapterInstallation } from "../contract/hostAdapterContract.js";
+export const AUTOMATIC_MEMORY_TOOLS = ["searchMemoryIndex", "memoryTimeline", "getMemory", "retrieveMemories", "storeMemory", "batchStoreMemory", "ingestSessionEvents", "stats"];
+
 import { IDEInstaller } from "./installer.js";
 
 /**
@@ -70,7 +72,7 @@ export class ClineAdapter extends GenericMCPAdapter {
       "sessionmem",
       "sessionmem",
       ["run"],
-      { disabled: false, autoApprove: [] },
+      { disabled: false, autoApprove: AUTOMATIC_MEMORY_TOOLS },
     );
   }
 

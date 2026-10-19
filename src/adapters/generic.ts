@@ -1,3 +1,5 @@
+import { MEMORY_FLOW_INSTRUCTIONS } from "./claudeMdInjector.js";
+import { sweepTranscripts } from "../cli/transcriptSweep.js";
 import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -12,6 +14,8 @@ import {
   listMemoriesRequestSchema,
   resetAccessCountsRequestSchema,
   retrieveMemoriesRequestSchema,
+  searchMemoryIndexRequestSchema,
+  memoryTimelineRequestSchema,
   statsRequestSchema,
   storeMemoryRequestSchema,
   summarizeSessionToMemoryRequestSchema,
@@ -99,6 +103,22 @@ function isMissing(value: unknown): boolean {
 
 const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
   {
+    method: "searchMemoryIndex",
+    description: "Search a compact memory index. Returns IDs, one-line previews, kinds, capture dates and scores. " +
+      "Start here for topic lookups, use memoryTimeline for nearby context, then getMemory for selected full bodies. " +
+      "Default limit 10, maximum 50. Does not update access counters. hasMore refers to the bounded candidate pool.",
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    inputShape: shapeWithoutProjectId(searchMemoryIndexRequestSchema.shape),
+  },
+  {
+    method: "memoryTimeline",
+    description: "Browse compact memories in capture order around memoryId, or within an inclusive UTC fromDate/toDate range. " +
+      "Provide an ID or both dates. Includes superseded history by default. Default limit 10, maximum 50. " +
+      "Use getMemory for full details. Does not update access counters.",
+    annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+    inputShape: shapeWithoutProjectId(memoryTimelineRequestSchema.shape),
+  },
+  {
     method: "retrieveMemories",
     description:
       "Semantically search stored memories and return the top matches ranked by a weighted combination of relevance, recency, and importance. Read-only; no side effects.\n\n" +
@@ -182,12 +202,12 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
     method: "getMemory",
     description:
       "Fetch a single memory record by its exact ID. Returns the full record: content, kind, importance, timestamps, and session metadata. Read-only; no side effects.\n\n" +
-      "WHEN TO CALL: When you already have a specific memoryId from a prior retrieveMemories or listMemories result and need its full detail.\n\n" +
-      "WHEN NOT TO CALL: For topic-based search — use retrieveMemories for that. This tool requires an exact ID and does not search by content.",
+      "WHEN TO CALL: After searchMemoryIndex or memoryTimeline, fetch selected IDs for full details. IDs from retrieveMemories or listMemories also work.\n\n" +
+      "For topic searches, start with searchMemoryIndex. getMemory requires an exact ID.",
     annotations: { readOnlyHint: true, idempotentHint: true },
     inputShape: {
       memoryId: getMemoryRequestSchema.shape.memoryId.describe(
-        "Exact UUID of the memory to fetch. Obtain from a prior retrieveMemories or listMemories result."
+        "Exact memory ID from searchMemoryIndex, memoryTimeline, retrieveMemories or listMemories."
       ),
     },
   },
@@ -348,6 +368,9 @@ export class GenericMCPAdapter implements HostAdapterContract {
     // SESSIONMEM_PROJECT_ID) used for isolated integration tests.
     const ctx = createCliContext();
     const { service, projectId } = ctx;
+    // Catch up before a new agent connects, including the first session after install.
+    try { if (process.env.SESSIONMEM_DIAGNOSTIC_PROBE !== "1") await sweepTranscripts(ctx, {}); }
+    catch (error) { logDiagnostic(`Startup capture failed: ${error instanceof Error ? error.message : String(error)}`); }
 
     // Surface stale embeddings (e.g. after an EMBEDDING_VERSION bump) so the
     // operator knows semantic ranking has degraded to importance+recency for
@@ -368,7 +391,7 @@ export class GenericMCPAdapter implements HostAdapterContract {
     const server = new McpServer({
       name: "sessionmem",
       version: SERVER_VERSION,
-    });
+    }, { instructions: MEMORY_FLOW_INSTRUCTIONS });
 
     for (const def of TOOL_DEFINITIONS) {
       server.registerTool(

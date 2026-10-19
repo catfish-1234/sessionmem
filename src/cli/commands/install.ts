@@ -113,11 +113,12 @@ export async function installCommand(
         if (!injectGuidanceBlock(target)) throw new Error("injection failed");
         console.log(`✓ ${adapter.name}: Agent guidance injected (${target})`);
       } catch {
-        console.error(`✗ ${adapter.name}: Agent guidance injection failed (non-fatal): ${target}`);
+        console.error(`✗ ${adapter.name}: Agent guidance injection failed; automatic recall is not configured: ${target}`);
+        failed = true;
       }
     }
     if (adapter.name === "Claude Code") {
-      console.log("✓ Claude Code: SessionStart, SessionEnd, PostToolUse hooks configured (~/.claude/settings.json)");
+      console.log("✓ Claude Code: SessionStart, UserPromptSubmit, SessionEnd, PostToolUse hooks configured (~/.claude/settings.json)");
     }
   }
   try {
@@ -129,5 +130,5 @@ export async function installCommand(
     failed = true;
   }
   if (failed) process.exit(1);
-  console.log("✓ sessionmem ready — restart your editor/agent so it picks up the MCP server");
+  console.log("✓ sessionmem ready; restart your editor/agent so it picks up the MCP server");
 }

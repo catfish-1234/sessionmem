@@ -188,15 +188,18 @@ const QUERY_STOP_WORDS = new Set(
 );
 
 /** Match any meaningful query term; question grammar must not exclude evidence. */
-function sanitizeFtsQuery(queryText: string): string {
+export function lexicalQueryTerms(queryText: string): string[] {
   const tokens = [...new Set(
     queryText.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [],
   )];
   const terms = tokens.filter((token) => !QUERY_STOP_WORDS.has(token));
   // Preserve literal searches consisting entirely of stop words. Tokens contain
   // only letters/numbers, so FTS operators and punctuation cannot become syntax.
-  return (terms.length ? terms : tokens)
-    .slice(0, 64)
+  return (terms.length ? terms : tokens).slice(0, 64);
+}
+
+function sanitizeFtsQuery(queryText: string): string {
+  return lexicalQueryTerms(queryText)
     .map((token) => `"${token}"`)
     .join(" OR ");
 }

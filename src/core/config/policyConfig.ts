@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RETRIEVAL_RANKINGS } from "../retrieve/signalFusion.js";
 import { homedir } from "os";
 import { join, dirname } from "path";
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from "fs";
@@ -62,6 +63,9 @@ const policyConfigShape = {
   // `savings` analytics. Omitted by default so existing configs keep the default.
   injectionCap: z.number().int().min(100).max(10000).optional(),
   semanticSearch: z.boolean().optional(),
+  temporalRetrieval: z.boolean().optional(),
+  entityLinkBoost: z.boolean().optional(),
+  retrievalRanking: z.enum(RETRIEVAL_RANKINGS).optional(),
   team: teamConfigShape.default({ enabled: false }),
 };
 
@@ -121,12 +125,18 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   const re = s.redactionEnabled.safeParse(obj.redactionEnabled);
   const ic = s.injectionCap.safeParse(obj.injectionCap);
   const ss = s.semanticSearch.safeParse(obj.semanticSearch);
+  const tr = s.temporalRetrieval.safeParse(obj.temporalRetrieval);
+  const el = s.entityLinkBoost.safeParse(obj.entityLinkBoost);
+  const rr = s.retrievalRanking.safeParse(obj.retrievalRanking);
   const tm = s.team.safeParse(obj.team);
   return {
     retentionDays: rd.success ? rd.data : DEFAULT_POLICY_CONFIG.retentionDays,
     redactionEnabled: re.success ? re.data : DEFAULT_POLICY_CONFIG.redactionEnabled,
     injectionCap: ic.success ? ic.data : undefined,
     semanticSearch: ss.success ? ss.data : undefined,
+    temporalRetrieval: tr.success ? tr.data : undefined,
+    entityLinkBoost: el.success ? el.data : undefined,
+    retrievalRanking: rr.success ? rr.data : undefined,
     team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
   };
 }

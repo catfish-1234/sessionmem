@@ -1,5 +1,9 @@
 import type { Database } from "better-sqlite3";
 import { entityOverlap } from "../storage/knowledgeRepo.js";
+import { linkedEntityScores } from "../storage/entityLinkRepo.js";
+import { memoryTemporalMetadata } from "../storage/temporalRepo.js";
+import { adaptiveLexicalScore, additiveRelevance, SEMANTIC_GATE, type RetrievalRanking } from "./signalFusion.js";
+import { detectTemporalIntent, temporalRelevance } from "./temporalIntent.js";
 import type { SemanticCandidate } from "../storage/semanticSearchRepo.js";
 
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
@@ -10,6 +14,7 @@ import {
 } from "./score.js";
 import {
   searchMemoryCandidatesFTS,
+  searchMemoryCandidatesByIds,
   type MemorySearchCandidate,
 } from "../storage/memorySearchRepo.js";
 
@@ -28,6 +33,9 @@ export interface RetrieveMemoriesInput {
   now?: Date;
   includeHistory?: boolean;
   semanticCandidates?: SemanticCandidate[];
+  temporalRetrieval?: boolean;
+  entityLinkBoost?: boolean;
+  ranking?: RetrievalRanking;
 }
 
 export interface RetrievedMemoryCandidate {
@@ -99,6 +107,11 @@ export function retrieveMemories(
 
   const topK = input.topK ?? input.limit ?? 20;
   const now = input.now ?? new Date();
+  const ranking = input.ranking ?? "legacy";
+  const additive = ranking === "hub-additive" || ranking === "adaptive-hub-additive";
+  const adaptive = ranking === "adaptive-bm25" || ranking === "adaptive-hub-additive";
+  const intent = input.temporalRetrieval ? detectTemporalIntent(queryText, now) : { kind: "none" as const };
+  const includeHistory = input.includeHistory ?? intent.kind === "past";
 
   // FTS5 retrieves up to 50 BM25 matches; sparse matches retain the existing
   // recency/importance fallback. The public request schema validates queryText.
@@ -107,10 +120,16 @@ export function retrieveMemories(
     input.projectId,
     queryText,
     now,
-    input.includeHistory,
+    includeHistory,
   );
   const candidates = [...lexicalCandidates];
   const ids = new Set(candidates.map(c => c.id));
+  const linked = input.entityLinkBoost || additive
+    ? linkedEntityScores(input.db, input.projectId, queryText, now, includeHistory, additive)
+    : new Map<string, number>();
+  for (const candidate of searchMemoryCandidatesByIds(input.db, input.projectId, [...linked.keys()].slice(0, 50), now, includeHistory)) {
+    if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
+  }
   for (const { candidate } of input.semanticCandidates ?? []) {
     if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
   }
@@ -119,6 +138,7 @@ export function retrieveMemories(
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
   const overlap = entityOverlap(input.db, input.projectId, queryText, now);
+  const temporal = intent.kind !== "none" ? memoryTemporalMetadata(input.db, input.projectId, candidates.map(c => c.id)) : new Map();
 
   // FTS5 returns negative BM25 ranks; storage converts them to positive scores.
   // Normalize within this query so BM25 fits the existing relevance weight.
@@ -128,6 +148,7 @@ export function retrieveMemories(
   );
 
   const ranked = decayedCandidates
+    .filter(candidate => !additive || !input.semanticCandidates?.length || (dense.get(candidate.id) ?? 0) >= SEMANTIC_GATE)
     .map((candidate) => {
       // When embedding is null (version mismatch or missing), use a neutral
       // score of 0.5 so the memory is neither penalized nor boosted. A non-null
@@ -142,7 +163,7 @@ export function retrieveMemories(
       // Hash cosine is useful for identical text, but adds noise to lexical
       // matches. Keep it as a diagnostic and as the no-match fallback only.
       const lexicalRelevance = maxLexicalScore > 0
-        ? candidate.lexical_score / maxLexicalScore
+        ? adaptive ? adaptiveLexicalScore(candidate.lexical_score, queryText) : candidate.lexical_score / maxLexicalScore
         : semantic;
       // The local dense variant was weaker alone. Preserve lexical dominance
       // while admitting candidates absent from FTS, using a fixed 2:1 blend.
@@ -151,16 +172,28 @@ export function retrieveMemories(
           ? (2 * lexicalRelevance + Math.max(0, dense.get(candidate.id) ?? 0)) / 3
           : Math.max(0, dense.get(candidate.id) ?? 0)
         : lexicalRelevance;
-      const relevance = overlap.size > 0
+      const fused = additive ? additiveRelevance({
+        lexical: maxLexicalScore > 0 ? lexicalRelevance : undefined,
+        dense: input.semanticCandidates?.length ? Math.max(0, dense.get(candidate.id) ?? 0) : undefined,
+        entity: linked.size > 0 ? linked.get(candidate.id) ?? 0 : undefined,
+      }) : null;
+      const entityRelevance = additive && fused !== null ? fused : linked.size > 0
+        ? 0.8 * baseRelevance + 0.2 * (linked.get(candidate.id) ?? 0)
+        : overlap.size > 0
         ? (1 - ENTITY_RELEVANCE_WEIGHT) * baseRelevance + ENTITY_RELEVANCE_WEIGHT * (overlap.get(candidate.id) ?? 0)
         : baseRelevance;
+      const metadata = temporal.get(candidate.id);
+      const relevance = metadata
+        ? 0.9 * entityRelevance + 0.1 * temporalRelevance(intent, metadata.timestamp, metadata.supersededFraction, now)
+        : entityRelevance;
       const score = scoreMemoryCandidate(
         {
           semantic: relevance,
-          updated_at: candidate.updated_at,
+          // Historical lookup should not lose evidence merely because it is old.
+          updated_at: intent.kind === "past" ? now.toISOString() : candidate.updated_at,
           importance: candidate.importance,
           access_count: candidate.access_count,
-          decayedImportance: candidate.decayedImportance,
+          decayedImportance: intent.kind === "past" ? candidate.importance : candidate.decayedImportance,
         },
         now,
       );
