@@ -33,3 +33,7 @@ The selected default uses coverage for BM25 and the original fusion with active
 MiniLM. The new source-informed matrix is described in
 [the source notes](../../retrieval-source-notes.md). Source references are in
 `source-audit.json`; no competitor source or prompt was adapted.
+
+Manifest archive checksums refer to uncompressed JSON. Source/build fingerprints
+include sorted relative paths, a NUL separator and file bytes; the lockfile hash
+is the ordinary SHA-256 of its bytes.

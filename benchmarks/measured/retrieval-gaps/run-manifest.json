@@ -3,7 +3,7 @@
   "source_and_build": {
     "source_sha256": "e70964f01bfddc17a6c9f2b0ee689b578c45468a76be04e965324f3638705f5b",
     "dist_sha256": "5e97d396f4109240b372baf714be0b2644c8536813369831e32636a5ccc70083",
-    "lockfile_sha256": "9ed8848ff34246517d14477e62efe00394a37ee4b26b7aee7ee62b16eb8801fb"
+    "lockfile_sha256": "64c0af22a3308452bfca06f5b09be3c215f9bba15b5c4c26b64cc4bf9c77ded9"
   },
   "lockfile_unchanged": true,
   "archives": {
@@ -259,5 +259,6 @@
       "license": "Apache-2.0",
       "copied_or_adapted_code": false
     }
-  ]
+  ],
+  "checksum_scheme": "Archive sha256 fields hash uncompressed JSON bytes. Source and dist digests hash sorted relative paths, each followed by a NUL byte and file bytes. The lockfile digest hashes the file bytes directly."
 }
