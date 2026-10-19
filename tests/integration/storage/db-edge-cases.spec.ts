@@ -25,7 +25,7 @@ describe("database edge cases", () => {
     const db = openDb({ dbPath });
     try {
       expect(db.pragma("quick_check", { simple: true })).toBe("ok");
-      expect(db.prepare("SELECT COUNT(*) AS count FROM _migrations").get()).toEqual({ count: 15 });
+      expect(db.prepare("SELECT COUNT(*) AS count FROM _migrations").get()).toEqual({ count: 16 });
     } finally { db.close(); }
   });
 
@@ -61,7 +61,7 @@ describe("database edge cases", () => {
     for (const result of results) expect(result.status, JSON.stringify(result)).toBe("fulfilled");
     const db = openDb({ dbPath });
     try {
-      expect(db.prepare("SELECT COUNT(*) AS count FROM _migrations").get()).toEqual({ count: 15 });
+      expect(db.prepare("SELECT COUNT(*) AS count FROM _migrations").get()).toEqual({ count: 16 });
       expect(db.prepare("SELECT event_index FROM session_events ORDER BY event_index").all())
         .toEqual(Array.from({ length: 200 }, (_, event_index) => ({ event_index })));
       expect(db.pragma("quick_check", { simple: true })).toBe("ok");
