@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-20
+
 ### Added
 
 - A local single-user REST API with compact search, timelines, memory details,
@@ -14,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   loopback, rejects cross-origin requests, and supports optional bearer tokens.
 - A small fetch-based JavaScript client with TypeScript types, available from
   `sessionmem/client`. Retrieval and existing project filtering are unchanged.
+  ([#58])
 
 ## [1.8.0] - 2026-10-19
 
@@ -186,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.9.0]: https://github.com/catfish-1234/sessionmem/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/catfish-1234/sessionmem/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/catfish-1234/sessionmem/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/catfish-1234/sessionmem/compare/v1.5.0...v1.6.0
@@ -218,3 +222,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#40]: https://github.com/catfish-1234/sessionmem/pull/40
 [62765a7]: https://github.com/catfish-1234/sessionmem/commit/62765a7
 [#57]: https://github.com/catfish-1234/sessionmem/pull/57
+[#58]: https://github.com/catfish-1234/sessionmem/pull/58
