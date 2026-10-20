@@ -3,6 +3,14 @@
   "version": "1.8.0",
   "private": false,
   "type": "module",
+  "exports": {
+    "./client": {
+      "types": "./dist/api/client.d.ts",
+      "import": "./dist/api/client.js"
+    },
+    "./package.json": "./package.json",
+    "./*": "./*"
+  },
   "description": "Local-first MCP memory layer for coding agents across Claude Code, Codex, Cursor, Cline, Windsurf, and other MCP-compatible hosts.",
   "license": "MIT",
   "author": "kavishdua",

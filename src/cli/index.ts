@@ -36,6 +36,7 @@ import { watchCommand } from "./commands/watch.js";
 import { entitiesCommand } from "./commands/entities.js";
 import { historyCommand } from "./commands/history.js";
 import { uiCommand } from "./commands/ui.js";
+import { serveCommand } from "./commands/serve.js";
 
 // Source the version from package.json (single source of truth) so `--version`
 // never drifts from the published manifest. createRequire + resolveJsonModule
@@ -52,6 +53,16 @@ program
   .command("run")
   .description("Start the sessionmem MCP server")
   .action(runMcpServer);
+
+program
+  .command("serve")
+  .description("Start the local single-user REST API")
+  .option("--api", "Enable REST API routes")
+  .option("--port <N>", "Local port (default: 3778; 0 selects a free port)")
+  .option("--host <IP>", "Bind address (default: 127.0.0.1)")
+  .option("--allow-remote", "Explicitly allow a non-loopback bind")
+  .option("--token <token>", "Bearer token (or SESSIONMEM_API_TOKEN)")
+  .action((options) => serveCommand(options));
 
 program
   .command("ui")
