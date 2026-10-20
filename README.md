@@ -235,6 +235,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem uninstall [--adapter <name>] [--purge]` | Stop and unregister login capture, then remove sessionmem from the selected host. `--purge` also deletes the local database. |
 | `sessionmem run` | Start the MCP server. |
 | `sessionmem ui [--port N]` | Open the local read-only web viewer (default port 3777). |
+| `sessionmem serve --api [--port N]` | Start the local single-user REST API (default port 3778). |
 | `sessionmem ping` | Check the local version and database reachability. |
 | `sessionmem search <query> [--limit <n>] [--include-history]` | Search current memories by text query (limit 1–100, default 10). Include superseded facts with `--include-history`. |
 | `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
@@ -278,6 +279,32 @@ for Windows paths. Imports accept CRLF and a UTF-8 BOM; convert other encodings 
 otherwise it is derived from the repository root or working directory.
 `SESSIONMEM_ADAPTER` selects the install/doctor/uninstall host unless `--adapter` is set.
 `SESSIONMEM_DEBUG=1` enables ingest-hook diagnostics on stderr.
+
+### Local REST API and JavaScript client
+
+```bash
+sessionmem serve --api
+curl 'http://127.0.0.1:3778/v1/search?query=database&limit=5'
+```
+
+This is a local single-user API, not a hosted service. It binds to `127.0.0.1`
+and uses the current repository's project, including `SESSIONMEM_PROJECT_ID`
+overrides. It supports compact search, timelines, full details, saves and deletes
+through the same service methods as MCP. Other projects cannot be selected by a
+request. Set `SESSIONMEM_API_TOKEN` or `--token` to require bearer authentication
+on every route. Cross-origin browser requests and unexpected Host headers are
+rejected. Non-loopback binds require `--allow-remote` and print a warning.
+
+```js
+import { SessionmemClient } from "sessionmem/client";
+const client = new SessionmemClient("http://127.0.0.1:3778");
+const index = await client.searchMemoryIndex({ query: "database", limit: 5 });
+if (index.memories.length) console.log(await client.getMemory(index.memories[0].id));
+```
+
+The fetch client includes TypeScript declarations and adds no runtime
+dependencies. See [API documentation](docs/api.md) for authentication, limits,
+all client methods and curl examples.
 
 ### Inspect memories in your browser
 
