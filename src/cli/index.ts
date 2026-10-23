@@ -11,6 +11,7 @@ import { doctorCommand } from "./commands/doctor.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { pingCommand } from "./commands/ping.js";
 import { searchCommand } from "./commands/search.js";
+import { scopesCommand } from "./commands/scopes.js";
 import { listCommand } from "./commands/list.js";
 import { showCommand } from "./commands/show.js";
 import { forgetCommand } from "./commands/forget.js";
@@ -95,6 +96,7 @@ program
 
 program
   .command("scan")
+  .option("--scope <name>", "Override the captured context label")
   .description("Import Claude Code, Codex, and Cursor transcripts using local capture and summarization")
   .option("--transcripts-dir <path>", "Override transcript roots (Cursor: User directory or state.vscdb)")
   .option("--host <host>", "Select a transcript host: claude-code, codex, or cursor")
@@ -102,6 +104,7 @@ program
 
 program
   .command("watch")
+  .option("--scope <name>", "Override the captured context label")
   .description("Poll Claude Code, Codex, and Cursor transcripts and capture sessions offline")
   .option("--transcripts-dir <path>", "Override transcript roots (Cursor: User directory or state.vscdb)")
   .option("--host <host>", "Select a transcript host: claude-code, codex, or cursor")
@@ -157,6 +160,8 @@ program
 // production so each command falls through to createCliContext().
 program
   .command("search <query>")
+  .option("--scope <name>", "Select a context label (default: all scopes)")
+  .option("--scope-mode <mode>", "Scope selection: filter or boost (default: filter)")
   .description("Search memories by semantic query")
   .option("--limit <n>", "Maximum number of results (1-100)", "10")
   .option("--include-history", "Include superseded facts")
@@ -168,7 +173,14 @@ program
   .action(() => listCommand());
 
 program
+  .command("scopes")
+  .description("List local context labels and metadata counts for the current project")
+  .option("--json", "Output labels and counts as JSON")
+  .action((options) => scopesCommand(options));
+
+program
   .command("entities")
+  .option("--scope <name>", "Filter entity associations by context label")
   .description("List extracted entities, typed relations, and source memory IDs for a project")
   .option("--project <id>", "Project ID (default: current project)")
   .option("--json", "Output entities and relations as JSON")

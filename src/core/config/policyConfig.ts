@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { scopeSchema } from "../scopes.js";
 import { RETRIEVAL_RANKINGS } from "../retrieve/signalFusion.js";
 import { homedir } from "os";
 import { join, dirname } from "path";
@@ -66,6 +67,7 @@ const policyConfigShape = {
   temporalRetrieval: z.boolean().optional(),
   entityLinkBoost: z.boolean().optional(),
   entityBoost: z.boolean().optional(),
+  scope: scopeSchema,
   retrievalRanking: z.enum(RETRIEVAL_RANKINGS).optional(),
   team: teamConfigShape.default({ enabled: false }),
 };
@@ -129,6 +131,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   const tr = s.temporalRetrieval.safeParse(obj.temporalRetrieval);
   const el = s.entityLinkBoost.safeParse(obj.entityLinkBoost);
   const eb = s.entityBoost.safeParse(obj.entityBoost);
+  const scope = s.scope.safeParse(obj.scope);
   const rr = s.retrievalRanking.safeParse(obj.retrievalRanking);
   const tm = s.team.safeParse(obj.team);
   return {
@@ -139,6 +142,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
     temporalRetrieval: tr.success ? tr.data : undefined,
     entityLinkBoost: el.success ? el.data : undefined,
     entityBoost: eb.success ? eb.data : undefined,
+    scope: scope.success ? scope.data : undefined,
     retrievalRanking: rr.success ? rr.data : undefined,
     team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
   };

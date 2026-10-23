@@ -9,6 +9,7 @@ export interface SessionEventRecord {
 }
 
 export interface MemoryRecord {
+  scope?: string | null;
   id: string;
   project_id: string;
   session_id: string;
@@ -41,6 +42,7 @@ export interface InsertSessionEventInput {
 }
 
 export interface InsertMemoryInput {
+  scope?: string | null;
   id: string;
   project_id: string;
   session_id: string;

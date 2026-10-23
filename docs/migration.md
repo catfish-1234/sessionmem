@@ -17,7 +17,23 @@ src/core/schema/migrations/
 
 ### How migrations run
 
-At startup, the runner creates the `_migrations` tracking table if needed and sorts the `.sql` files by name. It applies each migration in its own transaction, skipping any already recorded in `_migrations`. Starting sessionmem again does not reapply completed migrations. There are no down-migrations.
+At first open, the runner sorts the `.sql` files by name and applies all pending
+versions in one immediate transaction, including creation of the `_migrations`
+tracking table if needed. Completed migrations are skipped. Individual versions
+use nested savepoints; any failure rolls back the entire pending upgrade.
+Migration runs before changing the file's journal mode to WAL. This preserves
+the original database file's bytes on a failed migration, including failures
+after earlier pending versions succeeded. Starting again retries the upgrade.
+There are no down-migrations.
+
+Migration `017_scopes.sql` adds nullable labels to memories and entity
+associations, a sessions table, indexes and inheritance triggers. Existing
+records retain NULL labels; historical context is not guessed. The upgrade
+preserves existing tables, contents, IDs, timestamps, embeddings, claims and
+feedback. A committed pre-scope SQLite file tests preservation and repeat opens.
+Failure tests run the real scope migration followed by a destructive operation
+and an intentional error, then compare the original DELETE-mode and WAL-mode
+files byte-for-byte. See [scopes](scopes.md) for capture and query behavior.
 
 Migration `015_memory_supersessions.sql` adds derived fact claims, timestamped replacement links, and a view identifying fully superseded memories. It backfills existing records locally in the migration transaction, using full session events for summaries where available. Stored memory content and IDs are preserved. Recall then defaults to current facts; use `includeHistory: true` or `sessionmem search --include-history` to retrieve superseded facts, and `sessionmem history` to inspect their chains.
 

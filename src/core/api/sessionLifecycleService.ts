@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import { captureScope } from "../scopes.js";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import {
   deleteMemoriesOlderThan as deleteMemoriesOlderThanDefault,
@@ -40,6 +41,8 @@ const CLOUD_ENABLED_MESSAGE =
   "Cloud summarization active: allowCloudSummarization=true and ANTHROPIC_API_KEY present";
 
 export interface SessionLifecycleServiceDeps {
+  workingDirectory?: string;
+  scope?: string | null;
   db: Database;
   embeddingDimension?: number;
   /** Local author identity stamped on session-summary writes. */
@@ -120,10 +123,12 @@ function storeSummaryMemory(
     author: string;
     knowledge: Knowledge;
     factSource: TimedFactSource[];
+    scope: string | null;
   },
 ): void {
   const embedding = deterministicEmbed(input.summary, embeddingDimension);
   upsertSessionSummaryMemory(db, {
+    scope: input.scope,
     id: input.memoryId,
     project_id: input.projectId,
     session_id: input.sessionId,
@@ -258,6 +263,9 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
     // caps. This remains deterministic even when cloud summaries are opted in.
     const factSource = events.map(event => ({ text: extractEventText(event), observedAt: event.created_at }));
     const knowledge = extractKnowledge(factSource.map(source => source.text).join("\n"));
+    const scope = captureScope(deps.db, request.projectId, request.sessionId, request.scope,
+      request.workingDirectory ?? deps.workingDirectory,
+      deps.scope !== undefined ? deps.scope : readPolicyConfig(policyConfigPath).scope);
     const baseInput = {
       events,
       summaryTokenCap: request.config.summaryTokenCap,
@@ -282,6 +290,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           author,
           knowledge,
           factSource,
+          scope,
         });
 
         runLightPrune(request.projectId);
@@ -321,6 +330,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
           author,
           knowledge,
           factSource,
+          scope,
         });
 
         runLightPrune(request.projectId);
@@ -379,6 +389,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
         author,
         knowledge,
         factSource,
+        scope,
       });
 
       runLightPrune(request.projectId);

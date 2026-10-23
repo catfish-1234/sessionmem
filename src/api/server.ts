@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { CliContext } from "../cli/context.js";
 import { DomainError } from "../core/api/errors.js";
 import {
-  memoryTimelineRequestSchema, searchMemoryIndexRequestSchema, storeMemoryRequestSchema,
+  memoryTimelineRequestSchema, searchMemoryIndexRequestSchema, storeMemoryRequestSchema, getMemoryRequestSchema,
 } from "../core/api/contracts.js";
 import { bindHost, json, listenHttp, parsePort, sameOrigin } from "../http/server.js";
 
@@ -79,6 +79,7 @@ function queryInput(params: URLSearchParams, allowed: string[]): Record<string, 
     if (key === "tags") input.tags = params.getAll("tags");
     else if (key === "limit") input.limit = /^\d+$/.test(value) ? Number(value) : value;
     else if (key === "includeHistory") input.includeHistory = value === "true" ? true : value === "false" ? false : value;
+    else if (key === "scope") input.scope = value === "" ? null : value;
     else input[key] = value;
   }
   return input;
@@ -110,11 +111,11 @@ export async function startApiServer(context: Pick<CliContext, "service" | "proj
           throw new HttpError(405, "METHOD_NOT_ALLOWED", "Use GET");
         }
         if (pathname === "/v1/search") {
-          const input = queryInput(searchParams, ["query", "limit", "includeHistory", "tags"]);
+          const input = queryInput(searchParams, ["query", "limit", "includeHistory", "tags", "scope", "scopeMode"]);
           const result = await context.service.searchMemoryIndex(searchMemoryIndexRequestSchema.parse({ ...input, projectId }));
           send(response, 200, result);
         } else {
-          const input = queryInput(searchParams, ["memoryId", "fromDate", "toDate", "limit", "includeHistory"]);
+          const input = queryInput(searchParams, ["memoryId", "fromDate", "toDate", "limit", "includeHistory", "scope"]);
           const result = await context.service.memoryTimeline(memoryTimelineRequestSchema.parse({ ...input, projectId }));
           send(response, 200, result);
         }
@@ -127,11 +128,11 @@ export async function startApiServer(context: Pick<CliContext, "service" | "proj
         const input = storeMemoryRequestSchema.omit({ projectId: true }).strict().parse(await readBody(request));
         send(response, 201, await context.service.storeMemory({ ...input, projectId }));
       } else if (/^\/v1\/memories\/[^/]+$/.test(pathname)) {
-        queryInput(searchParams, []);
+        const input = queryInput(searchParams, request.method === "GET" ? ["scope"] : []);
         let memoryId: string;
         try { memoryId = decodeURIComponent(pathname.slice("/v1/memories/".length)); }
         catch { throw new HttpError(400, "VALIDATION", "Invalid memory ID encoding"); }
-        if (request.method === "GET") send(response, 200, await context.service.getMemory({ projectId, memoryId }));
+        if (request.method === "GET") send(response, 200, await context.service.getMemory(getMemoryRequestSchema.parse({ ...input, projectId, memoryId })));
         else if (request.method === "DELETE") send(response, 200, await context.service.forgetMemory({ projectId, memoryId }));
         else {
           response.setHeader("Allow", "GET, DELETE");

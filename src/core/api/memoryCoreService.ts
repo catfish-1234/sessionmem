@@ -1,5 +1,6 @@
 import { userInfo } from "node:os";
 import type { Database } from "better-sqlite3";
+import { captureScope, recordSessionScope, type ScopeSelection } from "../scopes.js";
 import { type z, ZodError, type ZodType } from "zod";
 import { deterministicEmbed } from "../embed/deterministicEmbed.js";
 import { loadLocalSemanticEmbedder, type LocalSemanticEmbedder } from "../embed/localSemanticEmbedder.js";
@@ -85,6 +86,7 @@ const DEFAULT_EMBEDDING_DIMENSION = 32;
 const REDACT_PREVIEW_MAX_LENGTH = 120;
 
 interface MemoryDto {
+  scope?: string | null;
   id: string;
   projectId: string;
   sessionId: string;
@@ -130,6 +132,8 @@ interface RetrievedMemoryDto extends MemoryDto {
 }
 
 export interface CreateMemoryCoreServiceDeps {
+  workingDirectory?: string;
+  scope?: string | null;
   db: Database;
   embeddingDimension?: number;
   /** Local inference test seam. null explicitly simulates unavailable optional packages. */
@@ -216,6 +220,7 @@ function toMemoryDto(record: MemoryRecord): MemoryDto {
 function toExportMemoryDto(record: MemoryRecord): MemoryDto {
   return {
     ...toMemoryDto(record),
+    ...(record.scope != null ? { scope: record.scope } : {}),
     content: record.content,
     normalizedContent: record.normalized_content,
   };
@@ -278,6 +283,11 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
   // Resolve the local author identity once per service instance.
   const localAuthor = resolveServiceUsername(deps.username);
   const policyConfigPath = deps.policyConfigPath ?? configFilePath();
+  function resolveCaptureScope(request: { projectId: string; sessionId: string; scope?: string | null; workingDirectory?: string }) {
+    return captureScope(db, request.projectId, request.sessionId, request.scope,
+      request.workingDirectory ?? deps.workingDirectory,
+      deps.scope !== undefined ? deps.scope : readPolicyConfig(policyConfigPath).scope);
+  }
   let semanticWarningShown = false;
   async function semanticEmbedder(): Promise<LocalSemanticEmbedder | null> {
     if (!readPolicyConfig(policyConfigPath).semanticSearch) return null;
@@ -307,6 +317,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
   }
   const lifecycleService = createSessionLifecycleService({
     db,
+    workingDirectory: deps.workingDirectory,
+    scope: deps.scope,
     embeddingDimension: dimension,
     username: localAuthor,
     policyConfigPath: deps.policyConfigPath,
@@ -315,7 +327,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     deleteOldMemories: deps.deleteOldMemories,
   });
 
-  async function rankMemories(parsed: { projectId: string; query: string; includeHistory?: boolean; tags?: string[] }, limit: number) {
+  async function rankMemories(parsed: { projectId: string; query: string; includeHistory?: boolean; tags?: string[] } & ScopeSelection, limit: number) {
+    if (parsed.scopeMode !== undefined && parsed.scope === undefined) throw new DomainError("VALIDATION", "scopeMode requires scope");
     const now = deps.now?.() ?? new Date();
     const config = readPolicyConfig(policyConfigPath);
     const intent = config.temporalRetrieval ? detectTemporalIntent(parsed.query, now) : { kind: "none" };
@@ -324,12 +337,14 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
     try {
       const embedder = await semanticEmbedder();
       if (embedder) semanticCandidates = await searchSemanticMemories(db, parsed.projectId, parsed.query,
-        now, includeHistory, embedder);
+        now, includeHistory, embedder, parsed.scope !== undefined && parsed.scopeMode !== "boost" ? { scope: parsed.scope } : undefined);
     } catch { semanticWarning(); }
     const rankedAll = retrieveMemories({
       db,
       projectId: parsed.projectId,
       queryText: parsed.query,
+      scope: parsed.scope,
+      scopeMode: parsed.scopeMode,
       includeHistory,
       temporalRetrieval: config.temporalRetrieval,
       // Measured mode-specific default: coverage helps BM25, but regresses
@@ -379,6 +394,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // it from the policy config.
       const redactionEnabled = resolveRedactionEnabled(undefined);
       const ingest = db.transaction(() => {
+        recordSessionScope(db, parsed.projectId, parsed.sessionId, resolveCaptureScope(parsed));
         let written = 0;
         // Events that omit eventIndex are appended after the session's current
         // maximum. Read it once inside the transaction and increment locally so
@@ -436,6 +452,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const embedding = deterministicEmbed(redaction.text, dimension);
 
       upsertSessionSummaryMemory(db, {
+        scope: resolveCaptureScope(parsed),
         id: parsed.memoryId,
         project_id: parsed.projectId,
         session_id: parsed.sessionId,
@@ -484,6 +501,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       }
 
       insertMemory(db, {
+        scope: resolveCaptureScope(parsed),
         id: parsed.memoryId,
         project_id: parsed.projectId,
         session_id: parsed.sessionId,
@@ -590,7 +608,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       const parsed = parseRequest(getMemoryRequestSchema, request);
       const memory = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
 
-      if (!memory) {
+      if (!memory || (parsed.scope !== undefined && memory.scope !== parsed.scope)) {
         throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
       }
 
@@ -688,6 +706,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
           const embedding = deterministicEmbed(redaction.text, dimension);
           upsertImportedMemory(db, {
+            scope: memory.scope,
             id: memory.id,
             project_id: parsed.projectId,
             session_id: memory.sessionId,
@@ -774,6 +793,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
           const embedding = deterministicEmbed(redaction.text, dimension);
           upsertPulledMemory(db, {
+            scope: memory.scope,
             id: memory.id,
             // LOCAL project_id so merged rows are retrievable in the pulling
             // user's project (Open Q4).
@@ -995,6 +1015,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
               const capturedAt = deps.now?.().toISOString();
 
               insertMemory(db, {
+                scope: resolveCaptureScope({ ...item, projectId: parsed.projectId }),
                 id: item.memoryId,
                 project_id: parsed.projectId,
                 session_id: item.sessionId,

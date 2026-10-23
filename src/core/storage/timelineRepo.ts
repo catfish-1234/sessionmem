@@ -3,14 +3,16 @@ import { DomainError } from "../api/errors.js";
 
 interface TimelineRow { id: string; content: string; kind: string; created_at: string }
 interface TimelineInput {
+  scope?: string | null;
   projectId: string; memoryId?: string; fromDate?: string; toDate?: string; includeHistory: boolean; limit: number;
 }
 
 /** Small SQL projections, stable ordering, and no access-count writes. */
 export function memoryTimeline(db: Database, input: TimelineInput, now: Date): { rows: TimelineRow[]; hasMore: boolean } {
   const visible = `project_id = @projectId AND (expires_at IS NULL OR expires_at > @now)
+    ${input.scope !== undefined ? "AND scope IS @scope" : ""}
     AND (@history = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))`;
-  const bindings = { projectId: input.projectId, now: now.toISOString(), history: Number(input.includeHistory) };
+  const bindings = { projectId: input.projectId, now: now.toISOString(), history: Number(input.includeHistory), scope: input.scope ?? null };
   // Project only enough text for the one-line summary, never embeddings or bodies.
   const select = `SELECT id, substr(content, 1, 1000) AS content, kind, created_at FROM memories WHERE ${visible}`;
   if (!input.memoryId) {

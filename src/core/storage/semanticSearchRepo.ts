@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import type { ScopeFilter } from "../scopes.js";
 import type { LocalSemanticEmbedder } from "../embed/localSemanticEmbedder.js";
 import { searchMemoryCandidatesByIds, type MemorySearchCandidate } from "./memorySearchRepo.js";
 
@@ -15,11 +16,12 @@ function normalize(vector: number[], dimension: number): number[] {
 }
 
 /** Backfill from stored text after normal capture policy; never raw capture input. */
-export async function indexSemanticMemories(db: Database, projectId: string, embedder: LocalSemanticEmbedder, memoryId?: string): Promise<void> {
+export async function indexSemanticMemories(db: Database, projectId: string, embedder: LocalSemanticEmbedder, memoryId?: string, filter?: ScopeFilter): Promise<void> {
   const rows = db.prepare(`SELECT m.id, m.content FROM memories m
     WHERE m.project_id = ? AND (? IS NULL OR m.id = ?) AND NOT EXISTS (SELECT 1 FROM semantic_embeddings s
-      WHERE s.memory_id = m.id AND s.model = ? AND s.dimension = ?)`)
-    .all(projectId, memoryId ?? null, memoryId ?? null, embedder.id, embedder.dimension) as Array<{ id: string; content: string }>;
+      WHERE s.memory_id = m.id AND s.model = ? AND s.dimension = ?)
+      ${filter ? "AND m.scope IS ?" : ""}`)
+    .all(projectId, memoryId ?? null, memoryId ?? null, embedder.id, embedder.dimension, ...(filter ? [filter.scope] : [])) as Array<{ id: string; content: string }>;
   const insert = db.prepare(`INSERT OR REPLACE INTO semantic_embeddings(memory_id, model, dimension, vector)
     SELECT id, @model, @dimension, @vector FROM memories
     WHERE id = @id AND project_id = @project AND content = @content`);
@@ -34,14 +36,15 @@ export async function indexSemanticMemories(db: Database, projectId: string, emb
 
 /** Exact local cosine scan. Appropriate to small project stores; no ANN service. */
 export async function searchSemanticMemories(db: Database, projectId: string, query: string,
-  now: Date, includeHistory: boolean, embedder: LocalSemanticEmbedder): Promise<SemanticCandidate[]> {
-  await indexSemanticMemories(db, projectId, embedder);
+  now: Date, includeHistory: boolean, embedder: LocalSemanticEmbedder, filter?: ScopeFilter): Promise<SemanticCandidate[]> {
+  await indexSemanticMemories(db, projectId, embedder, undefined, filter);
   const vector = normalize(await embedder.embed(query), embedder.dimension);
   const rows = db.prepare(`SELECT s.memory_id, s.vector FROM semantic_embeddings s JOIN memories m ON m.id = s.memory_id
     WHERE m.project_id = @project AND s.model = @model AND s.dimension = @dimension
       AND (m.expires_at IS NULL OR m.expires_at > @now)
-      AND (@history = 1 OR m.id NOT IN (SELECT memory_id FROM superseded_memories))`)
-    .all({ project: projectId, model: embedder.id, dimension: embedder.dimension, now: now.toISOString(), history: Number(includeHistory) }) as Array<{ memory_id: string; vector: Buffer }>;
+      AND (@history = 1 OR m.id NOT IN (SELECT memory_id FROM superseded_memories))
+      ${filter ? "AND m.scope IS @scope" : ""}`)
+    .all({ project: projectId, model: embedder.id, dimension: embedder.dimension, now: now.toISOString(), history: Number(includeHistory), scope: filter?.scope ?? null }) as Array<{ memory_id: string; vector: Buffer }>;
   const scored = [];
   for (const row of rows) {
     if (row.vector.length !== vector.length * 4) continue;
@@ -54,7 +57,7 @@ export async function searchSemanticMemories(db: Database, projectId: string, qu
   }
   scored.sort((a, b) => b.similarity - a.similarity || a.id.localeCompare(b.id));
   const top = scored.slice(0, 50);
-  const candidates = new Map(searchMemoryCandidatesByIds(db, projectId, top.map(r => r.id), now, includeHistory).map(c => [c.id, c]));
+  const candidates = new Map(searchMemoryCandidatesByIds(db, projectId, top.map(r => r.id), now, includeHistory, filter).map(c => [c.id, c]));
   return top.flatMap(row => {
     const candidate = candidates.get(row.id);
     return candidate ? [{ candidate, similarity: row.similarity }] : [];

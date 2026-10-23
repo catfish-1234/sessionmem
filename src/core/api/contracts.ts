@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { scopeSchema } from "../scopes.js";
 import type { DomainErrorCode } from "./errors.js";
 
 /**
@@ -58,6 +59,7 @@ export const MAX_INGEST_EVENTS = 500;
 export const LIST_MEMORIES_DEFAULT_LIMIT = 200;
 
 export const memorySchema = z.object({
+  scope: scopeSchema,
   id: z.string().min(1),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
@@ -106,6 +108,8 @@ export const ingestSessionEventSchema = z.object({
 });
 
 export const ingestSessionEventsRequestSchema = z.object({
+  scope: scopeSchema,
+  workingDirectory: z.string().min(1).max(4096).optional(),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
   // Mutable transcript hosts can refresh an existing event without changing
@@ -115,6 +119,8 @@ export const ingestSessionEventsRequestSchema = z.object({
 });
 
 export const summarizeSessionToMemoryRequestSchema = z.object({
+  scope: scopeSchema,
+  workingDirectory: z.string().min(1).max(4096).optional(),
   memoryId: z.string().min(1).max(200),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
@@ -148,6 +154,8 @@ export const handleSessionEndConfigSchema = z.object({
 });
 
 export const handleSessionEndRequestSchema = z.object({
+  scope: scopeSchema,
+  workingDirectory: z.string().min(1).max(4096).optional(),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
   sourceAdapter: z
@@ -161,6 +169,8 @@ export const handleSessionEndRequestSchema = z.object({
 });
 
 export const storeMemoryRequestSchema = z.object({
+  scope: scopeSchema,
+  workingDirectory: z.string().min(1).max(4096).optional(),
   memoryId: z.string().min(1).max(200),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
@@ -182,6 +192,8 @@ export const storeMemoryRequestSchema = z.object({
 });
 
 export const retrieveMemoriesRequestSchema = z.object({
+  scope: scopeSchema,
+  scopeMode: z.enum(["filter", "boost"]).optional(),
   projectId: z.string().min(1),
   query: z.string().min(1).max(1000),
   limit: z.number().int().min(1).max(100).default(20),
@@ -202,15 +214,17 @@ export const listMemoriesRequestSchema = z.object({
 });
 
 export const getMemoryRequestSchema = z.object({
+  scope: scopeSchema,
   projectId: z.string().min(1),
   memoryId: z.string().min(1).max(200),
 });
 
 export const searchMemoryIndexRequestSchema = retrieveMemoriesRequestSchema
-  .pick({ projectId: true, query: true, includeHistory: true, tags: true })
+  .pick({ projectId: true, query: true, includeHistory: true, tags: true, scope: true, scopeMode: true })
   .extend({ limit: z.number().int().min(1).max(50).default(10) });
 
 export const memoryTimelineRequestSchema = z.object({
+  scope: scopeSchema,
   projectId: z.string().min(1),
   memoryId: z.string().min(1).max(200).optional(),
   fromDate: z.iso.datetime().optional(),
@@ -239,6 +253,7 @@ export const exportMemoriesRequestSchema = z.object({
 });
 
 export const importMemoryRecordSchema = z.object({
+  scope: scopeSchema,
   id: z.string().min(1).max(200),
   projectId: z.string().min(1),
   sessionId: z.string().min(1).max(200),
@@ -466,6 +481,8 @@ export const pullMemoriesResponseSchema = z.object({
 });
 
 export const batchStoreMemoryItemSchema = z.object({
+  scope: scopeSchema,
+  workingDirectory: z.string().min(1).max(4096).optional(),
   memoryId: z.string().min(1).max(200),
   sessionId: z.string().min(1).max(200),
   sourceAdapter: z

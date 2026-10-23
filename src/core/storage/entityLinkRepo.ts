@@ -1,19 +1,21 @@
 import type { Database } from "better-sqlite3";
+import type { ScopeFilter } from "../scopes.js";
 import { queryEntityNames } from "../extract/knowledge.js";
 
 // Explicit spelling aliases only. No fuzzy matching or inferred coreference.
 const ALIASES = [["postgres", "postgresql"], ["node", "node.js"], ["k8s", "kubernetes"]];
 
 /** Link literal query names to existing entities, then weight rare names more. */
-export function linkedEntityScores(db: Database, projectId: string, query: string, now: Date, includeHistory: boolean, hubDamping = false): Map<string, number> {
+export function linkedEntityScores(db: Database, projectId: string, query: string, now: Date, includeHistory: boolean, hubDamping = false, filter?: ScopeFilter): Map<string, number> {
   const names = new Set(queryEntityNames(query));
   for (const group of ALIASES) if (group.some(name => names.has(name))) for (const name of group) names.add(name);
   const rows = db.prepare(`SELECT DISTINCT e.memory_id, e.kind, e.name FROM memory_entities e
     JOIN memories m ON m.id = e.memory_id
     WHERE m.project_id = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
       AND (? = 1 OR m.id NOT IN (SELECT memory_id FROM superseded_memories))
+      ${filter ? "AND m.scope IS ?" : ""}
       AND e.name IN (SELECT value FROM json_each(?)) ORDER BY e.kind, e.name, e.memory_id`)
-    .all(projectId, now.toISOString(), Number(includeHistory), JSON.stringify([...names])) as Array<{ memory_id: string; kind: string; name: string }>;
+    .all(projectId, now.toISOString(), Number(includeHistory), ...(filter ? [filter.scope] : []), JSON.stringify([...names])) as Array<{ memory_id: string; kind: string; name: string }>;
   const frequencies = new Map<string, number>();
   const key = (row: typeof rows[number]) => `${row.kind}:${row.name}`;
   for (const row of rows) frequencies.set(key(row), (frequencies.get(key(row)) ?? 0) + 1);
@@ -32,9 +34,10 @@ export function linkedEntityScores(db: Database, projectId: string, query: strin
     return new Map([...boosts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])));
   }
   const total = (db.prepare(`SELECT COUNT(*) AS n FROM memories WHERE project_id = ?
+    ${filter ? "AND scope IS ?" : ""}
     AND (expires_at IS NULL OR expires_at > ?)
     AND (? = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))`)
-    .get(projectId, now.toISOString(), Number(includeHistory)) as { n: number }).n;
+    .get(projectId, ...(filter ? [filter.scope] : []), now.toISOString(), Number(includeHistory)) as { n: number }).n;
   const weights = new Map([...frequencies].map(([name, count]) => [name, 1 + Math.log((total + 1) / (count + 1))]));
   const denominator = [...weights.values()].reduce((a, b) => a + b, 0);
   const scores = new Map<string, number>();

@@ -6,6 +6,7 @@ import type { Database } from "better-sqlite3";
 import { openDb } from "../core/storage/db.js";
 import { createMemoryCoreService } from "../core/api/memoryCoreService.js";
 import { deriveProjectId } from "./projectId.js";
+import { scopeSchema } from "../core/scopes.js";
 
 export interface CliContext {
   db: Database;
@@ -89,7 +90,8 @@ export function createCliContext(overrides: CliContextOverrides = {}): CliContex
   const username = overrides.username ?? localUsername();
   const db = overrides.db ?? openDb({ dbPath, migrationsDir });
   const service =
-    overrides.service ?? createMemoryCoreService({ db, username });
+    overrides.service ?? createMemoryCoreService({ db, username, workingDirectory: process.cwd(),
+      scope: process.env.SESSIONMEM_SCOPE?.trim() ? scopeSchema.parse(process.env.SESSIONMEM_SCOPE) : undefined });
   const projectId = overrides.projectId ?? deriveProjectId();
 
   return { db, service, projectId, username, dbPath };
