@@ -6,6 +6,8 @@ export interface SearchOptions {
   // callers pass numbers. Accept both and coerce at the call site.
   limit?: number | string;
   includeHistory?: boolean;
+  scope?: string;
+  scopeMode?: "filter" | "boost";
 }
 
 const DEFAULT_LIMIT = 10;
@@ -33,6 +35,8 @@ export async function searchCommand(
     mode: "auto",
     depth: "default",
     includeHistory: options.includeHistory,
+    scope: options.scope,
+    scopeMode: options.scopeMode,
   });
 
   if (!result.ok) {

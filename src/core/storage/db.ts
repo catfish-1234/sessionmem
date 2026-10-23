@@ -11,6 +11,11 @@ export function openDb(options: OpenDbOptions = {}): Database {
   const db = new BetterSqlite3(options.dbPath ?? ":memory:");
 
   try {
+    // Roll back the entire upgrade before any persistent journal-mode change.
+    // A failed migration must leave the existing database file untouched.
+    db.pragma("busy_timeout = 5000");
+    db.pragma("foreign_keys = ON");
+    runMigrations(db, options.migrationsDir);
     // Performance pragmas — WAL enables concurrent reads during writes;
     // busy_timeout prevents SQLITE_BUSY under concurrent MCP tool calls.
     // Concurrent first opens can race while switching to WAL. SQLite may
@@ -34,7 +39,6 @@ export function openDb(options: OpenDbOptions = {}): Database {
     db.pragma("busy_timeout = 5000");
     db.pragma("cache_size = -32000");
 
-    runMigrations(db, options.migrationsDir);
     return db;
   } catch (err) {
     db.close();

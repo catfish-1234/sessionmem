@@ -93,6 +93,11 @@ export function runMigrations(
   db: Database,
   migrationsDir = DEFAULT_MIGRATIONS_DIR,
 ): void {
+  // Include history creation and every pending version in one atomic upgrade.
+  db.transaction(() => applyMigrations(db, migrationsDir)).immediate();
+}
+
+function applyMigrations(db: Database, migrationsDir: string): void {
   ensureMigrationsTable(db);
 
   const files = listMigrationFiles(migrationsDir);
@@ -161,7 +166,7 @@ export function runMigrations(
       // So instead of trusting the error, verify that EVERY column this
       // migration was supposed to add actually exists. Only then is it safe to
       // record as applied; otherwise re-throw so the failure surfaces.
-      if (err instanceof Error && /duplicate column name/i.test(err.message)) {
+      if (fileName !== "017_scopes.sql" && err instanceof Error && /duplicate column name/i.test(err.message)) {
         const filePath = path.join(migrationsDir, fileName);
         const sql = fs.readFileSync(filePath, "utf8");
         if (allAddedColumnsExist(db, sql)) {

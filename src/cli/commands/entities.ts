@@ -1,11 +1,12 @@
 import { listProjectKnowledge } from "../../core/storage/knowledgeRepo.js";
 import { createCliContext, type CliContext } from "../context.js";
+import { scopeLabelSchema } from "../../core/scopes.js";
 
-export function entitiesCommand(options: { project?: string; json?: boolean } = {}, ctx?: CliContext): void {
+export function entitiesCommand(options: { project?: string; json?: boolean; scope?: string } = {}, ctx?: CliContext): void {
   const context = ctx ?? createCliContext();
   try {
     const projectId = options.project ?? context.projectId;
-    const knowledge = listProjectKnowledge(context.db, projectId);
+    const knowledge = listProjectKnowledge(context.db, projectId, new Date(), options.scope !== undefined ? { scope: scopeLabelSchema.parse(options.scope) } : undefined);
     if (options.json) {
       console.log(JSON.stringify({ projectId, ...knowledge }, null, 2));
       return;

@@ -61,6 +61,20 @@ describe("local single-user API and packaged client", () => {
     expect((await response.json()).memory.content).toContain("first\nline");
   });
 
+  it("supports scope capture, filtering, boosting and unlabelled queries through the typed client", async () => {
+    const client = new SessionmemClient(api.url);
+    await client.storeMemory({ ...saved, scope: "release" });
+    const filtered = await client.searchMemoryIndex({ query: "memory", scope: "release" });
+    expect(filtered.memories.map(row => row.id)).toEqual([saved.memoryId]);
+    expect(await client.searchMemoryIndex({ query: "TypeScript", scope: "release", scopeMode: "boost" }))
+      .toEqual(await service.searchMemoryIndex({ projectId: "p", query: "TypeScript", scope: "release", scopeMode: "boost" }));
+    expect((await client.searchMemoryIndex({ query: "TypeScript", scope: null })).memories.map(row => row.id)).not.toContain(saved.memoryId);
+    expect(db.prepare("SELECT scope FROM memories WHERE id = ?").get(saved.memoryId)).toEqual({ scope: "release" });
+    expect((await client.memoryTimeline({ memoryId: saved.memoryId, scope: "release" })).memories.map(row => row.id)).toEqual([saved.memoryId]);
+    expect((await client.getMemory(saved.memoryId, { scope: "release" })).memory.id).toBe(saved.memoryId);
+    await expect(client.getMemory("first", { scope: "release" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("returns the exact compact search, tagged search and timeline service results without writes", async () => {
     const before = db.serialize();
     const search = await fetch(url("v1/search?query=TypeScript&limit=2&tags=fixture&includeHistory=false"));

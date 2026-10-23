@@ -1,4 +1,5 @@
 import type { Database, Statement } from "better-sqlite3";
+import { recordSessionScope } from "../scopes.js";
 import type { InsertMemoryInput, MemoryRecord } from "./types.js";
 import { indexMemoryKnowledge, replaceMemoryKnowledge } from "./knowledgeRepo.js";
 import { indexMemorySupersessions, reconcileProjectSupersessions } from "./supersessionRepo.js";
@@ -36,12 +37,12 @@ const UPSERT_INSERT_HEAD = `
   INSERT INTO memories (
     id, project_id, session_id, source_adapter, kind, content, normalized_content,
     importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-    tags, expires_at,
+    tags, expires_at, scope,
     created_at, updated_at
   ) VALUES (
     @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
     @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
-    @tags, @expires_at,
+    @tags, @expires_at, @scope,
     COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   )
@@ -61,6 +62,7 @@ const UPSERT_INSERT_TAIL = `
     origin_project_id = excluded.origin_project_id,
     tags = excluded.tags,
     expires_at = excluded.expires_at,
+    scope = excluded.scope,
     created_at = excluded.created_at,
     updated_at = excluded.updated_at
 `;
@@ -76,12 +78,12 @@ function getStatements(db: Database): MemoryRepoStatements {
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-      tags, expires_at,
+      tags, expires_at, scope,
       created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, @kind, @content, @normalized_content,
       @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
-      @tags, @expires_at,
+      @tags, @expires_at, @scope,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -90,12 +92,12 @@ function getStatements(db: Database): MemoryRepoStatements {
     INSERT INTO memories (
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-      tags, expires_at,
+      tags, expires_at, scope,
       created_at, updated_at
     ) VALUES (
       @id, @project_id, @session_id, @source_adapter, 'summary', @content, @normalized_content,
       @importance, @embedding, @embedding_dim, @embedding_version, @author, @origin_project_id,
-      @tags, @expires_at,
+      @tags, @expires_at, @scope,
       COALESCE(@created_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
       COALESCE(@updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     )
@@ -113,6 +115,7 @@ function getStatements(db: Database): MemoryRepoStatements {
       origin_project_id = excluded.origin_project_id,
       tags = excluded.tags,
       expires_at = excluded.expires_at,
+      scope = excluded.scope,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     ON CONFLICT(id)
     DO UPDATE SET
@@ -129,13 +132,14 @@ function getStatements(db: Database): MemoryRepoStatements {
       origin_project_id = excluded.origin_project_id,
       tags = excluded.tags,
       expires_at = excluded.expires_at,
+      scope = excluded.scope,
       updated_at = COALESCE(excluded.updated_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
   `),
     listByProject: db.prepare(`
     SELECT
       id, project_id, session_id, source_adapter, kind, content, normalized_content,
       importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-      tags, expires_at,
+      tags, expires_at, scope,
       access_count, last_accessed, created_at, updated_at
     FROM memories
     WHERE project_id = ?
@@ -163,7 +167,7 @@ function getStatements(db: Database): MemoryRepoStatements {
       SELECT
         id, project_id, session_id, source_adapter, kind, content, normalized_content,
         importance, embedding, embedding_dim, embedding_version, author, origin_project_id,
-        tags, expires_at,
+        tags, expires_at, scope,
         access_count, last_accessed, created_at, updated_at
       FROM memories
       WHERE project_id = ? AND id = ?
@@ -253,6 +257,7 @@ function toParams(input: InsertMemoryInput) {
     origin_project_id: input.origin_project_id ?? null,
     tags: input.tags ?? null,
     expires_at: input.expires_at ?? null,
+    scope: input.scope ?? null,
     created_at: input.created_at ?? null,
     updated_at: input.updated_at ?? null,
   };
@@ -261,6 +266,7 @@ function toParams(input: InsertMemoryInput) {
 export function insertMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
   db.transaction(() => {
+    if (input.scope !== undefined) recordSessionScope(db, input.project_id, input.session_id, input.scope);
     getStatements(db).insertMemory.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
     indexMemorySupersessions(db, input.id, input.content);
@@ -275,6 +281,7 @@ export function upsertSessionSummaryMemory(
 ): void {
   assertImportance(input.importance);
   db.transaction(() => {
+    if (input.scope !== undefined) recordSessionScope(db, input.project_id, input.session_id, input.scope);
     getStatements(db).upsertSessionSummary.run(toParams({ ...input, kind: "summary" }));
     if (knowledge) replaceMemoryKnowledge(db, input.id, knowledge);
     else indexMemoryKnowledge(db, input.id, input.content);
@@ -291,6 +298,7 @@ export function upsertSessionSummaryMemory(
 export function upsertImportedMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
   db.transaction(() => {
+    if (input.scope !== undefined) recordSessionScope(db, input.project_id, input.session_id, input.scope);
     getStatements(db).importUpsert.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
     indexMemorySupersessions(db, input.id, input.content);
@@ -305,6 +313,7 @@ export function upsertImportedMemory(db: Database, input: InsertMemoryInput): vo
 export function upsertPulledMemory(db: Database, input: InsertMemoryInput): void {
   assertImportance(input.importance);
   db.transaction(() => {
+    if (input.scope !== undefined) recordSessionScope(db, input.project_id, input.session_id, input.scope);
     getStatements(db).pullUpsert.run(toParams(input));
     indexMemoryKnowledge(db, input.id, input.content);
     indexMemorySupersessions(db, input.id, input.content);

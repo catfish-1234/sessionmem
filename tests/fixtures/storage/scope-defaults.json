@@ -1,0 +1,110 @@
+{
+  "source_commit": "869ce6e",
+  "now": "2026-01-01T00:00:00.000Z",
+  "hashes": [
+    {
+      "method": "retrieveMemories",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "deployment",
+        "limit": 20,
+        "mode": "on-demand"
+      },
+      "sha256": "4c3fc3732608d7c34c15b817df38949329b908cc74fab2bf4c3a893858ddf646"
+    },
+    {
+      "method": "searchMemoryIndex",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "deployment",
+        "limit": 20
+      },
+      "sha256": "6433947d01828245c4dbe3dc97b9e234da2de6427183e6e4774d3139fbafeec8"
+    },
+    {
+      "method": "retrieveMemories",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "rare beacon",
+        "limit": 20,
+        "mode": "on-demand"
+      },
+      "sha256": "e5d48140c5982574e4cedb0409945cfd66772f3ea15f38904f5fe8f1a47c0082"
+    },
+    {
+      "method": "searchMemoryIndex",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "rare beacon",
+        "limit": 20
+      },
+      "sha256": "1a9a5ba4c5951ba0775fae023ddcaf747ecf7a909910506cb78a97eef5fd51f5"
+    },
+    {
+      "method": "retrieveMemories",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "postgres",
+        "limit": 20,
+        "mode": "on-demand"
+      },
+      "sha256": "9b2a60af2e849f37422808127cb8aedece496cc0d5da8d67cb8ae133e18b0914"
+    },
+    {
+      "method": "searchMemoryIndex",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "postgres",
+        "limit": 20
+      },
+      "sha256": "bef1336303dfc5e57207bfd3c3bffb2f9da16b9ebbff65b92aae2a6631f7178c"
+    },
+    {
+      "method": "retrieveMemories",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "unrecognized zebra",
+        "limit": 20,
+        "mode": "on-demand"
+      },
+      "sha256": "ee2e19f6c78abfdd34fe621bd72021716c78532aa5d1e5d1046dc5a0fa500301"
+    },
+    {
+      "method": "searchMemoryIndex",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "unrecognized zebra",
+        "limit": 20
+      },
+      "sha256": "07bfac411c06ec65d8b882bf6ae526cc582472de41df9bb963efe5684cf9fe2a"
+    },
+    {
+      "method": "retrieveMemories",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "Alice SQLite",
+        "limit": 20,
+        "mode": "on-demand"
+      },
+      "sha256": "a04a44be9be95bdc13bc024575cfb7dda212e68b2a77db67c5384e9316564aaa"
+    },
+    {
+      "method": "searchMemoryIndex",
+      "request": {
+        "projectId": "scope-defaults",
+        "query": "Alice SQLite",
+        "limit": 20
+      },
+      "sha256": "1dfd7fd7016dead49f27347e99ebabde612c694ea4ccfb70aac2dc3f0c1726fa"
+    }
+  ],
+  "seed": {
+    "count": 90,
+    "rare_content": "Rare beacon configuration.",
+    "templates": [
+      "Alice uses SQLite. Deployment status remains stable.",
+      "PostgreSQL stores deployment records.",
+      "Routine deployment status note."
+    ]
+  }
+}

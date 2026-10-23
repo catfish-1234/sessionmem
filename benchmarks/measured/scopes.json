@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "869ce6e3d7076cf7bcda4d84a36aa4af76aac27d",
+  "candidate_source": "Implementation in this change, identified by the source checksums below.",
+  "source_sha256": {
+    "src/core/scopes.ts": "6bbd5e2fa4ddcaa9b64fad4c69a8fb46e0f72b15244a01d20dfde5232e41877d",
+    "src/core/schema/migrations/017_scopes.sql": "531cafc06cafe9b2cc63af6705aaa3ebc0332ce71a02252f0e5e0439ea6cbae0",
+    "src/core/schema/runMigrations.ts": "8ef20b6142ac36186c55656d45ce5cf488d57f52450e8269940deee80b219121",
+    "src/core/storage/db.ts": "fa3923557a8321933fe5b284e87ba782c7447d6af3e0d532f2b8133973366d4e",
+    "src/core/storage/memoryRepo.ts": "139ec42a3c51032f3d86ae436091995ff0d637d8fec888077f74bea703ba9cc2",
+    "src/core/storage/memorySearchRepo.ts": "865714e234e3b406915abc7b2bc20e79ad20c0480ecf116687a39e4bfc7fc1b2",
+    "src/core/storage/entityLinkRepo.ts": "6b76ce09ade7905849ede40f1c2a47363955828da8592ec43a172411c4193e49",
+    "src/core/storage/knowledgeRepo.ts": "4ad1ee8ca1a58c7a9d09f982e7b842b0b9f3f54aff855501dda9c84b383e4349",
+    "src/core/storage/semanticSearchRepo.ts": "7131a335b9df7547b53f84ccdf3f997c53da15e5fd4ca879497d9838c8deb37d",
+    "src/core/retrieve/retrieveMemories.ts": "fda682cfac845e10ca07bf832f098fdc0f1a58f03d06214579e40d47533bda4a",
+    "src/core/api/contracts.ts": "c9978d3fd7226c197dc01a853406408f72fc885fc945cc2cbd1e24c06fd0ae3c",
+    "src/core/api/memoryCoreService.ts": "d584eba6bd337c48796ecf3c80730d68c941c253a054fcd0d3b1bf5849e7fc43",
+    "src/core/api/sessionLifecycleService.ts": "eb8164650026ba31b45c0d557451a29bfb33e9c40e791297c9fd0474b8469576",
+    "src/cli/transcriptSweep.ts": "2568e6e597eee9be28e0d904c64b3d89e94c33a18441a3311040bafe709f952c",
+    "tests/fixtures/storage/pre-scopes-v16.db": "05d000c250e089963e834c4116b21292a1726a2ae742b470cb20285203cdca11",
+    "tests/fixtures/storage/scope-defaults.json": "f68c96ba1c52d143339aa4b19d429a8f938aa3ef281331267f2e7d8085dedee0"
+  },
+  "dataset": {
+    "dataset": "LoCoMo",
+    "repository": "https://github.com/snap-research/locomo",
+    "commit": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376",
+    "source_path": "data/locomo10.json",
+    "git_blob": "d95b872480b413d935821fdc3c84f8a8f5f29e73",
+    "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+    "license": "CC-BY-NC-4.0",
+    "license_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0",
+    "modifications": "None. Dataset and license are byte-for-byte copies of upstream files.",
+    "conversations": 10,
+    "sessions": 272,
+    "turns": 5882,
+    "total_questions": 1986
+  },
+  "baseline": {
+    "configuration": {
+      "top_k": 5,
+      "capture_clock": "2026-01-01T00:00:00.000Z",
+      "importance": 5,
+      "mode": "on-demand",
+      "depth": "default",
+      "capture_api": "storeMemory",
+      "recall_api": "retrieveMemories",
+      "embedding": "deterministicEmbed",
+      "semantic_requested": false,
+      "temporal_retrieval": false,
+      "entity_link_boost": "auto",
+      "retrieval_ranking": "legacy",
+      "entity_boost": "auto",
+      "model_load_ms": 0.0018830000000207292,
+      "network_attempts": 0
+    },
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.9.0"
+    },
+    "command": [
+      "npm",
+      "run",
+      "benchmark",
+      "--",
+      "--output",
+      "work/scopes/before.json"
+    ],
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6444007858546169,
+      "precision": 0.14315651604453003,
+      "recall": 0.5827052812625205,
+      "all_evidence_rate": 0.5311067452521283,
+      "latency_ms": {
+        "mean": 13.102659547478758,
+        "median": 12.058614999999918,
+        "p95": 23.559008999998696,
+        "max": 46.79330999999729
+      }
+    },
+    "hits": 984,
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5359712230215827,
+        "precision": 0.16762589928057553,
+        "recall": 0.30419235356759017,
+        "all_evidence_rate": 0.1223021582733813,
+        "latency_ms": {
+          "mean": 13.163355982014378,
+          "median": 12.266263000000436,
+          "p95": 23.641093999998702,
+          "max": 38.07757199999833
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 12.784608131250092,
+          "median": 11.714196000000356,
+          "p95": 23.277054999998654,
+          "max": 35.527508999999554
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.39325842696629215,
+        "precision": 0.08314606741573038,
+        "recall": 0.29373209958140556,
+        "all_evidence_rate": 0.21348314606741572,
+        "latency_ms": {
+          "mean": 11.999289213483147,
+          "median": 11.122924999999668,
+          "p95": 21.692565999999715,
+          "max": 27.26612699999896
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6869047619047619,
+        "precision": 0.14071428571428707,
+        "recall": 0.6736111111111112,
+        "all_evidence_rate": 0.6595238095238095,
+        "latency_ms": {
+          "mean": 13.320639076190522,
+          "median": 12.326178999999684,
+          "p95": 24.044730999998137,
+          "max": 46.79330999999729
+        }
+      }
+    },
+    "excluded_counts": {
+      "missing_evidence": 4,
+      "invalid_evidence": 9,
+      "adversarial": 446
+    },
+    "ranked_ids_sha256": "758b26258578f1a65c17991d9ac6ce29e514dddec68cdbd76fbb3ff4a0fd7424"
+  },
+  "after": {
+    "configuration": {
+      "top_k": 5,
+      "capture_clock": "2026-01-01T00:00:00.000Z",
+      "importance": 5,
+      "mode": "on-demand",
+      "depth": "default",
+      "capture_api": "storeMemory",
+      "recall_api": "retrieveMemories",
+      "embedding": "deterministicEmbed",
+      "semantic_requested": false,
+      "temporal_retrieval": false,
+      "entity_link_boost": "auto",
+      "retrieval_ranking": "legacy",
+      "entity_boost": "auto",
+      "model_load_ms": 0.0022529999999960637,
+      "network_attempts": 0
+    },
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.9.0"
+    },
+    "command": [
+      "npm",
+      "run",
+      "benchmark",
+      "--",
+      "--output",
+      "work/scopes/after-final.json"
+    ],
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6444007858546169,
+      "precision": 0.14315651604453003,
+      "recall": 0.5827052812625205,
+      "all_evidence_rate": 0.5311067452521283,
+      "latency_ms": {
+        "mean": 12.62270345317614,
+        "median": 11.979907999999796,
+        "p95": 21.79884399999719,
+        "max": 32.2967970000027
+      }
+    },
+    "hits": 984,
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5359712230215827,
+        "precision": 0.16762589928057553,
+        "recall": 0.30419235356759017,
+        "all_evidence_rate": 0.1223021582733813,
+        "latency_ms": {
+          "mean": 12.516556187050282,
+          "median": 12.022376499998245,
+          "p95": 21.895800999998755,
+          "max": 28.888566999998147
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 12.555638337500003,
+          "median": 11.459978999999748,
+          "p95": 22.09476100000029,
+          "max": 32.2967970000027
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.39325842696629215,
+        "precision": 0.08314606741573038,
+        "recall": 0.29373209958140556,
+        "all_evidence_rate": 0.21348314606741572,
+        "latency_ms": {
+          "mean": 11.450343898876408,
+          "median": 11.036097999998674,
+          "p95": 17.90559499999972,
+          "max": 19.425595999997313
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6869047619047619,
+        "precision": 0.14071428571428707,
+        "recall": 0.6736111111111112,
+        "all_evidence_rate": 0.6595238095238095,
+        "latency_ms": {
+          "mean": 12.80759604523808,
+          "median": 12.369457499999953,
+          "p95": 21.70227800000066,
+          "max": 29.42420399999901
+        }
+      }
+    },
+    "excluded_counts": {
+      "missing_evidence": 4,
+      "invalid_evidence": 9,
+      "adversarial": 446
+    },
+    "ranked_ids_sha256": "758b26258578f1a65c17991d9ac6ce29e514dddec68cdbd76fbb3ff4a0fd7424"
+  },
+  "comparison": {
+    "overall": {
+      "hit_rate": {
+        "before": 0.6444007858546169,
+        "after": 0.6444007858546169,
+        "delta": 0
+      },
+      "precision": {
+        "before": 0.14315651604453003,
+        "after": 0.14315651604453003,
+        "delta": 0
+      },
+      "recall": {
+        "before": 0.5827052812625205,
+        "after": 0.5827052812625205,
+        "delta": 0
+      },
+      "all_evidence_rate": {
+        "before": 0.5311067452521283,
+        "after": 0.5311067452521283,
+        "delta": 0
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.5359712230215827,
+            "after": 0.5359712230215827,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.16762589928057553,
+            "after": 0.16762589928057553,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.30419235356759017,
+            "after": 0.30419235356759017,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.1223021582733813,
+            "after": 0.1223021582733813,
+            "delta": 0
+          }
+        }
+      },
+      "temporal": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.696875,
+            "after": 0.696875,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.1450000000000003,
+            "after": 0.1450000000000003,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.66640625,
+            "after": 0.66640625,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.6375,
+            "after": 0.6375,
+            "delta": 0
+          }
+        }
+      },
+      "open-domain": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.39325842696629215,
+            "after": 0.39325842696629215,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.08314606741573038,
+            "after": 0.08314606741573038,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.29373209958140556,
+            "after": 0.29373209958140556,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.21348314606741572,
+            "after": 0.21348314606741572,
+            "delta": 0
+          }
+        }
+      },
+      "single-hop": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.6869047619047619,
+            "after": 0.6869047619047619,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.14071428571428707,
+            "after": 0.14071428571428707,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.6736111111111112,
+            "after": 0.6736111111111112,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.6595238095238095,
+            "after": 0.6595238095238095,
+            "delta": 0
+          }
+        }
+      }
+    },
+    "regressions": []
+  },
+  "validation": {
+    "no_regression": true,
+    "changed_rankings": 0,
+    "network_attempts": 0,
+    "tests_passed": 850,
+    "test_files_passed": 134,
+    "baseline_response_checksums": 10,
+    "migration_fixture_version": 16,
+    "current_schema_version": 17,
+    "failed_migration_byte_preservation": [
+      "DELETE",
+      "WAL"
+    ]
+  }
+}

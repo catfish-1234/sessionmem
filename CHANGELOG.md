@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Optional scopes for sessions, memories and extracted entity associations.
+  Capture detects a directory or project label and accepts explicit overrides.
+  Retrieval supports exact scope filters and bounded scope boosts, including
+  compact search, scoped timelines and detail lookups. Default retrieval remains
+  all scopes with byte-identical responses. Includes CLI, local API and typed
+  client support, a non-destructive versioned migration, a committed old-format
+  SQLite fixture and byte-preservation tests for failed upgrades. LoCoMo hit rate
+  @5 stays 64.4401% with zero changed rankings. No new runtime dependencies or
+  network calls. See [scopes](docs/scopes.md) and [eval results](benchmarks/scopes.md).
 - Optional bounded entity boost for retrieval and compact index search. Enable
   with `sessionmem config set entityBoost true`. Case-insensitive exact names
   and existing explicit aliases add up to 0.06 to the final score alongside

@@ -1,4 +1,5 @@
 import type { Database, Statement } from "better-sqlite3";
+import type { ScopeFilter } from "../scopes.js";
 
 import { EMBEDDING_VERSION } from "../embed/embeddingVersion.js";
 
@@ -61,9 +62,11 @@ interface SearchRepoStatements {
 }
 
 const searchStmtCache = new WeakMap<Database, SearchRepoStatements>();
+const scopedSearchStmtCache = new WeakMap<Database, SearchRepoStatements>();
 
-function getSearchStatements(db: Database): SearchRepoStatements {
-  let stmts = searchStmtCache.get(db);
+function getSearchStatements(db: Database, scoped = false): SearchRepoStatements {
+  const cache = scoped ? scopedSearchStmtCache : searchStmtCache;
+  let stmts = cache.get(db);
   if (stmts) return stmts;
 
   stmts = {
@@ -80,6 +83,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
       embedding, embedding_dim, embedding_version
     FROM memories
     WHERE project_id = @projectId
+      ${scoped ? "AND scope IS @scope" : ""}
       AND (@includeHistory = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))
       AND (expires_at IS NULL OR expires_at > @now)
       AND (
@@ -98,6 +102,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
     JOIN memories m ON m.rowid = memories_fts.rowid
     WHERE memories_fts MATCH @match
       AND m.project_id = @projectId
+      ${scoped ? "AND m.scope IS @scope" : ""}
       AND (@includeHistory = 1 OR m.id NOT IN (SELECT memory_id FROM superseded_memories))
       AND (m.expires_at IS NULL OR m.expires_at > @now)
     ORDER BY rank, m.id
@@ -105,7 +110,7 @@ function getSearchStatements(db: Database): SearchRepoStatements {
   `),
   };
 
-  searchStmtCache.set(db, stmts);
+  cache.set(db, stmts);
   return stmts;
 }
 
@@ -151,13 +156,14 @@ function mapRows(rows: MemorySearchRow[]): MemorySearchCandidate[] {
 }
 
 /** Hydrate a bounded semantic candidate list under the same visibility rules. */
-export function searchMemoryCandidatesByIds(db: Database, projectId: string, ids: string[], now: Date, includeHistory = false): MemorySearchCandidate[] {
+export function searchMemoryCandidatesByIds(db: Database, projectId: string, ids: string[], now: Date, includeHistory = false, filter?: ScopeFilter): MemorySearchCandidate[] {
   if (!ids.length) return [];
   const rows = db.prepare(`SELECT * FROM memories WHERE project_id = ?
+    ${filter ? "AND scope IS ?" : ""}
     AND id IN (${ids.map(() => "?").join(",")})
     AND (expires_at IS NULL OR expires_at > ?)
     AND (? = 1 OR id NOT IN (SELECT memory_id FROM superseded_memories))`)
-    .all(projectId, ...ids, now.toISOString(), Number(includeHistory)) as MemorySearchRow[];
+    .all(projectId, ...(filter ? [filter.scope] : []), ...ids, now.toISOString(), Number(includeHistory)) as MemorySearchRow[];
   return mapRows(rows);
 }
 
@@ -166,8 +172,10 @@ export function searchMemoryCandidates(
   projectId: string,
   now: Date = new Date(),
   includeHistory = false,
+  filter?: ScopeFilter,
 ): MemorySearchCandidate[] {
-  const rows = getSearchStatements(db).searchCandidates.all({
+  const rows = getSearchStatements(db, Boolean(filter)).searchCandidates.all({
+    scope: filter?.scope ?? null,
     projectId,
     includeHistory: Number(includeHistory),
     now: toStorageTimestamp(now),
@@ -226,15 +234,17 @@ export function searchMemoryCandidatesFTS(
   queryText: string,
   now: Date = new Date(),
   includeHistory = false,
+  filter?: ScopeFilter,
 ): MemorySearchCandidate[] {
   const sanitized = sanitizeFtsQuery(queryText);
   if (!sanitized) {
-    return searchMemoryCandidates(db, projectId, now, includeHistory);
+    return searchMemoryCandidates(db, projectId, now, includeHistory, filter);
   }
 
   let rows: MemorySearchRow[];
   try {
-    rows = getSearchStatements(db).searchCandidatesFTS.all({
+    rows = getSearchStatements(db, Boolean(filter)).searchCandidatesFTS.all({
+      scope: filter?.scope ?? null,
       match: sanitized,
       projectId,
       includeHistory: Number(includeHistory),
@@ -243,14 +253,14 @@ export function searchMemoryCandidatesFTS(
     }) as MemorySearchRow[];
   } catch {
     // FTS5 MATCH can throw on malformed queries — fall back to full scan
-    return searchMemoryCandidates(db, projectId, now, includeHistory);
+    return searchMemoryCandidates(db, projectId, now, includeHistory, filter);
   }
 
   if (rows.length >= FTS_FALLBACK_THRESHOLD) {
     return dedupById(mapRows(rows));
   }
 
-  const fallback = searchMemoryCandidates(db, projectId, now, includeHistory);
+  const fallback = searchMemoryCandidates(db, projectId, now, includeHistory, filter);
   if (rows.length === 0) {
     return fallback;
   }

@@ -2,8 +2,8 @@ import type {
   MemoryCoreResponseMap, StoreMemoryRequest, RetrieveMemoriesRequest,
 } from "../core/api/contracts.js";
 
-export type SearchMemoryIndexInput = Pick<RetrieveMemoriesRequest, "query" | "tags" | "includeHistory"> & { limit?: number };
-export type MemoryTimelineInput = { limit?: number; includeHistory?: boolean } & (
+export type SearchMemoryIndexInput = Pick<RetrieveMemoriesRequest, "query" | "tags" | "includeHistory" | "scope" | "scopeMode"> & { limit?: number };
+export type MemoryTimelineInput = { limit?: number; includeHistory?: boolean; scope?: string | null } & (
   { memoryId: string; fromDate?: never; toDate?: never }
   | { memoryId?: never; fromDate: string; toDate: string }
 );
@@ -28,7 +28,7 @@ export class SessionmemClient {
     if (method === "GET" && input) {
       for (const [key, value] of Object.entries(input)) {
         if (value === undefined) continue;
-        for (const item of Array.isArray(value) ? value : [value]) url.searchParams.append(key, String(item));
+        for (const item of Array.isArray(value) ? value : [value]) url.searchParams.append(key, key === "scope" && item === null ? "" : String(item));
       }
     }
     const response = await fetch(url, {
@@ -51,8 +51,8 @@ export class SessionmemClient {
   memoryTimeline(input: MemoryTimelineInput): Promise<MemoryCoreResponseMap["memoryTimeline"]> {
     return this.request("/v1/timeline", "GET", input);
   }
-  getMemory(memoryId: string): Promise<MemoryCoreResponseMap["getMemory"]> {
-    return this.request(`/v1/memories/${encodeURIComponent(memoryId)}`);
+  getMemory(memoryId: string, input?: { scope?: string | null }): Promise<MemoryCoreResponseMap["getMemory"]> {
+    return this.request(`/v1/memories/${encodeURIComponent(memoryId)}`, "GET", input);
   }
   storeMemory(input: StoreMemoryInput): Promise<MemoryCoreResponseMap["storeMemory"]> {
     return this.request("/v1/memories", "POST", input);

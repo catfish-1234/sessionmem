@@ -1,4 +1,5 @@
 import type { Database } from "better-sqlite3";
+import { matchingScopeIds, type ScopeSelection } from "../scopes.js";
 import { entityOverlap } from "../storage/knowledgeRepo.js";
 import { linkedEntityScores } from "../storage/entityLinkRepo.js";
 import { memoryTemporalMetadata } from "../storage/temporalRepo.js";
@@ -25,7 +26,7 @@ const ENTITY_RELEVANCE_WEIGHT = 0.10;
 // At most 0.06 of the final score, before optional temporal attenuation.
 const MAX_ENTITY_BOOST = 0.10;
 
-export interface RetrieveMemoriesInput {
+export interface RetrieveMemoriesInput extends ScopeSelection {
   db: Database;
   projectId: string;
   queryText?: string;
@@ -115,6 +116,8 @@ export function retrieveMemories(
   const adaptive = ranking === "adaptive-bm25" || ranking === "adaptive-hub-additive";
   const intent = input.temporalRetrieval ? detectTemporalIntent(queryText, now) : { kind: "none" as const };
   const includeHistory = input.includeHistory ?? intent.kind === "past";
+  if (input.scopeMode !== undefined && input.scope === undefined) throw new Error("scopeMode requires scope");
+  const scopeFilter = input.scope !== undefined && input.scopeMode !== "boost" ? { scope: input.scope } : undefined;
 
   // FTS5 retrieves up to 50 BM25 matches; sparse matches retain the existing
   // recency/importance fallback. The public request schema validates queryText.
@@ -124,25 +127,31 @@ export function retrieveMemories(
     queryText,
     now,
     includeHistory,
+    scopeFilter,
   );
   const candidates = [...lexicalCandidates];
   const ids = new Set(candidates.map(c => c.id));
   const entityMatches = input.entityLinkBoost || additive || input.entityBoost
-    ? linkedEntityScores(input.db, input.projectId, queryText, now, includeHistory, additive)
+    ? linkedEntityScores(input.db, input.projectId, queryText, now, includeHistory, additive, scopeFilter)
     : new Map<string, number>();
   // Keep the older coverage/fusion experiment independent of the positive boost.
   const linked = input.entityLinkBoost || additive ? entityMatches : new Map<string, number>();
-  for (const candidate of searchMemoryCandidatesByIds(input.db, input.projectId, [...entityMatches.keys()].slice(0, 50), now, includeHistory)) {
+  for (const candidate of searchMemoryCandidatesByIds(input.db, input.projectId, [...entityMatches.keys()].slice(0, 50), now, includeHistory, scopeFilter)) {
     if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
   }
-  for (const { candidate } of input.semanticCandidates ?? []) {
+  const semanticCandidates = scopeFilter
+    ? searchMemoryCandidatesByIds(input.db, input.projectId, input.semanticCandidates?.map(row => row.candidate.id) ?? [], now, includeHistory, scopeFilter)
+    : input.semanticCandidates?.map(row => row.candidate) ?? [];
+  for (const candidate of semanticCandidates) {
     if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
   }
   const dense = new Map(input.semanticCandidates?.map(c => [c.candidate.id, c.similarity]));
   const decayedCandidates = decayOldBoosts(candidates, now);
   const dimension = resolveEmbeddingDimension(candidates);
   const queryVector = deterministicEmbed(queryText, dimension).vector;
-  const overlap = entityOverlap(input.db, input.projectId, queryText, now);
+  const overlap = entityOverlap(input.db, input.projectId, queryText, now, scopeFilter);
+  const scopeMatches = input.scope !== undefined && input.scopeMode === "boost"
+    ? matchingScopeIds(input.db, input.projectId, candidates.map(row => row.id), input.scope) : new Set<string>();
   const temporal = intent.kind !== "none" ? memoryTemporalMetadata(input.db, input.projectId, candidates.map(c => c.id)) : new Map();
 
   // FTS5 returns negative BM25 ranks; storage converts them to positive scores.
@@ -192,10 +201,11 @@ export function retrieveMemories(
       const boostedRelevance = input.entityBoost
         ? Math.min(1, entityRelevance + MAX_ENTITY_BOOST * (entityMatches.get(candidate.id) ?? 0))
         : entityRelevance;
+      const scopedRelevance = scopeMatches.has(candidate.id) ? Math.min(1, boostedRelevance + 0.10) : boostedRelevance;
       const metadata = temporal.get(candidate.id);
       const relevance = metadata
-        ? 0.9 * boostedRelevance + 0.1 * temporalRelevance(intent, metadata.timestamp, metadata.supersededFraction, now)
-        : boostedRelevance;
+        ? 0.9 * scopedRelevance + 0.1 * temporalRelevance(intent, metadata.timestamp, metadata.supersededFraction, now)
+        : scopedRelevance;
       const score = scoreMemoryCandidate(
         {
           semantic: relevance,

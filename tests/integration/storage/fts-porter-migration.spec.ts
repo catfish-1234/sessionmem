@@ -25,7 +25,7 @@ describe("Porter FTS migration", () => {
       expect(matches("hike")).toHaveLength(0);
       runMigrations(db);
       runMigrations(db);
-      expect(db.prepare("SELECT * FROM memories WHERE id = 'legacy'").get()).toEqual(before);
+      expect(db.prepare("SELECT * FROM memories WHERE id = 'legacy'").get()).toEqual({ ...(before as Record<string, unknown>), scope: null });
       expect(matches("hike")).toHaveLength(1);
       expect(matches("camp")).toHaveLength(1);
       insertMemory(db, {

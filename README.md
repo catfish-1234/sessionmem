@@ -161,6 +161,7 @@ Compared with projects such as *claude-mem* and other cloud or Claude-only memor
 | **Secret redaction** | Built in, on by default. API keys, tokens, passwords, and private keys are scrubbed before anything is saved. | Often not handled, or left to the user |
 | **Token budget control** | Injected memories are trimmed to a small, fixed token budget (see benchmarks below) | Varies, often unbounded |
 | **Entity boost (optional)** | Case-insensitive names and explicit aliases add a bounded score boost alongside relevance, recency and importance. Local only, defaults off. | Varies |
+| **Scopes** | Optional local context labels on sessions, memories and entity associations. Capture detects a directory or project label; queries can filter or boost a selected scope. All scopes by default. | Varies |
 | **Old/stale memory cleanup** | Built-in retention policy automatically prunes old memories (configurable, on by default) | Often no automatic cleanup ("memory rot") |
 | **Team sharing** | Optional, via a shared folder you already control (network drive, synced directory). No server needed. | Usually requires a shared hosted backend |
 | **Offline-capable** | Yes. Works with no network connection by default. | Usually requires network access to the memory service |
@@ -609,6 +610,17 @@ apply. Queries without known entities keep their scores. It defaults off:
 LoCoMo hit rate @5 rose from 64.44% to 64.51%, but precision and recall fell.
 See [the measured tradeoffs](benchmarks/entity-boost.md). Compact search, timeline
 and details by ID keep the same interfaces and response limits.
+
+Capture also records an optional context label called a scope. It uses the real
+working directory name, falling back to the project ID for headless capture.
+Override it with `scope` on capture requests, `--scope <name>` on scan/watch,
+`SESSIONMEM_SCOPE`, or `sessionmem config set scope <name>` for new sessions.
+Run `sessionmem scopes --json` to inspect local labels and counts.
+`sessionmem search "deployment" --scope release` filters a context;
+adding `--scope-mode boost` favors that context while retaining other results.
+Queries without a scope keep their existing response bytes and ranking.
+Existing databases upgrade automatically without labelling historical records.
+See [scope behavior and migration safety](docs/scopes.md).
 
 ## Supported tools
 

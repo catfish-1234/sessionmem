@@ -1,4 +1,5 @@
 import type { Database, Statement } from "better-sqlite3";
+import type { ScopeFilter } from "../scopes.js";
 import { extractKnowledge, queryEntityNames, type EntityKind, type Knowledge, type RelationKind } from "../extract/knowledge.js";
 
 const cache = new WeakMap<Database, { clear: Statement; entity: Statement; relation: Statement; overlap: Statement }>();
@@ -34,8 +35,11 @@ export function indexMemoryKnowledge(db: Database, memoryId: string, content: st
   replaceMemoryKnowledge(db, memoryId, extractKnowledge(content));
 }
 
-export function entityOverlap(db: Database, projectId: string, query: string, now: Date): Map<string, number> {
-  const rows = statements(db).overlap.all(projectId, now.toISOString(), JSON.stringify(queryEntityNames(query))) as Array<{ memory_id: string; name: string }>;
+export function entityOverlap(db: Database, projectId: string, query: string, now: Date, filter?: ScopeFilter): Map<string, number> {
+  const stmt = filter ? db.prepare(`SELECT DISTINCT e.memory_id, e.name FROM memory_entities e
+    JOIN memories m ON m.id = e.memory_id WHERE m.project_id = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
+    AND e.name IN (SELECT value FROM json_each(?)) AND m.scope IS ?`) : statements(db).overlap;
+  const rows = stmt.all(projectId, now.toISOString(), JSON.stringify(queryEntityNames(query)), ...(filter ? [filter.scope] : [])) as Array<{ memory_id: string; name: string }>;
   const queryNames = new Set(rows.map(row => row.name));
   const counts = new Map<string, number>();
   for (const row of rows) counts.set(row.memory_id, (counts.get(row.memory_id) ?? 0) + 1);
@@ -48,17 +52,18 @@ export interface ProjectRelation {
   targetKind: EntityKind; targetName: string; memoryIds: string[];
 }
 
-export function listProjectKnowledge(db: Database, projectId: string, now = new Date()): {
+export function listProjectKnowledge(db: Database, projectId: string, now = new Date(), filter?: ScopeFilter): {
   entities: ProjectEntity[]; relations: ProjectRelation[];
 } {
   const entities = db.prepare(`SELECT e.kind, e.name, e.memory_id FROM memory_entities e
     JOIN memories m ON m.id = e.memory_id WHERE m.project_id = ?
-    AND (m.expires_at IS NULL OR m.expires_at > ?) ORDER BY e.kind, e.name, e.memory_id`)
-    .all(projectId, now.toISOString()) as Array<{ kind: EntityKind; name: string; memory_id: string }>;
+    AND (m.expires_at IS NULL OR m.expires_at > ?) ${filter ? "AND e.scope IS ?" : ""} ORDER BY e.kind, e.name, e.memory_id`)
+    .all(projectId, now.toISOString(), ...(filter ? [filter.scope] : [])) as Array<{ kind: EntityKind; name: string; memory_id: string }>;
   const relations = db.prepare(`SELECT r.* FROM memory_relations r JOIN memories m ON m.id = r.memory_id
     WHERE m.project_id = ? AND (m.expires_at IS NULL OR m.expires_at > ?)
+    ${filter ? "AND m.scope IS ?" : ""}
     ORDER BY source_kind, source_name, relation, target_kind, target_name, r.memory_id`)
-    .all(projectId, now.toISOString()) as Array<{ memory_id: string; source_kind: EntityKind;
+    .all(projectId, now.toISOString(), ...(filter ? [filter.scope] : [])) as Array<{ memory_id: string; source_kind: EntityKind;
       source_name: string; relation: RelationKind; target_kind: EntityKind; target_name: string }>;
   const nodes = new Map<string, ProjectEntity>();
   const edges = new Map<string, ProjectRelation>();
