@@ -58,6 +58,16 @@ node scripts/benchmark-disclosure.mjs --output benchmarks/results/disclosure.jso
 node scripts/compare-retrieval.mjs --before before.json --after after.json --require-no-regression --output benchmarks/results/regressions.json
 ```
 
+The independent bounded entity boost has `--entity-boost` and `--no-entity-boost`
+overrides. It defaults off because the hit-rate gain came with lower precision
+and recall. See [the measured comparison](entity-boost.md). Reproduce it with:
+
+```bash
+npm run benchmark -- --no-entity-boost --output benchmarks/results/boost-before.json
+npm run benchmark -- --entity-boost --output benchmarks/results/boost-after.json
+node scripts/compare-retrieval.mjs --before benchmarks/results/boost-before.json --after benchmarks/results/boost-after.json --output benchmarks/results/boost-comparison.json
+```
+
 Use `--no-entity-links` for the original BM25 control and `--ranking` for the
 source-informed alternatives. `benchmark-ranking-matrix.mjs` measures all five
 prespecified ranking variants from one capture (`--semantic` adds MiniLM).

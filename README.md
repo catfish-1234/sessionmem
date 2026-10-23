@@ -160,6 +160,7 @@ Compared with projects such as *claude-mem* and other cloud or Claude-only memor
 | **Which AI tools does it work with?** | Claude Code, Cursor, Codex, Cline, Windsurf, Antigravity, QCoder, and any other MCP-compatible host | Usually just one specific tool (commonly Claude Code only) |
 | **Secret redaction** | Built in, on by default. API keys, tokens, passwords, and private keys are scrubbed before anything is saved. | Often not handled, or left to the user |
 | **Token budget control** | Injected memories are trimmed to a small, fixed token budget (see benchmarks below) | Varies, often unbounded |
+| **Entity boost (optional)** | Case-insensitive names and explicit aliases add a bounded score boost alongside relevance, recency and importance. Local only, defaults off. | Varies |
 | **Old/stale memory cleanup** | Built-in retention policy automatically prunes old memories (configurable, on by default) | Often no automatic cleanup ("memory rot") |
 | **Team sharing** | Optional, via a shared folder you already control (network drive, synced directory). No server needed. | Usually requires a shared hosted backend |
 | **Offline-capable** | Yes. Works with no network connection by default. | Usually requires network access to the memory service |
@@ -600,6 +601,14 @@ to 14.32%, and recall from 57.45% to 58.27%; optional hybrid quality is preserve
 The `entityLinkBoost` setting overrides this automatic choice. Source-informed
 adaptive and additive alternatives remain opt-in. See
 [all before/after results and losses](benchmarks/retrieval-gaps.md).
+
+An independent bounded entity boost is available with
+`sessionmem config set entityBoost true`. Exact names and explicit aliases can
+add at most 0.06 to the final ranking score, while recency and importance still
+apply. Queries without known entities keep their scores. It defaults off:
+LoCoMo hit rate @5 rose from 64.44% to 64.51%, but precision and recall fell.
+See [the measured tradeoffs](benchmarks/entity-boost.md). Compact search, timeline
+and details by ID keep the same interfaces and response limits.
 
 ## Supported tools
 

@@ -335,6 +335,9 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       // Measured mode-specific default: coverage helps BM25, but regresses
       // MiniLM recall. An explicit override always wins, including false.
       entityLinkBoost: config.entityLinkBoost ?? (!semanticCandidates?.length && (!config.retrievalRanking || config.retrievalRanking === "legacy")),
+      // The positive boost improved hit rate, but lost precision and recall.
+      // Keep the measured default ranking until all three metrics pass.
+      entityBoost: config.entityBoost ?? false,
       ranking: config.retrievalRanking,
       limit,
       now,

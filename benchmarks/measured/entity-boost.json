@@ -1,0 +1,996 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "646c8a1390d725ceb271a707799571a606fac690",
+  "candidate_source": "Implementation in this change; source file checksums below identify the measured code.",
+  "source_sha256": {
+    "src/core/retrieve/retrieveMemories.ts": "81b9d50addb984bed1c2194cb3f555856768f29a785c6e1d78a04b9413e17bea",
+    "src/core/api/memoryCoreService.ts": "35f52503de782cfa17afee311074b396d56e9fa29343afbcb50e752c1680a435",
+    "src/core/storage/entityLinkRepo.ts": "75f018a082f4045443ef2f9089b414de19751ad90219765d9306bdd7809cea16",
+    "src/core/config/policyConfig.ts": "10935be5f1c806590bec6c70c098ec62a7239974e6944c1ce4129f5563f0a630",
+    "src/cli/commands/config.ts": "646ca9c86fbb1404329c1ae1924ce6cd4c307f79ae2392427e46d5135afd8907",
+    "scripts/benchmark.mjs": "2e3dc2c5688faf5fc3c0326f55148271a07f885e9661e1b8fefa9a02a2209bcf"
+  },
+  "dataset": {
+    "dataset": "LoCoMo",
+    "repository": "https://github.com/snap-research/locomo",
+    "commit": "3eb6f2c585f5e1699204e3c3bdf7adc5c28cb376",
+    "source_path": "data/locomo10.json",
+    "git_blob": "d95b872480b413d935821fdc3c84f8a8f5f29e73",
+    "sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+    "license": "CC-BY-NC-4.0",
+    "license_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0",
+    "modifications": "None. Dataset and license are byte-for-byte copies of upstream files.",
+    "conversations": 10,
+    "sessions": 272,
+    "turns": 5882,
+    "total_questions": 1986
+  },
+  "baseline": {
+    "configuration": {
+      "top_k": 5,
+      "capture_clock": "2026-01-01T00:00:00.000Z",
+      "importance": 5,
+      "mode": "on-demand",
+      "depth": "default",
+      "capture_api": "storeMemory",
+      "recall_api": "retrieveMemories",
+      "embedding": "deterministicEmbed",
+      "semantic_requested": false,
+      "temporal_retrieval": false,
+      "entity_link_boost": "auto",
+      "retrieval_ranking": "legacy",
+      "model_load_ms": 0.0022439999999050997,
+      "network_attempts": 0
+    },
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6444007858546169,
+      "precision": 0.14315651604453003,
+      "recall": 0.5827052812625205,
+      "all_evidence_rate": 0.5311067452521283,
+      "latency_ms": {
+        "mean": 18.00283433071384,
+        "median": 13.629313000001275,
+        "p95": 49.816687000002275,
+        "max": 80.60778799999753
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5359712230215827,
+        "precision": 0.16762589928057553,
+        "recall": 0.30419235356759017,
+        "all_evidence_rate": 0.1223021582733813,
+        "latency_ms": {
+          "mean": 17.726706402877653,
+          "median": 13.7191885000002,
+          "p95": 51.31496500000139,
+          "max": 72.31682100000035
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 18.201643293750017,
+          "median": 13.358535499999562,
+          "p95": 48.84107800000129,
+          "max": 80.60778799999753
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.39325842696629215,
+        "precision": 0.08314606741573038,
+        "recall": 0.29373209958140556,
+        "all_evidence_rate": 0.21348314606741572,
+        "latency_ms": {
+          "mean": 16.06365111235945,
+          "median": 12.386318999999276,
+          "p95": 42.511867000001075,
+          "max": 69.51695100000143
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6869047619047619,
+        "precision": 0.14071428571428707,
+        "recall": 0.6736111111111112,
+        "all_evidence_rate": 0.6595238095238095,
+        "latency_ms": {
+          "mean": 18.223943857142913,
+          "median": 13.858227999999826,
+          "p95": 49.784929000001284,
+          "max": 70.65896799999973
+        }
+      }
+    },
+    "hits": 984,
+    "command": [
+      "npm",
+      "run",
+      "benchmark",
+      "--",
+      "--output",
+      "work/entity-boost/before.json"
+    ],
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.9.0"
+    },
+    "excluded_counts": {
+      "missing_evidence": 4,
+      "invalid_evidence": 9,
+      "adversarial": 446
+    }
+  },
+  "boost_enabled": {
+    "configuration": {
+      "top_k": 5,
+      "capture_clock": "2026-01-01T00:00:00.000Z",
+      "importance": 5,
+      "mode": "on-demand",
+      "depth": "default",
+      "capture_api": "storeMemory",
+      "recall_api": "retrieveMemories",
+      "embedding": "deterministicEmbed",
+      "semantic_requested": false,
+      "temporal_retrieval": false,
+      "entity_link_boost": "auto",
+      "retrieval_ranking": "legacy",
+      "entity_boost": true,
+      "model_load_ms": 0.0020729999999957727,
+      "network_attempts": 0
+    },
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6450556647020301,
+      "precision": 0.14302554027504738,
+      "recall": 0.5810680841439875,
+      "all_evidence_rate": 0.5284872298624754,
+      "latency_ms": {
+        "mean": 18.738004526522605,
+        "median": 13.804735999998229,
+        "p95": 52.432104999999865,
+        "max": 74.54260199999771
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5503597122302158,
+        "precision": 0.16906474820143888,
+        "recall": 0.3059909147186693,
+        "all_evidence_rate": 0.11870503597122302,
+        "latency_ms": {
+          "mean": 18.46673286690643,
+          "median": 13.429651500000546,
+          "p95": 52.107178000000204,
+          "max": 68.00155200000154
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 17.546305025000077,
+          "median": 12.923999500000264,
+          "p95": 51.06054999999833,
+          "max": 74.54260199999771
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.39325842696629215,
+        "precision": 0.08314606741573038,
+        "recall": 0.29373209958140556,
+        "all_evidence_rate": 0.21348314606741572,
+        "latency_ms": {
+          "mean": 17.24630450561779,
+          "median": 12.194179000000076,
+          "p95": 50.845884999998816,
+          "max": 68.71703100000013
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6833333333333333,
+        "precision": 0.14000000000000135,
+        "recall": 0.6700396825396826,
+        "all_evidence_rate": 0.655952380952381,
+        "latency_ms": {
+          "mean": 19.439812459523836,
+          "median": 14.336792999998579,
+          "p95": 52.70582899999863,
+          "max": 74.27943700000105
+        }
+      }
+    },
+    "hits": 985,
+    "command": [
+      "npm",
+      "run",
+      "benchmark",
+      "--",
+      "--entity-boost",
+      "--output",
+      "work/entity-boost/candidate.json"
+    ],
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.9.0"
+    },
+    "excluded_counts": {
+      "missing_evidence": 4,
+      "invalid_evidence": 9,
+      "adversarial": 446
+    }
+  },
+  "boost_disabled": {
+    "configuration": {
+      "top_k": 5,
+      "capture_clock": "2026-01-01T00:00:00.000Z",
+      "importance": 5,
+      "mode": "on-demand",
+      "depth": "default",
+      "capture_api": "storeMemory",
+      "recall_api": "retrieveMemories",
+      "embedding": "deterministicEmbed",
+      "semantic_requested": false,
+      "temporal_retrieval": false,
+      "entity_link_boost": "auto",
+      "retrieval_ranking": "legacy",
+      "entity_boost": false,
+      "model_load_ms": 0.0024639999999180873,
+      "network_attempts": 0
+    },
+    "overall": {
+      "questions": 1527,
+      "hit_rate": 0.6444007858546169,
+      "precision": 0.14315651604453003,
+      "recall": 0.5827052812625205,
+      "all_evidence_rate": 0.5311067452521283,
+      "latency_ms": {
+        "mean": 22.48490361165675,
+        "median": 15.472089999999298,
+        "p95": 56.73407800000132,
+        "max": 99.36254700000063
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "questions": 278,
+        "hit_rate": 0.5359712230215827,
+        "precision": 0.16762589928057553,
+        "recall": 0.30419235356759017,
+        "all_evidence_rate": 0.1223021582733813,
+        "latency_ms": {
+          "mean": 22.655154057553975,
+          "median": 15.368553499999507,
+          "p95": 58.019992999999886,
+          "max": 79.69966399999976
+        }
+      },
+      "temporal": {
+        "questions": 320,
+        "hit_rate": 0.696875,
+        "precision": 0.1450000000000003,
+        "recall": 0.66640625,
+        "all_evidence_rate": 0.6375,
+        "latency_ms": {
+          "mean": 21.788598793749987,
+          "median": 15.482445000001462,
+          "p95": 54.80075500000021,
+          "max": 72.83014000000003
+        }
+      },
+      "open-domain": {
+        "questions": 89,
+        "hit_rate": 0.39325842696629215,
+        "precision": 0.08314606741573038,
+        "recall": 0.29373209958140556,
+        "all_evidence_rate": 0.21348314606741572,
+        "latency_ms": {
+          "mean": 20.629900494381964,
+          "median": 13.913049999999203,
+          "p95": 51.300459000001865,
+          "max": 73.82775100000072
+        }
+      },
+      "single-hop": {
+        "questions": 840,
+        "hit_rate": 0.6869047619047619,
+        "precision": 0.14071428571428707,
+        "recall": 0.6736111111111112,
+        "all_evidence_rate": 0.6595238095238095,
+        "latency_ms": {
+          "mean": 22.890359796428413,
+          "median": 15.689046500000586,
+          "p95": 57.693294000000606,
+          "max": 99.36254700000063
+        }
+      }
+    },
+    "hits": 984,
+    "command": [
+      "npm",
+      "run",
+      "benchmark",
+      "--",
+      "--no-entity-boost",
+      "--output",
+      "work/entity-boost/default.json"
+    ],
+    "runtime": {
+      "node": "v24.19.0",
+      "platform": "linux",
+      "arch": "x64",
+      "sessionmem_version": "1.9.0"
+    },
+    "excluded_counts": {
+      "missing_evidence": 4,
+      "invalid_evidence": 9,
+      "adversarial": 446
+    }
+  },
+  "decision": {
+    "default_enabled": false,
+    "hit_rate_non_regression": true,
+    "three_metric_gate_passed": false,
+    "gate_error": "Overall precision regressed",
+    "regressed_metrics": [
+      "precision",
+      "recall"
+    ],
+    "default_rankings_identical": true
+  },
+  "comparison": {
+    "overall": {
+      "hit_rate": {
+        "before": 0.6444007858546169,
+        "after": 0.6450556647020301,
+        "delta": 0.0006548788474132206
+      },
+      "precision": {
+        "before": 0.14315651604453003,
+        "after": 0.14302554027504738,
+        "delta": -0.00013097576948264966
+      },
+      "recall": {
+        "before": 0.5827052812625205,
+        "after": 0.5810680841439875,
+        "delta": -0.0016371971185330514
+      },
+      "all_evidence_rate": {
+        "before": 0.5311067452521283,
+        "after": 0.5284872298624754,
+        "delta": -0.0026195153896528822
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "lost_hits": [],
+        "gained_hits": [
+          "conv-26/q49",
+          "conv-44/q13",
+          "conv-49/q3",
+          "conv-49/q65"
+        ],
+        "lost_evidence": [
+          {
+            "id": "conv-41/q20",
+            "evidence": [
+              "conv-41/D4:2"
+            ]
+          },
+          {
+            "id": "conv-43/q62",
+            "evidence": [
+              "conv-43/D4:10"
+            ]
+          },
+          {
+            "id": "conv-49/q9",
+            "evidence": [
+              "conv-49/D8:13"
+            ]
+          }
+        ],
+        "changed_rankings": 138,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.5359712230215827,
+            "after": 0.5503597122302158,
+            "delta": 0.014388489208633115
+          },
+          "precision": {
+            "before": 0.16762589928057553,
+            "after": 0.16906474820143888,
+            "delta": 0.0014388489208633504
+          },
+          "recall": {
+            "before": 0.30419235356759017,
+            "after": 0.3059909147186693,
+            "delta": 0.0017985611510791255
+          },
+          "all_evidence_rate": {
+            "before": 0.1223021582733813,
+            "after": 0.11870503597122302,
+            "delta": -0.0035971223021582788
+          }
+        }
+      },
+      "temporal": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 116,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.696875,
+            "after": 0.696875,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.1450000000000003,
+            "after": 0.1450000000000003,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.66640625,
+            "after": 0.66640625,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.6375,
+            "after": 0.6375,
+            "delta": 0
+          }
+        }
+      },
+      "open-domain": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 35,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.39325842696629215,
+            "after": 0.39325842696629215,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.08314606741573038,
+            "after": 0.08314606741573038,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.29373209958140556,
+            "after": 0.29373209958140556,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.21348314606741572,
+            "after": 0.21348314606741572,
+            "delta": 0
+          }
+        }
+      },
+      "single-hop": {
+        "lost_hits": [
+          "conv-26/q133",
+          "conv-41/q130",
+          "conv-43/q136",
+          "conv-48/q153",
+          "conv-48/q180",
+          "conv-50/q112"
+        ],
+        "gained_hits": [
+          "conv-26/q150",
+          "conv-43/q112",
+          "conv-47/q110"
+        ],
+        "lost_evidence": [
+          {
+            "id": "conv-26/q133",
+            "evidence": [
+              "conv-26/D16:7"
+            ]
+          },
+          {
+            "id": "conv-41/q130",
+            "evidence": [
+              "conv-41/D25:14"
+            ]
+          },
+          {
+            "id": "conv-43/q136",
+            "evidence": [
+              "conv-43/D18:6"
+            ]
+          },
+          {
+            "id": "conv-48/q153",
+            "evidence": [
+              "conv-48/D19:18"
+            ]
+          },
+          {
+            "id": "conv-48/q180",
+            "evidence": [
+              "conv-48/D27:12"
+            ]
+          },
+          {
+            "id": "conv-50/q112",
+            "evidence": [
+              "conv-50/D19:6"
+            ]
+          }
+        ],
+        "changed_rankings": 337,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.6869047619047619,
+            "after": 0.6833333333333333,
+            "delta": -0.0035714285714285587
+          },
+          "precision": {
+            "before": 0.14071428571428707,
+            "after": 0.14000000000000135,
+            "delta": -0.0007142857142857229
+          },
+          "recall": {
+            "before": 0.6736111111111112,
+            "after": 0.6700396825396826,
+            "delta": -0.0035714285714285587
+          },
+          "all_evidence_rate": {
+            "before": 0.6595238095238095,
+            "after": 0.655952380952381,
+            "delta": -0.0035714285714285587
+          }
+        }
+      }
+    },
+    "regressions": [
+      {
+        "id": "conv-26/q133",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-26/D16:6",
+            "conv-26/D15:20",
+            "conv-26/D3:12",
+            "conv-26/D16:7",
+            "conv-26/D2:15"
+          ],
+          "hits": [
+            "conv-26/D16:7"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-26/D16:6",
+            "conv-26/D15:20",
+            "conv-26/D3:12",
+            "conv-26/D2:15",
+            "conv-26/D15:8"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      },
+      {
+        "id": "conv-41/q20",
+        "category": "multi-hop",
+        "lost_hit": false,
+        "before": {
+          "retrieved": [
+            "conv-41/D21:3",
+            "conv-41/D14:15",
+            "conv-41/D21:4",
+            "conv-41/D11:1",
+            "conv-41/D4:2"
+          ],
+          "hits": [
+            "conv-41/D11:1",
+            "conv-41/D4:2"
+          ],
+          "precision": 0.4,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-41/D21:3",
+            "conv-41/D14:15",
+            "conv-41/D21:4",
+            "conv-41/D11:1",
+            "conv-41/D15:1"
+          ],
+          "hits": [
+            "conv-41/D11:1"
+          ],
+          "precision": 0.2,
+          "recall": 0.5
+        }
+      },
+      {
+        "id": "conv-41/q130",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-41/D25:11",
+            "conv-41/D10:1",
+            "conv-41/D25:15",
+            "conv-41/D25:14",
+            "conv-41/D25:18"
+          ],
+          "hits": [
+            "conv-41/D25:14"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-41/D25:11",
+            "conv-41/D10:1",
+            "conv-41/D25:15",
+            "conv-41/D10:5",
+            "conv-41/D13:29"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      },
+      {
+        "id": "conv-43/q62",
+        "category": "multi-hop",
+        "lost_hit": false,
+        "before": {
+          "retrieved": [
+            "conv-43/D14:21",
+            "conv-43/D11:25",
+            "conv-43/D22:14",
+            "conv-43/D4:10",
+            "conv-43/D5:12"
+          ],
+          "hits": [
+            "conv-43/D4:10"
+          ],
+          "precision": 0.2,
+          "recall": 0.16666666666666666
+        },
+        "after": {
+          "retrieved": [
+            "conv-43/D11:25",
+            "conv-43/D14:21",
+            "conv-43/D19:16",
+            "conv-43/D22:10",
+            "conv-43/D22:14"
+          ],
+          "hits": [
+            "conv-43/D19:16"
+          ],
+          "precision": 0.2,
+          "recall": 0.16666666666666666
+        }
+      },
+      {
+        "id": "conv-43/q136",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-43/D18:5",
+            "conv-43/D15:15",
+            "conv-43/D18:6",
+            "conv-43/D15:17",
+            "conv-43/D13:21"
+          ],
+          "hits": [
+            "conv-43/D18:6"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-43/D18:5",
+            "conv-43/D15:15",
+            "conv-43/D15:17",
+            "conv-43/D13:21",
+            "conv-43/D13:13"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      },
+      {
+        "id": "conv-48/q153",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-48/D19:17",
+            "conv-48/D1:7",
+            "conv-48/D19:19",
+            "conv-48/D19:18",
+            "conv-48/D1:6"
+          ],
+          "hits": [
+            "conv-48/D19:18"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-48/D19:17",
+            "conv-48/D1:7",
+            "conv-48/D19:19",
+            "conv-48/D23:4",
+            "conv-48/D29:7"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      },
+      {
+        "id": "conv-48/q180",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-48/D18:3",
+            "conv-48/D10:2",
+            "conv-48/D27:12",
+            "conv-48/D4:25",
+            "conv-48/D2:30"
+          ],
+          "hits": [
+            "conv-48/D27:12"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-48/D10:2",
+            "conv-48/D18:3",
+            "conv-48/D4:25",
+            "conv-48/D2:30",
+            "conv-48/D27:13"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      },
+      {
+        "id": "conv-49/q9",
+        "category": "multi-hop",
+        "lost_hit": false,
+        "before": {
+          "retrieved": [
+            "conv-49/D8:12",
+            "conv-49/D1:14",
+            "conv-49/D4:4",
+            "conv-49/D12:2",
+            "conv-49/D8:13"
+          ],
+          "hits": [
+            "conv-49/D1:14",
+            "conv-49/D8:13"
+          ],
+          "precision": 0.4,
+          "recall": 0.5
+        },
+        "after": {
+          "retrieved": [
+            "conv-49/D1:14",
+            "conv-49/D8:12",
+            "conv-49/D4:4",
+            "conv-49/D12:2",
+            "conv-49/D11:10"
+          ],
+          "hits": [
+            "conv-49/D1:14"
+          ],
+          "precision": 0.2,
+          "recall": 0.25
+        }
+      },
+      {
+        "id": "conv-50/q112",
+        "category": "single-hop",
+        "lost_hit": true,
+        "before": {
+          "retrieved": [
+            "conv-50/D19:5",
+            "conv-50/D19:4",
+            "conv-50/D7:10",
+            "conv-50/D19:6",
+            "conv-50/D3:16"
+          ],
+          "hits": [
+            "conv-50/D19:6"
+          ],
+          "precision": 0.2,
+          "recall": 1
+        },
+        "after": {
+          "retrieved": [
+            "conv-50/D19:5",
+            "conv-50/D7:10",
+            "conv-50/D19:4",
+            "conv-50/D3:16",
+            "conv-50/D2:14"
+          ],
+          "hits": [],
+          "precision": 0,
+          "recall": 0
+        }
+      }
+    ]
+  },
+  "default_comparison": {
+    "overall": {
+      "hit_rate": {
+        "before": 0.6444007858546169,
+        "after": 0.6444007858546169,
+        "delta": 0
+      },
+      "precision": {
+        "before": 0.14315651604453003,
+        "after": 0.14315651604453003,
+        "delta": 0
+      },
+      "recall": {
+        "before": 0.5827052812625205,
+        "after": 0.5827052812625205,
+        "delta": 0
+      },
+      "all_evidence_rate": {
+        "before": 0.5311067452521283,
+        "after": 0.5311067452521283,
+        "delta": 0
+      }
+    },
+    "by_category": {
+      "multi-hop": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.5359712230215827,
+            "after": 0.5359712230215827,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.16762589928057553,
+            "after": 0.16762589928057553,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.30419235356759017,
+            "after": 0.30419235356759017,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.1223021582733813,
+            "after": 0.1223021582733813,
+            "delta": 0
+          }
+        }
+      },
+      "temporal": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.696875,
+            "after": 0.696875,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.1450000000000003,
+            "after": 0.1450000000000003,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.66640625,
+            "after": 0.66640625,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.6375,
+            "after": 0.6375,
+            "delta": 0
+          }
+        }
+      },
+      "open-domain": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.39325842696629215,
+            "after": 0.39325842696629215,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.08314606741573038,
+            "after": 0.08314606741573038,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.29373209958140556,
+            "after": 0.29373209958140556,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.21348314606741572,
+            "after": 0.21348314606741572,
+            "delta": 0
+          }
+        }
+      },
+      "single-hop": {
+        "lost_hits": [],
+        "gained_hits": [],
+        "lost_evidence": [],
+        "changed_rankings": 0,
+        "metrics": {
+          "hit_rate": {
+            "before": 0.6869047619047619,
+            "after": 0.6869047619047619,
+            "delta": 0
+          },
+          "precision": {
+            "before": 0.14071428571428707,
+            "after": 0.14071428571428707,
+            "delta": 0
+          },
+          "recall": {
+            "before": 0.6736111111111112,
+            "after": 0.6736111111111112,
+            "delta": 0
+          },
+          "all_evidence_rate": {
+            "before": 0.6595238095238095,
+            "after": 0.6595238095238095,
+            "delta": 0
+          }
+        }
+      }
+    },
+    "regressions": []
+  }
+}
