@@ -65,6 +65,7 @@ const policyConfigShape = {
   semanticSearch: z.boolean().optional(),
   temporalRetrieval: z.boolean().optional(),
   entityLinkBoost: z.boolean().optional(),
+  entityBoost: z.boolean().optional(),
   retrievalRanking: z.enum(RETRIEVAL_RANKINGS).optional(),
   team: teamConfigShape.default({ enabled: false }),
 };
@@ -127,6 +128,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   const ss = s.semanticSearch.safeParse(obj.semanticSearch);
   const tr = s.temporalRetrieval.safeParse(obj.temporalRetrieval);
   const el = s.entityLinkBoost.safeParse(obj.entityLinkBoost);
+  const eb = s.entityBoost.safeParse(obj.entityBoost);
   const rr = s.retrievalRanking.safeParse(obj.retrievalRanking);
   const tm = s.team.safeParse(obj.team);
   return {
@@ -136,6 +138,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
     semanticSearch: ss.success ? ss.data : undefined,
     temporalRetrieval: tr.success ? tr.data : undefined,
     entityLinkBoost: el.success ? el.data : undefined,
+    entityBoost: eb.success ? eb.data : undefined,
     retrievalRanking: rr.success ? rr.data : undefined,
     team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
   };

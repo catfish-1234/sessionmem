@@ -207,6 +207,19 @@ describe("policyConfig", () => {
 });
 
 describe("retrieval experiment settings", () => {
+  it("round-trips the entity boost override and salvages other fields on invalid input", () => {
+    const dir = mkdtempSync(join(tmpdir(), "sessionmem-entity-boost-config-"));
+    try {
+      const path = join(dir, "config.json");
+      expect(readPolicyConfig(path).entityBoost).toBeUndefined();
+      expect(writePolicyConfig(path, { entityBoost: true }).entityBoost).toBe(true);
+      expect(writePolicyConfig(path, { entityBoost: false }).entityBoost).toBe(false);
+      expect(() => writePolicyConfig(path, { entityBoost: "yes" } as any)).toThrow();
+      writeFileSync(path, JSON.stringify({ entityBoost: "bad", retentionDays: 10, temporalRetrieval: true }));
+      expect(readPolicyConfig(path)).toMatchObject({ retentionDays: 10, temporalRetrieval: true });
+      expect(readPolicyConfig(path).entityBoost).toBeUndefined();
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
   it("validates both overrides, leaves them unset by default, and salvages independent settings", () => {
     const dir = mkdtempSync(join(tmpdir(), "sessionmem-retrieval-config-"));
     try {

@@ -25,7 +25,7 @@ describe("config get/set commands", () => {
     return configPath;
   }
 
-  it.each(["temporalRetrieval", "entityLinkBoost"])("sets and reads the %s switch", key => {
+  it.each(["temporalRetrieval", "entityLinkBoost", "entityBoost"])("sets and reads the %s switch", key => {
     const path = freshPath();
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     configSetCommand(key, "true", { configPath: path });

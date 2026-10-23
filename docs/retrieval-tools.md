@@ -85,7 +85,37 @@ boosts still apply. Dates rerank candidates; they are not hard date filters and 
 not guarantee that a relevant memory outside the candidate pool will be found.
 For exact capture-date browsing, use `memoryTimeline`.
 
-## Optional entity-link boost
+## Bounded entity boost
+
+`entityBoost` defaults off. Enable it with:
+
+```bash
+sessionmem config set entityBoost true
+```
+
+This adds a positive boost to the current ranker's relevance score using captured
+entities. Matching is case-insensitive and uses normalized literal name spans and
+the same explicit aliases listed below. A chunk's matched entity weight is divided
+by the total linked weight, then multiplied by 0.10 and added to relevance, capped
+at 1. The outer relevance weight of 0.60 bounds the final score increase to 0.06.
+Repeated names, aliases and multiple matches cannot stack beyond that bound.
+Experimental additive rankers retain their existing hub-damped entity signal.
+Optional temporal fusion follows this step, so its time signal and the existing
+recency and importance scores still apply. A recent unmatched chunk can still win.
+
+The boost reuses the entity candidate channel and its limit of 50 admitted IDs.
+Project, expiry and history filters apply before matching and admission. Queries
+with no known entity retain the prior candidates and scores. The compact index
+uses the shared ranker; timeline order, full details by ID and token limits stay
+unchanged. Matching and scoring use local SQLite data without network calls.
+
+This setting is independent of the existing `entityLinkBoost` coverage/fusion
+experiment. Existing defaults stay intact when `entityBoost` is absent or false.
+On LoCoMo, enabling the boost raises hit rate @5 from 64.44% to 64.51%, but lowers
+precision and recall, failing the existing three-metric gate. It therefore remains
+opt-in. See [results and limits](../benchmarks/entity-boost.md).
+
+## Existing entity-link coverage and fusion
 
 Entity coverage is enabled by default when retrieval uses BM25, including when
 optional inference is unavailable. It improves all three primary LoCoMo metrics

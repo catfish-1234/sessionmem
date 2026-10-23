@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Optional bounded entity boost for retrieval and compact index search. Enable
+  with `sessionmem config set entityBoost true`. Case-insensitive exact names
+  and existing explicit aliases add up to 0.06 to the final score alongside
+  lexical relevance, time-aware ranking and importance. No new dependencies or
+  network calls. Defaults off: LoCoMo hit rate @5 improves from 64.44% to 64.51%,
+  but precision and recall regress. Includes entity, alias, unchanged-query,
+  recency, visibility and compact-flow tests. See [eval results](benchmarks/entity-boost.md).
+
 ## [1.9.0] - 2026-10-20
 
 ### Added

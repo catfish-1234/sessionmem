@@ -73,6 +73,7 @@ const CONFIG_KEYS: Record<string, ConfigKeyDef> = {
   semanticSearch: { field: "semanticSearch", coerce: coerceBool },
   temporalRetrieval: { field: "temporalRetrieval", coerce: coerceBool },
   entityLinkBoost: { field: "entityLinkBoost", coerce: coerceBool },
+  entityBoost: { field: "entityBoost", coerce: coerceBool },
   retrievalRanking: { field: "retrievalRanking", coerce: raw => {
     if (!["legacy", "adaptive-bm25", "hub-additive", "adaptive-hub-additive"].includes(raw)) throw new Error("Unknown retrieval ranking");
     return raw as PolicyConfig["retrievalRanking"];

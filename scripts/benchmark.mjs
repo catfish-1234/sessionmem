@@ -22,15 +22,18 @@ async function main() {
     ranking: { type: "string", default: "legacy" },
     "entity-links": { type: "boolean" },
     "no-entity-links": { type: "boolean" },
+    "entity-boost": { type: "boolean" },
+    "no-entity-boost": { type: "boolean" },
   } });
   if (values.help) {
-    console.log("Usage: npm run benchmark -- [--top-k 5] [--semantic | --semantic-unavailable] [--temporal] [--entity-links | --no-entity-links] [--ranking legacy|adaptive-bm25|hub-additive|adaptive-hub-additive] [--output benchmarks/results/locomo.json]");
+    console.log("Usage: npm run benchmark -- [--top-k 5] [--semantic | --semantic-unavailable] [--temporal] [--entity-links | --no-entity-links] [--entity-boost | --no-entity-boost] [--ranking legacy|adaptive-bm25|hub-additive|adaptive-hub-additive] [--output benchmarks/results/locomo.json]");
     return;
   }
   if (!["legacy", "adaptive-bm25", "hub-additive", "adaptive-hub-additive"].includes(values.ranking)) throw new Error("Unknown --ranking");
   const topK = Number(values["top-k"]);
   if (!Number.isInteger(topK) || topK < 1 || topK > 100) throw new Error("--top-k must be an integer from 1 to 100");
   if (values["entity-links"] && values["no-entity-links"]) throw new Error("Choose one entity-link override");
+  if (values["entity-boost"] && values["no-entity-boost"]) throw new Error("Choose one entity-boost override");
   if (values.semantic && values["semantic-unavailable"]) throw new Error("Choose one semantic mode");
   const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim();
   const offline = blockNetwork();
@@ -62,7 +65,8 @@ async function main() {
     const policyConfigPath = join(temp, "config.json");
     writeFileSync(policyConfigPath, JSON.stringify({ retentionDays: 0, redactionEnabled: true, team: { enabled: false },
       semanticSearch: Boolean(values.semantic || values["semantic-unavailable"]),
-      temporalRetrieval: Boolean(values.temporal), ...(values["entity-links"] ? { entityLinkBoost: true } : values["no-entity-links"] ? { entityLinkBoost: false } : {}), retrievalRanking: values.ranking }));
+      temporalRetrieval: Boolean(values.temporal), ...(values["entity-links"] ? { entityLinkBoost: true } : values["no-entity-links"] ? { entityLinkBoost: false } : {}),
+      ...(values["entity-boost"] ? { entityBoost: true } : values["no-entity-boost"] ? { entityBoost: false } : {}), retrievalRanking: values.ranking }));
     const rows = [], excluded = [], conversations = [];
     for (const conversation of corpus) {
       const db = openDb();
@@ -95,6 +99,7 @@ async function main() {
         capture_api: "storeMemory", recall_api: "retrieveMemories", embedding: semanticEmbedder?.id ?? "deterministicEmbed",
         semantic_requested: Boolean(values.semantic || values["semantic-unavailable"]),
         temporal_retrieval: Boolean(values.temporal), entity_link_boost: values["entity-links"] ? true : values["no-entity-links"] ? false : "auto", retrieval_ranking: values.ranking,
+        entity_boost: values["entity-boost"] ? true : values["no-entity-boost"] ? false : "auto",
         model_load_ms, network_attempts: 0 },
       runtime: { node: process.version, platform: process.platform, arch: process.arch,
         sessionmem_version: JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version },

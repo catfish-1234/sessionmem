@@ -22,6 +22,8 @@ const DEFAULT_EMBEDDING_DIMENSION = 32;
 // Small, fixed contribution inside the existing relevance component. Keep the
 // public score shape/outer recency and importance weights unchanged.
 const ENTITY_RELEVANCE_WEIGHT = 0.10;
+// At most 0.06 of the final score, before optional temporal attenuation.
+const MAX_ENTITY_BOOST = 0.10;
 
 export interface RetrieveMemoriesInput {
   db: Database;
@@ -35,6 +37,7 @@ export interface RetrieveMemoriesInput {
   semanticCandidates?: SemanticCandidate[];
   temporalRetrieval?: boolean;
   entityLinkBoost?: boolean;
+  entityBoost?: boolean;
   ranking?: RetrievalRanking;
 }
 
@@ -124,10 +127,12 @@ export function retrieveMemories(
   );
   const candidates = [...lexicalCandidates];
   const ids = new Set(candidates.map(c => c.id));
-  const linked = input.entityLinkBoost || additive
+  const entityMatches = input.entityLinkBoost || additive || input.entityBoost
     ? linkedEntityScores(input.db, input.projectId, queryText, now, includeHistory, additive)
     : new Map<string, number>();
-  for (const candidate of searchMemoryCandidatesByIds(input.db, input.projectId, [...linked.keys()].slice(0, 50), now, includeHistory)) {
+  // Keep the older coverage/fusion experiment independent of the positive boost.
+  const linked = input.entityLinkBoost || additive ? entityMatches : new Map<string, number>();
+  for (const candidate of searchMemoryCandidatesByIds(input.db, input.projectId, [...entityMatches.keys()].slice(0, 50), now, includeHistory)) {
     if (!ids.has(candidate.id)) { candidates.push(candidate); ids.add(candidate.id); }
   }
   for (const { candidate } of input.semanticCandidates ?? []) {
@@ -182,10 +187,15 @@ export function retrieveMemories(
         : overlap.size > 0
         ? (1 - ENTITY_RELEVANCE_WEIGHT) * baseRelevance + ENTITY_RELEVANCE_WEIGHT * (overlap.get(candidate.id) ?? 0)
         : baseRelevance;
+      // Add evidence without discounting other candidates. Multiple names and
+      // aliases share one normalized score, so repetitions cannot stack boosts.
+      const boostedRelevance = input.entityBoost
+        ? Math.min(1, entityRelevance + MAX_ENTITY_BOOST * (entityMatches.get(candidate.id) ?? 0))
+        : entityRelevance;
       const metadata = temporal.get(candidate.id);
       const relevance = metadata
-        ? 0.9 * entityRelevance + 0.1 * temporalRelevance(intent, metadata.timestamp, metadata.supersededFraction, now)
-        : entityRelevance;
+        ? 0.9 * boostedRelevance + 0.1 * temporalRelevance(intent, metadata.timestamp, metadata.supersededFraction, now)
+        : boostedRelevance;
       const score = scoreMemoryCandidate(
         {
           semantic: relevance,
