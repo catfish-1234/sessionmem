@@ -12,7 +12,7 @@ on Intel Xeon Platinum 8573C, three visible CPUs with a two-CPU quota
 thread. Timing is a single pass in original question order, without warmup
 queries. Model startup and index construction happen before retrieval timing;
 sessionmem records model load and capture times separately. Runtime/library
-versions are pinned in the lockfile and the `measured/*-requirements.txt` files.
+versions are pinned in the lockfile and the `measured/*-freeze.txt` files.
 The first main run used the workspace's preprovisioned dependency tree, before
 the optional packages normalized it to the lockfile. The later quiet main run
 uses the same installed tree as the final hybrid and reproduces every retrieved
@@ -47,13 +47,13 @@ cp -R node_modules/@xcidos/genesis-memory-model /workspace/work/embeddings/minil
 npm install --prefix /workspace/work/tools --ignore-scripts bun@1.4.3
 ln -s "$PWD/node_modules" /workspace/work/competitors/claude-mem/node_modules
 uv venv /workspace/work/venv
-uv pip install --python /workspace/work/venv/bin/python -r benchmarks/measured/mem0-requirements.txt
+uv pip install --python /workspace/work/venv/bin/python -r benchmarks/measured/mem0-freeze.txt
 uv venv /workspace/work/chroma-venv
-uv pip install --python /workspace/work/chroma-venv/bin/python -r benchmarks/measured/chroma-requirements.txt
+uv pip install --python /workspace/work/chroma-venv/bin/python -r benchmarks/measured/chroma-freeze.txt
 uv venv /workspace/work/probes-venv
-uv pip install --python /workspace/work/probes-venv/bin/python -r benchmarks/measured/graphiti-requirements.txt
+uv pip install --python /workspace/work/probes-venv/bin/python -r benchmarks/measured/graphiti-freeze.txt
 uv venv /workspace/work/cognee-venv
-uv pip install --python /workspace/work/cognee-venv/bin/python -r benchmarks/measured/cognee-requirements.txt
+uv pip install --python /workspace/work/cognee-venv/bin/python -r benchmarks/measured/cognee-freeze.txt
 ```
 
 The requirements contain editable paths to these pinned competitor checkouts.
