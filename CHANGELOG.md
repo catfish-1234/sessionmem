@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.1] - 2026-10-30
+
+### Fixed
+
+- Restore the committed `package-lock.json` with body-parser 2.4.0, patching
+  CVE-2026-111181. Rename the benchmark requirement files to `*-freeze.txt` so
+  Dependabot no longer treats them as live Python requirements; security
+  updates apply cleanly again ([#63]).
+
+### Changed
+
+- Bump fast-uri from 3.1.8 to 3.1.9 ([#64]) and eslint from 10.12.0 to
+  10.13.0 ([#61]).
+
 ## [1.10.0] - 2026-10-23
 
 ### Added
@@ -208,6 +222,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.10.1]: https://github.com/catfish-1234/sessionmem/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/catfish-1234/sessionmem/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/catfish-1234/sessionmem/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/catfish-1234/sessionmem/compare/v1.7.0...v1.8.0
@@ -243,3 +258,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [62765a7]: https://github.com/catfish-1234/sessionmem/commit/62765a7
 [#57]: https://github.com/catfish-1234/sessionmem/pull/57
 [#58]: https://github.com/catfish-1234/sessionmem/pull/58
+[#61]: https://github.com/catfish-1234/sessionmem/pull/61
+[#63]: https://github.com/catfish-1234/sessionmem/pull/63
+[#64]: https://github.com/catfish-1234/sessionmem/pull/64
