@@ -62,7 +62,7 @@
     "onnxruntime-node": "1.30.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.2",
-    "vitest": "^4.1.8"
+    "vitest": "^5.0.5"
   },
   "engines": {
     "node": "^20.19.0 || >=22.13.0"
