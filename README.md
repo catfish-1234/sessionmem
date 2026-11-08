@@ -158,7 +158,7 @@ Compared with projects such as *claude-mem* and other cloud or Claude-only memor
 | **Where is data stored?** | A single SQLite file on your computer (`~/.sessionmem/memories.db`) | Often a hosted service, a cloud vector database, or a separate server process you have to run |
 | **Account / sign-up required?** | No | Sometimes |
 | **Which AI tools does it work with?** | Claude Code, Cursor, Codex, Cline, Windsurf, Antigravity, QCoder, and any other MCP-compatible host | Usually just one specific tool (commonly Claude Code only) |
-| **Secret redaction** | Built in, on by default. API keys, tokens, passwords, and private keys are scrubbed before anything is saved. | Often not handled, or left to the user |
+| **Secret redaction** | Built in, on by default. Common credential shapes (API keys, tokens, `password=...` assignments, `password is ...` prose, private keys) are scrubbed before saving. Best-effort pattern matching, not a guarantee. | Often not handled, or left to the user |
 | **Token budget control** | Injected memories are trimmed to a small, fixed token budget (see benchmarks below) | Varies, often unbounded |
 | **Entity boost (optional)** | Case-insensitive names and explicit aliases add a bounded score boost alongside relevance, recency and importance. Local only, defaults off. | Varies |
 | **Scopes** | Optional local context labels on sessions, memories and entity associations. Capture detects a directory or project label; queries can filter or boost a selected scope. All scopes by default. | Varies |
@@ -497,6 +497,9 @@ Before saving memory content, `sessionmem` replaces common secret patterns with 
 - Bearer tokens and JWTs
 - Private key blocks (`-----BEGIN ... PRIVATE KEY-----`)
 - Connection-string style secrets (`password=...`, `secret=...`)
+- Prose declarations (`password is ...`, quoted values or credential-shaped words)
+
+Redaction is best-effort pattern matching, not exhaustive secret detection. Do not paste real credentials into agent chats; use your secret manager.
 
 Redaction is on by default. To scan and clean up older memories:
 

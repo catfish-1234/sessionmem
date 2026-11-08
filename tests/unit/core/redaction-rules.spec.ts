@@ -107,4 +107,49 @@ describe("defaultRules() expanded secret coverage", () => {
     expect(out).toContain("[REDACTED_JWT]");
     expect(out).toContain("[REDACTED_GITHUB_TOKEN]");
   });
+  it("redacts prose password declarations with credential-shaped values", () => {
+    const out = applyRedaction("the staging database password is hunter2", ON).text;
+    expect(out).toBe("the staging database password is [REDACTED]");
+  });
+
+  it("redacts quoted prose secrets, preserving the quote style", () => {
+    expect(applyRedaction(`my password is "a b c!"`, ON).text)
+      .toBe(`my password is "[REDACTED]"`);
+    expect(applyRedaction("the token is 's3cr3t value'", ON).text)
+      .toBe("the token is '[REDACTED]'");
+  });
+
+  it("redacts multi-word prose keys like api key and client secret", () => {
+    expect(applyRedaction("the api key is abc123xyz", ON).text)
+      .toBe("the api key is [REDACTED]");
+    expect(applyRedaction("client secret is s3cr3t-value", ON).text)
+      .toBe("client secret is [REDACTED]");
+  });
+
+  it("leaves judgement prose about passwords byte-identical", () => {
+    const cases = [
+      "password is required",
+      "the password is wrong, try again",
+      "token is expired",
+      "the api key is documented below",
+      "password is valid but the account is locked",
+      "my secret is safe with me",
+      "the passphrase is strong",
+    ];
+    for (const prose of cases) {
+      expect(applyRedaction(prose, ON).text).toBe(prose);
+    }
+  });
+
+  it("leaves bare prose values without a digit or symbol untouched", () => {
+    const prose = "the wifi password is correcthorse";
+    expect(applyRedaction(prose, ON).text).toBe(prose);
+  });
+
+  it("still lets token-format rules claim recognizable tokens in prose", () => {
+    const out = applyRedaction(`the token is ${GITHUB_TOKEN}`, ON).text;
+    expect(out).toContain("[REDACTED_GITHUB_TOKEN]");
+    expect(out).not.toContain(GITHUB_TOKEN);
+  });
 });
+

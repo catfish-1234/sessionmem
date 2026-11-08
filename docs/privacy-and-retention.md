@@ -23,7 +23,10 @@ The `redactionEnabled` flag controls all of these operations and defaults to `tr
 | Bearer tokens | `Authorization: Bearer ...` |
 | Private key blocks | `-----BEGIN ... PRIVATE KEY-----` private key blocks |
 | Connection-string assignments | `password=...`, `secret=...` |
+| Prose declarations | `password is ...`, quoted values or credential-shaped words with a digit or symbol |
 | JWTs | three-part `xxxxx.yyyyy.zzzzz` tokens |
+
+Redaction is best-effort pattern matching, not exhaustive secret detection. Judgement prose ("password is required", "token is expired") is deliberately left untouched, and a free-form sentence can always carry a secret no pattern recognizes. Do not rely on redaction as the only line of defense: avoid stating real credentials in agent chats.
 
 The project's CI secret scanning checks for similar categories.
 
