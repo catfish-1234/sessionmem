@@ -63,6 +63,27 @@ const SECRET_ASSIGNMENT_PATTERN = new RegExp(
   "gi",
 );
 
+/**
+ * Prose declarations: `password is hunter2`, `the api key is "a b c"`. People
+ * state credentials in sentences at least as often as in key=value form, and
+ * those sentences otherwise reach storage verbatim. False positives are kept
+ * off ordinary prose two ways: a bare value must look credential-shaped (a
+ * letter plus a digit or symbol, 6-128 chars, so "required"/"expired"/"wrong"
+ * never match), a stoplist of judgement words is excluded, and only quoted
+ * values are always treated as secrets because quoting signals a literal.
+ * Key names mirror SECRET_KEY_NAMES with optional spaces (`api key is ...`).
+ */
+const PROSE_VALUE_STOPWORDS = new Set([
+  "required", "optional", "mandatory", "needed", "wrong", "invalid", "valid",
+  "correct", "expired", "revoked", "missing", "forgotten", "unchanged",
+  "empty", "set", "unset", "weak", "strong", "broken", "gone", "safe",
+]);
+
+const PROSE_SECRET_PATTERN = new RegExp(
+  String.raw`\b([A-Za-z0-9_.-]{0,40}(?:password|passwd|pwd|passphrase|secret|api[ _-]?key|apikey|access[ _-]?token|refresh[ _-]?token|auth[ _-]?token|client[ _-]?secret|private[ _-]?key|credentials?|token)[A-Za-z0-9_.-]{0,40})\s+is\s+(?:"([^"\n]{1,128})"|'([^'\n]{1,128})'|([A-Za-z][A-Za-z0-9!@#$%^&*._~-]{5,127}))`,
+  "gi",
+);
+
 const DEFAULT_RULES: readonly RedactionRule[] = createDefaultRules();
 
 function createDefaultRules(): RedactionRule[] {
@@ -190,6 +211,26 @@ function createDefaultRules(): RedactionRule[] {
               : "";
         return `${key}${separator}${quote}[REDACTED]${quote}`;
       }),
+    // Prose secret declarations, e.g. `the staging database password is
+    // hunter2`. Runs LAST: the token-format rules above produce more specific
+    // placeholders when the value is a recognizable token (`token is ghp_...`),
+    // and this rule is the conservative fallback for everything else. Bounded
+    // quantifiers and no nested repeats keep it ReDoS-safe like the rest.
+    (input) =>
+      input.replace(
+        PROSE_SECRET_PATTERN,
+        (match, key: string, dq?: string, sq?: string, bare?: string) => {
+          const quote = dq !== undefined ? '"' : sq !== undefined ? "'" : "";
+          if (!quote && bare !== undefined) {
+            if (PROSE_VALUE_STOPWORDS.has(bare.toLowerCase())) return match;
+            // Bare values must look credential-shaped: a letter AND a digit or
+            // symbol. Plain words ("secret", "documented") never match, so
+            // ordinary prose about passwords stays byte-identical.
+            if (!/[a-z]/i.test(bare) || !/[0-9!@#$%^&*._~-]/.test(bare)) return match;
+          }
+          return `${key} is ${quote}[REDACTED]${quote}`;
+        },
+      ),
   ];
 }
 
