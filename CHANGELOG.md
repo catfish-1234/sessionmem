@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.2] - 2026-11-07
+
+### Fixed
+
+- Redact prose secret declarations before saving. Redaction previously matched
+  only `key=value` and `key: value` assignments, so a credential stated in a
+  sentence ("the database password is hunter2") was stored verbatim and could
+  be injected back into model context as prior context. A conservative rule now
+  covers `<secret key> is <value>`: quoted values always, bare values only when
+  credential-shaped (a letter plus a digit or symbol), with a stoplist that
+  keeps judgement prose ("password is required", "token is expired")
+  byte-identical. `redact-scan` picks the same coverage up for existing
+  memories ([#69]).
+
+### Changed
+
+- README and privacy docs now describe redaction as best-effort pattern
+  coverage rather than promising that passwords are always scrubbed, and
+  advise against stating real credentials in agent chats ([#69]).
+
 ## [1.10.1] - 2026-10-30
 
 ### Fixed
@@ -222,6 +242,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errors and findings fail the job; added scanner dependency updates and
   Dependabot cooldowns. ([#32])
 
+[1.10.2]: https://github.com/catfish-1234/sessionmem/compare/v1.10.1...v1.10.2
 [1.10.1]: https://github.com/catfish-1234/sessionmem/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/catfish-1234/sessionmem/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/catfish-1234/sessionmem/compare/v1.8.0...v1.9.0
@@ -261,3 +282,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [#61]: https://github.com/catfish-1234/sessionmem/pull/61
 [#63]: https://github.com/catfish-1234/sessionmem/pull/63
 [#64]: https://github.com/catfish-1234/sessionmem/pull/64
+[#69]: https://github.com/catfish-1234/sessionmem/pull/69
