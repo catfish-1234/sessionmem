@@ -9,20 +9,32 @@ const HEADER = "Relevant prior context";
 // preserved entries dominate the injection block past the token cap.
 const MAX_PRESERVED = 5;
 
-// Strip control characters and hard-cap per-entry content before it is rendered
-// into the injection block. Prevents a single memory from breaking out of the
-// block (newlines/control chars) or dominating it (length). The full content
-// remains retrievable via retrieveMemories — this only affects startup display.
-const safeContent = (content: string) =>
-  // eslint-disable-next-line no-control-regex -- intentional control-char strip
-  content.replace(/[\n\r\x00-\x08\x0e-\x1f\x7f]/g, " ").slice(0, 500);
+/**
+ * Every character that can end a line or reorder what a reader sees: all C0
+ * and C1 controls (including tab, vertical tab, form feed and NEL), DEL, the
+ * Unicode line and paragraph separators, and the bidirectional embedding,
+ * override and isolate controls. A teammate's synced memory is untrusted text,
+ * and any of these lets it start what looks like a new line, or a disguised
+ * one, inside the context block an agent reads as instructions.
+ */
+// eslint-disable-next-line no-control-regex -- intentional control-char strip
+const UNSAFE_LAYOUT = /[\x00-\x1f\x7f-\x9f\u2028\u2029\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c]/g;
+
+/** One line of plain text: unsafe layout characters become spaces. */
+export function singleLine(text: string): string {
+  return text.replace(UNSAFE_LAYOUT, " ");
+}
+
+// Hard-cap per-entry content before it is rendered into the injection block,
+// so a single memory cannot break out of the block or dominate it. The full
+// content remains retrievable via retrieveMemories; this only affects display.
+const safeContent = (content: string) => singleLine(content).slice(0, 500);
 
 // Sanitize source_adapter before it is rendered verbatim onto the metadata
-// line. Like `author`, a malformed row could otherwise smuggle newlines/control
-// chars (and thus a prompt-injection payload) into the injection block.
+// line. Like `author`, a malformed row could otherwise smuggle line breaks
+// (and thus a prompt-injection payload) into the injection block.
 const safeSourceAdapter = (s: string | null | undefined) =>
-  // eslint-disable-next-line no-control-regex -- intentional control-char strip
-  (s ?? "").replace(/[\n\r\x00-\x08\x0e-\x1f\x7f]/g, "").slice(0, 100);
+  (s ?? "").replace(UNSAFE_LAYOUT, "").slice(0, 100);
 // Allow-list of known kinds. Any unrecognized kind renders as "memory" so a
 // malformed row cannot inject arbitrary text into the rendered `[kind]` label.
 const KNOWN_KINDS = new Set(["fact", "decision", "preference", "warning", "summary", "memory", "context"]);
@@ -95,8 +107,7 @@ function authorPrefix(
     // Defense in depth: even though `author` is constrained at the contract
     // boundary, strip any control characters before rendering so a malformed
     // row cannot break out of the injection block.
-    // eslint-disable-next-line no-control-regex -- intentional control-char strip
-    const safeAuthor = memory.author.replace(/[\n\r\x00-\x1f\x7f]/g, "");
+    const safeAuthor = memory.author.replace(UNSAFE_LAYOUT, "");
     return `${safeAuthor}: `;
   }
 
@@ -110,7 +121,7 @@ function formatLine(entry: IncludedMemory, localUsername?: string): string {
 
   return [
     `- [${safeKind(memory.kind)}] ${prefix}${safeContent(entry.content)}`,
-    `(score total=${formatScore(score.total)}, semantic=${formatScore(score.raw.semantic)}, recency=${formatScore(score.raw.recency)}, importance=${formatScore(score.raw.importance)}; source=${safeSourceAdapter(memory.source_adapter)}; date=${memory.updated_at})`,
+    `(score total=${formatScore(score.total)}, semantic=${formatScore(score.raw.semantic)}, recency=${formatScore(score.raw.recency)}, importance=${formatScore(score.raw.importance)}; source=${safeSourceAdapter(memory.source_adapter)}; date=${safeSourceAdapter(memory.updated_at)})`,
   ].join(" ");
 }
 
