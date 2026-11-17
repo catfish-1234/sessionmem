@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-11-17
+
+### Added
+
+- `sessionmem export --format markdown` writes a readable project memory:
+  grouped by kind (warnings, decisions, facts, preferences, summaries), most
+  important first, with author, date, scope, tags and id on each entry.
+  `--min-importance <n>` and `--include-expired` filter it; expired memories
+  are left out by default because they are no longer recalled. The format is
+  inferred from a `.md` path, and `-` writes either format to stdout. Memory
+  content is rendered inert (HTML escaped, control and bidi characters
+  removed, fence and heading markers escaped), so one memory cannot
+  restructure or hide the rest of the document. JSON stays the lossless,
+  re-importable format.
+
+### Fixed
+
+- Redact Anthropic API and admin keys, OpenAI project, service-account and
+  admin keys, and Hugging Face, GitLab, SendGrid, PyPI, Docker Hub,
+  DigitalOcean, Shopify, Linear, Twilio and Databricks tokens, plus Azure
+  connection-string keys. Anthropic and OpenAI project keys carry `_` and `-`
+  in their body, where the generic `sk-` rule stopped, so they were stored in
+  full or with a readable tail; the others had no rule. Run
+  `sessionmem redact-scan` to check memories stored before this release, and
+  `sessionmem redact-scan --apply` to scrub them.
+- The startup injection now strips every character that can start a new line
+  or reorder visible text: vertical tab, form feed, NEL, the Unicode line and
+  paragraph separators, and bidi embedding, override and isolate controls,
+  which it previously kept. A synced teammate memory could use them to start
+  what reads as a new line inside the context block an agent treats as
+  instructions.
+
+### Security
+
+- Update `hono` and `@hono/node-server`, which reach the runtime tree through
+  the MCP SDK, and `minimatch` in the lint toolchain, past their published
+  advisories. `npm audit` reports none.
+
 ## [1.10.2] - 2026-11-07
 
 ### Fixed
