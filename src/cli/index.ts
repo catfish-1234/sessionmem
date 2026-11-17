@@ -206,8 +206,11 @@ program
 
 program
   .command("export [path]")
-  .description("Export memories to a JSON file")
-  .action((path) => exportCommand(path));
+  .description("Export memories to a JSON file, or a readable Markdown summary (use - for stdout)")
+  .option("--format <format>", "json (default, re-importable) or markdown; inferred from a .md path")
+  .option("--min-importance <n>", "markdown only: leave out memories below this importance (1-10)")
+  .option("--include-expired", "markdown only: keep memories whose expiry has passed")
+  .action((path, options) => exportCommand(path, undefined, options));
 
 program
   .command("import <path>")

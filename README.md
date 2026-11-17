@@ -245,7 +245,8 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem history [--project <id>] [--json]` | List supersession chains with old/new values, source memory IDs, reasons, and timestamps. |
 | `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
-| `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). |
+| `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). Use `-` for stdout. |
+| `sessionmem export --format markdown [path]` | Readable project memory: grouped by kind, most important first, with author, date, scope and tags. Inferred from a `.md` path. `--min-importance <n>` and `--include-expired` filter it. Not re-importable; use JSON for backups. |
 | `sessionmem import <path> [--merge]` | Import up to 1000 valid records from UTF-8 JSON into the current project. Existing IDs are preserved, including with `--merge`; invalid records are skipped with warnings. |
 | `sessionmem scan [--host <host>] [--transcripts-dir <path>]` | Import existing Claude Code, Codex CLI, and Cursor transcripts into local session memories. Reports files found, sessions imported, memories created, skips, and errors. |
 | `sessionmem watch [--once] [--interval <seconds>] [--host <host>] [--transcripts-dir <path>]` | Capture new or updated Claude Code, Codex CLI, and Cursor transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
