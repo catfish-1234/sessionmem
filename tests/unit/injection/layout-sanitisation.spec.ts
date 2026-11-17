@@ -16,7 +16,7 @@ function memory(overrides: Partial<RetrievedMemoryCandidate>): RetrievedMemoryCa
 
 // Every one of these renders as, or is treated by some tokenizer or terminal as, a line break or
 // a reordering of visible text. A synced teammate memory is untrusted, so none may survive.
-const BREAKERS = ["\n", "\r", "\v", "\f", "\x1c", "\x85", " ", " ", "‮", "⁦", "\t"];
+const BREAKERS = ["\n", "\r", "\v", "\f", "\x1c", "\x85", "\u2028", "\u2029", "\u202e", "\u2066", "\t"];
 
 describe("startup injection layout sanitisation", () => {
   it.each(BREAKERS.map((c) => [JSON.stringify(c), c]))("keeps %s from starting a new line", (_, breaker) => {
