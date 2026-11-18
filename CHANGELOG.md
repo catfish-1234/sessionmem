@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-11-18
+
+### Added
+
+- `redactionPatterns` in `~/.sessionmem/config.json` redacts your organisation's
+  own secret formats (an internal API key, a session cookie shape) on every
+  write and in `redact-scan`, each as `[REDACTED_<NAME>]`, ahead of the
+  built-in rules. A pattern that is not a valid regular expression, matches
+  the empty string, is over 500 characters, or nests a repeat inside a repeat
+  (which can backtrack for minutes) is skipped on its own and named by
+  `sessionmem doctor`. See [privacy docs](docs/privacy-and-retention.md#your-own-secret-formats).
+
+### Changed
+
+- Update semgrep to 1.184.0 in the security workflow.
+
 ## [1.11.0] - 2026-11-17
 
 ### Added
