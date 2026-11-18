@@ -122,6 +122,10 @@ export function customPatternError(entry: CustomRedactionPattern): string | unde
   if (!CUSTOM_PATTERN_NAME_RE.test(entry.name)) return "name must be 1-40 upper-case letters, digits or underscores, starting with a letter";
   if (!entry.pattern || entry.pattern.length > MAX_CUSTOM_PATTERN_LENGTH) return `pattern must be 1-${MAX_CUSTOM_PATTERN_LENGTH} characters`;
   let compiled: RegExp;
+  // The pattern comes from the local user's own ~/.sessionmem/config.json, the same trust
+  // level as the process. This line only compiles it to vet it; the checks below refuse the
+  // empty-match and nested-repeat shapes before any rule is built from it.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   try { compiled = new RegExp(entry.pattern, entry.ignoreCase ? "gi" : "g"); }
   catch (error) { return `pattern is not a valid regular expression (${(error as Error).message})`; }
   if (compiled.test("")) return "pattern matches the empty string";
@@ -131,9 +135,13 @@ export function customPatternError(entry: CustomRedactionPattern): string | unde
   return undefined;
 }
 
+/** Only called for entries customPatternError has accepted (see setCustomRedactionPatterns). */
 function customRule(entry: CustomRedactionPattern): RedactionRule {
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const source = new RegExp(entry.pattern, entry.ignoreCase ? "gi" : "g");
   const placeholder = `[REDACTED_${entry.name}]`;
+  // A fresh copy per call keeps the shared global regex free of lastIndex state.
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   return (input) => input.replace(new RegExp(source), placeholder);
 }
 
