@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { scopeSchema } from "../scopes.js";
 import { RETRIEVAL_RANKINGS } from "../retrieve/signalFusion.js";
+import { MAX_CUSTOM_PATTERNS, MAX_CUSTOM_PATTERN_LENGTH } from "../summarize/redaction.js";
 import { homedir } from "os";
 import { join, dirname } from "path";
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from "fs";
@@ -70,6 +71,19 @@ const policyConfigShape = {
   scope: scopeSchema,
   retrievalRanking: z.enum(RETRIEVAL_RANKINGS).optional(),
   team: teamConfigShape.default({ enabled: false }),
+  // Organisation-specific secret formats, redacted on every write alongside the
+  // built-in rules. Only the shape is checked here: setCustomRedactionPatterns
+  // skips an individual entry that would match the empty string or nest
+  // repeats, so one bad pattern never disables the rest, and `sessionmem
+  // doctor` names it.
+  redactionPatterns: z
+    .array(z.object({
+      name: z.string(),
+      pattern: z.string().max(MAX_CUSTOM_PATTERN_LENGTH),
+      ignoreCase: z.boolean().optional(),
+    }).strict())
+    .max(MAX_CUSTOM_PATTERNS)
+    .optional(),
 };
 
 /**
@@ -134,6 +148,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
   const scope = s.scope.safeParse(obj.scope);
   const rr = s.retrievalRanking.safeParse(obj.retrievalRanking);
   const tm = s.team.safeParse(obj.team);
+  const rp = s.redactionPatterns.safeParse(obj.redactionPatterns);
   return {
     retentionDays: rd.success ? rd.data : DEFAULT_POLICY_CONFIG.retentionDays,
     redactionEnabled: re.success ? re.data : DEFAULT_POLICY_CONFIG.redactionEnabled,
@@ -145,6 +160,7 @@ export function readPolicyConfig(filePath: string): PolicyConfig {
     scope: scope.success ? scope.data : undefined,
     retrievalRanking: rr.success ? rr.data : undefined,
     team: tm.success ? tm.data : { ...DEFAULT_POLICY_CONFIG.team },
+    redactionPatterns: rp.success ? rp.data : undefined,
   };
 }
 

@@ -252,7 +252,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem watch [--once] [--interval <seconds>] [--host <host>] [--transcripts-dir <path>]` | Capture new or updated Claude Code, Codex CLI, and Cursor transcripts. Polls every 5 seconds by default; `--once` runs a single sweep. |
 | `sessionmem stats` | Show memory statistics for the current project. |
 | `sessionmem savings [--json]` | Show token savings from compression and injection, with percentage. |
-| `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. |
+| `sessionmem redact-scan [--apply]` | Scan stored memories for secrets; `--apply` redacts in place. Includes your own `redactionPatterns` from config.json ([privacy docs](docs/privacy-and-retention.md#your-own-secret-formats)). |
 | `sessionmem retention prune [--force] [--days <n>]` | Prune old memories (dry-run by default). |
 | `sessionmem config get <key>` / `config set <key> <value>` | Read and write policy config. |
 | `sessionmem team enable <path>` / `team disable [--remove-team-memories]` / `team status` | Manage shared-path team memory mode. |

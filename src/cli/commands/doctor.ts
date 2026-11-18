@@ -1,4 +1,6 @@
 import { createAutostart, invalidLaunchPaths } from "../autostart/index.js";
+import { configFilePath, readPolicyConfig } from "../../core/config/policyConfig.js";
+import { customPatternError } from "../../core/summarize/redaction.js";
 import { inspectWatchCheckpoint } from "../watchCheckpoint.js";
 import BetterSqlite3 from "better-sqlite3";
 import type { Database } from "better-sqlite3";
@@ -91,6 +93,21 @@ export async function doctorCommand(
     } catch (err) {
       report(`${host} transcripts`, false, message(err), `Check transcript directory permissions and format; check the watcher logs; imports retry automatically`);
     }
+  }
+  const customPatterns = readPolicyConfig(configFilePath()).redactionPatterns ?? [];
+  if (customPatterns.length > 0) {
+    const problems = customPatterns.flatMap((entry) => {
+      const problem = customPatternError(entry);
+      return problem ? [`${entry.name}: ${problem}`] : [];
+    });
+    report(
+      "Custom redaction patterns",
+      problems.length === 0,
+      problems.length === 0
+        ? `${customPatterns.length} configured, all usable`
+        : `${problems.length} of ${customPatterns.length} skipped: ${problems.join("; ")}`,
+      problems.length === 0 ? undefined : "Fix or remove the named entries in redactionPatterns in ~/.sessionmem/config.json",
+    );
   }
   let db: Database | undefined;
   let schemaOk = false;

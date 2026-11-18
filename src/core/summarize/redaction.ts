@@ -89,6 +89,78 @@ const PROSE_SECRET_PATTERN = new RegExp(
 
 const DEFAULT_RULES: readonly RedactionRule[] = createDefaultRules();
 
+/**
+ * Organisation-specific secret formats, from `redactionPatterns` in config.json.
+ *
+ * The built-in rules know public token formats; a company's own (an internal
+ * `acme_live_...` key, a session cookie shape) only its owners can describe.
+ * Each pattern becomes one more rule ahead of the built-in set, replacing every
+ * match with `[REDACTED_<NAME>]`.
+ */
+export interface CustomRedactionPattern {
+  /** Upper-case placeholder suffix: `INTERNAL_KEY` produces `[REDACTED_INTERNAL_KEY]`. */
+  name: string;
+  /** A JavaScript regular expression source, matched globally. */
+  pattern: string;
+  /** Match case-insensitively. */
+  ignoreCase?: boolean;
+}
+
+export const MAX_CUSTOM_PATTERNS = 50;
+export const MAX_CUSTOM_PATTERN_LENGTH = 500;
+export const CUSTOM_PATTERN_NAME_RE = /^[A-Z][A-Z0-9_]{0,39}$/;
+
+/**
+ * Why a custom pattern cannot be used, or undefined when it can.
+ *
+ * Redaction runs on every write, so a pattern that matches the empty string
+ * (which would insert placeholders between every character) or nests a
+ * quantifier inside a quantified group (the classic catastrophic-backtracking
+ * shape, such as `(a+)+`) is refused rather than trusted.
+ */
+export function customPatternError(entry: CustomRedactionPattern): string | undefined {
+  if (!CUSTOM_PATTERN_NAME_RE.test(entry.name)) return "name must be 1-40 upper-case letters, digits or underscores, starting with a letter";
+  if (!entry.pattern || entry.pattern.length > MAX_CUSTOM_PATTERN_LENGTH) return `pattern must be 1-${MAX_CUSTOM_PATTERN_LENGTH} characters`;
+  let compiled: RegExp;
+  try { compiled = new RegExp(entry.pattern, entry.ignoreCase ? "gi" : "g"); }
+  catch (error) { return `pattern is not a valid regular expression (${(error as Error).message})`; }
+  if (compiled.test("")) return "pattern matches the empty string";
+  if (/\((?:[^()\\]|\\.)*[+*}](?:[^()\\]|\\.)*\)[+*{]/.test(entry.pattern)) {
+    return "pattern nests a repeated group inside a repeat, which can backtrack for minutes";
+  }
+  return undefined;
+}
+
+function customRule(entry: CustomRedactionPattern): RedactionRule {
+  const source = new RegExp(entry.pattern, entry.ignoreCase ? "gi" : "g");
+  const placeholder = `[REDACTED_${entry.name}]`;
+  return (input) => input.replace(new RegExp(source), placeholder);
+}
+
+let customRules: readonly RedactionRule[] = [];
+let customKey = "[]";
+
+/**
+ * Install the configured custom patterns. Invalid entries are skipped and their
+ * problems returned, so one bad pattern never disables the others or redaction
+ * as a whole. Cheap to call repeatedly: an unchanged list is not recompiled.
+ */
+export function setCustomRedactionPatterns(patterns: readonly CustomRedactionPattern[] | undefined): string[] {
+  const list = (patterns ?? []).slice(0, MAX_CUSTOM_PATTERNS);
+  const key = JSON.stringify(list);
+  const problems: string[] = [];
+  const usable = list.filter((entry) => {
+    const problem = customPatternError(entry);
+    if (problem) problems.push(`${entry.name}: ${problem}`);
+    return !problem;
+  });
+  if (key !== customKey) {
+    customRules = usable.map(customRule);
+    customKey = key;
+  }
+  return problems;
+}
+
 function createDefaultRules(): RedactionRule[] {
   return [
     // URL-embedded credentials: scheme://user:password@host. Run BEFORE the
@@ -288,7 +360,7 @@ export function applyRedaction(
   let text = input;
   const warningCodes: string[] = [];
 
-  for (const rule of options.rules ?? DEFAULT_RULES) {
+  for (const rule of options.rules ?? [...customRules, ...DEFAULT_RULES]) {
     try {
       text = rule(text);
     } catch {

@@ -30,6 +30,21 @@ Redaction is best-effort pattern matching, not exhaustive secret detection. Judg
 
 The project's CI secret scanning checks for similar categories.
 
+### Your own secret formats
+
+The built-in rules know public token formats. Formats only your organisation uses, such as an internal API key or a session cookie, can be added to `~/.sessionmem/config.json`:
+
+```json
+{
+  "redactionPatterns": [
+    { "name": "ACME_KEY", "pattern": "acme_live_[A-Za-z0-9]{24}" },
+    { "name": "BADGE_ID", "pattern": "badge-\\d{6}", "ignoreCase": true }
+  ]
+}
+```
+
+Each match is replaced with `[REDACTED_<NAME>]` on every write, ahead of the built-in rules, and `redact-scan` applies the same patterns to memories stored earlier. Names are 1-40 upper-case letters, digits or underscores. A pattern is skipped, and named by `sessionmem doctor`, when it is not a valid regular expression, matches the empty string, is longer than 500 characters, or nests a repeated group inside a repeat (such as `(a+)+`), which can backtrack for minutes. One unusable entry never disables the others. Up to 50 patterns are read.
+
 ### Partial-failure warnings
 
 If redaction partly fails, the response includes a `redaction_partial_failure` warning through the usual lifecycle warning mechanism. The write still completes. Review the affected memory when you see this warning.

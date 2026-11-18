@@ -11,7 +11,7 @@ import { memoryTimeline } from "../storage/timelineRepo.js";
 import { retrieveMemories } from "../retrieve/retrieveMemories.js";
 import { computeEffectiveImportance } from "../retrieve/score.js";
 import { formatStartupInjection } from "../injection/formatStartupInjection.js";
-import { applyRedaction } from "../summarize/redaction.js";
+import { applyRedaction, setCustomRedactionPatterns } from "../summarize/redaction.js";
 import type { RetrievedMemoryCandidate } from "../retrieve/retrieveMemories.js";
 import {
   countAllMemoriesByProject,
@@ -309,10 +309,19 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
    * `false` or `true` on the request always wins; omission falls back to
    * `~/.sessionmem/config.json`'s redactionEnabled.
    */
+  /** Load config.json's custom redaction patterns before a method that redacts. */
+  function syncCustomRedaction(): void {
+    setCustomRedactionPatterns(readPolicyConfig(policyConfigPath).redactionPatterns);
+  }
+
   function resolveRedactionEnabled(explicit: boolean | undefined): boolean {
+    const config = readPolicyConfig(policyConfigPath);
+    // Write paths resolve redaction here first, so the configured custom
+    // patterns are current for the applyRedaction calls that follow.
+    setCustomRedactionPatterns(config.redactionPatterns);
     return resolvePolicySettings({
       override: explicit !== undefined ? { redactionEnabled: explicit } : undefined,
-      config: readPolicyConfig(policyConfigPath),
+      config,
     }).redactionEnabled;
   }
   const lifecycleService = createSessionLifecycleService({
@@ -658,6 +667,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async importMemories(request) {
       const parsed = parseRequest(importMemoriesRequestSchema, request);
+      syncCustomRedaction();
 
       // The upsert (upsertImportedMemory) reassigns project_id on ON CONFLICT(id).
       // Because `id` is a globally-unique PRIMARY KEY (not scoped by project_id),
@@ -747,6 +757,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async pullMemories(request) {
       const parsed = parseRequest(pullMemoriesRequestSchema, request);
+      syncCustomRedaction();
 
       // Structural twin of importMemories with three team-pull changes:
       //  - importance uses MAX(local, incoming) so a teammate can never lower a
@@ -868,6 +879,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async redactExisting(request) {
       const parsed = parseRequest(redactExistingRequestSchema, request);
+      syncCustomRedaction();
 
       // One-time scrub of pre-existing rows. Dry-run by default:
       // apply=false reports matches and previews but writes nothing.
@@ -946,6 +958,7 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
 
     async batchStoreMemory(request) {
       const parsed = parseRequest(batchStoreMemoryRequestSchema, request);
+      syncCustomRedaction();
 
       const uniqueSessions = new Set(parsed.memories.map((m) => m.sessionId));
       const sessionOverLimit = new Set<string>();
