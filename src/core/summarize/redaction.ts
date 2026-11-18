@@ -38,6 +38,9 @@ const SECRET_KEY_NAMES = [
   "auth[_-]?token",
   "client[_-]?secret",
   "private[_-]?key",
+  // Azure storage and Service Bus connection strings: `AccountKey=...;`.
+  "account[_-]?key",
+  "shared[_-]?access[_-]?key",
   "credentials?",
   "token",
 ].join("|");
@@ -155,6 +158,43 @@ function createDefaultRules(): RedactionRule[] {
     // Google API keys: AIza + 35 url-safe chars (39 total).
     (input) =>
       input.replace(/\bAIza[0-9A-Za-z_-]{35}\b/g, "[REDACTED_GOOGLE_API_KEY]"),
+    // Anthropic API and admin keys: sk-ant-api03-/sk-ant-admin01- + a
+    // base64url body. The body carries `_` and `-`, which the generic sk- rule
+    // below stops at, so without this rule most of the key survived.
+    (input) =>
+      input.replace(
+        /\bsk-ant-(?:api|admin|oat|ort)\d{2}-[A-Za-z0-9_-]{20,300}/g,
+        "[REDACTED_ANTHROPIC_KEY]",
+      ),
+    // OpenAI project, service-account and admin keys: the body is base64url,
+    // so it contains `_` and `-` the generic rule cannot cross.
+    (input) =>
+      input.replace(
+        /\bsk-(?:proj|svcacct|admin|None)-[A-Za-z0-9_-]{20,400}/g,
+        "[REDACTED_API_KEY]",
+      ),
+    // Hugging Face user access tokens: hf_ + 30 or more alphanumerics.
+    (input) =>
+      input.replace(/\bhf_[A-Za-z0-9]{30,64}\b/g, "[REDACTED_HF_TOKEN]"),
+    // GitLab personal, OAuth, deploy, runner, pipeline-trigger and CI job tokens.
+    (input) =>
+      input.replace(
+        /\bgl(?:pat|oas|dt|rt|ptt|cbt|ft|imt|agent|soat)-[A-Za-z0-9_-]{20,128}/g,
+        "[REDACTED_GITLAB_TOKEN]",
+      ),
+    // Service tokens with a fixed, distinctive prefix. Each body length is
+    // bounded and anchored to its published format, so ordinary identifiers
+    // that merely share a prefix (`dapi`, `SK`) do not match.
+    (input) =>
+      input
+        .replace(/\bSG\.[A-Za-z0-9_-]{16,32}\.[A-Za-z0-9_-]{20,64}\b/g, "[REDACTED_SENDGRID_KEY]")
+        .replace(/\bpypi-AgE[A-Za-z0-9_-]{50,512}/g, "[REDACTED_PYPI_TOKEN]")
+        .replace(/\bdckr_(?:pat|oat)_[A-Za-z0-9_-]{20,64}/g, "[REDACTED_DOCKER_TOKEN]")
+        .replace(/\bdo[por]_v1_[a-f0-9]{64}\b/g, "[REDACTED_DIGITALOCEAN_TOKEN]")
+        .replace(/\bshp(?:at|ca|pa|ss)_[a-fA-F0-9]{32}\b/g, "[REDACTED_SHOPIFY_TOKEN]")
+        .replace(/\blin_(?:api|oauth)_[A-Za-z0-9]{40}\b/g, "[REDACTED_LINEAR_KEY]")
+        .replace(/\bSK[0-9a-fA-F]{32}\b/g, "[REDACTED_TWILIO_KEY]")
+        .replace(/\bdapi[a-f0-9]{32}(?:-\d)?\b/g, "[REDACTED_DATABRICKS_TOKEN]"),
     // OpenAI-style API key. Allow an optional internal dash segment so
     // project-scoped keys (sk-proj-...) are fully redacted rather than leaving
     // the project segment behind. Bounded quantifiers stay ReDoS-safe.
