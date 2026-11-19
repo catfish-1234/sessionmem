@@ -35,7 +35,7 @@
     "benchmark": "node scripts/benchmark.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.10.0",
+    "@anthropic-ai/sdk": "^1.11.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "better-sqlite3": "^13.2.0",
     "commander": "^15.1.0",

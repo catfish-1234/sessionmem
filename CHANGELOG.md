@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `redactionPatterns`) are redacted before anything is saved, and the command
   says when that happened and prints the `forget` command that undoes it.
 
+### Changed
+
+- Update `@anthropic-ai/sdk` to 1.11.0.
+
 ## [2.0.0] - 2026-11-19
 
 ### Removed
