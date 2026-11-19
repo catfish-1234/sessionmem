@@ -9,6 +9,12 @@ import { DEFAULT_SUMMARIZER_MODEL } from "../config/policyConfig.js";
 const THINKING_ROOM = 2048;
 /** Ceiling for one non-streaming response. */
 const MAX_RESPONSE_TOKENS = 16000;
+/** Request settings that only the default summarizer model is known to accept. */
+const DEFAULT_MODEL_TUNING = {
+  output_config: { effort: "low" as const },
+  betas: ["server-side-fallback-2026-07-01" as const],
+  fallbacks: "default" as const,
+};
 
 const CLOUD_SYSTEM_PROMPT =
   "You are a memory compressor for AI coding sessions. Given this session transcript summary, produce a compact, high-signal list of facts, decisions, and context that should be remembered. Be extremely concise.";
@@ -46,15 +52,12 @@ export async function summarizeWithCloud(
     // max_tokens, so the budget leaves room for it on top of the summary.
     // Capped so a large summaryTokenCap cannot pass an out-of-range value.
     max_tokens: Math.min(Math.floor((input.summaryTokenCap ?? 4000) * 1.5) + THINKING_ROOM, MAX_RESPONSE_TOKENS),
-    // Compressing a prepared transcript is a simple transform, so the default
-    // model runs at low effort. A caller-chosen model keeps its own defaults:
-    // older models reject the effort parameter.
-    ...(model === DEFAULT_SUMMARIZER_MODEL ? { output_config: { effort: "low" as const } } : {}),
-    // If the model declines for policy reasons, the API retries on its
-    // default fallback model inside the same call. A model without fallback
-    // support runs alone, so this is safe for a caller-chosen model too.
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
+    // Tuned for the default model: compressing a prepared transcript is a
+    // simple transform, so it runs at low effort, and a policy decline is
+    // retried server-side on Anthropic's default fallback model. A
+    // caller-chosen model keeps its own defaults, because older models
+    // reject effort and some models (Claude Haiku 5.5) reject fallbacks.
+    ...(model === DEFAULT_SUMMARIZER_MODEL ? DEFAULT_MODEL_TUNING : {}),
     system: CLOUD_SYSTEM_PROMPT,
     messages: [{ role: "user", content: localResult.summary }],
   });

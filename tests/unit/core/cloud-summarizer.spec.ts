@@ -111,8 +111,12 @@ describe("summarizeWithCloud", () => {
         max_tokens: 2348, // floor(summaryTokenCap * 1.5) + 2048 thinking room
       }),
     );
-    // A caller-chosen model keeps its own defaults: older models reject effort.
-    expect(mockCreate.mock.calls.at(-1)![0]).not.toHaveProperty("output_config");
+    // A caller-chosen model keeps its own defaults: older models reject effort,
+    // and some current ones (Claude Haiku 5.5) reject server-side fallbacks.
+    const request = mockCreate.mock.calls.at(-1)![0];
+    expect(request).not.toHaveProperty("output_config");
+    expect(request).not.toHaveProperty("fallbacks");
+    expect(request).not.toHaveProperty("betas");
   });
 
   it("throws on empty anthropicApiKey", async () => {

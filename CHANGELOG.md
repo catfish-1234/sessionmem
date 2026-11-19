@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the API (`fallbacks: "default"`), and if it is still declined sessionmem
   keeps the local summary instead of storing a refusal as memory. A
   `summarizerModel` you set yourself is sent as before, without an effort
-  setting, since older models reject one.
+  setting or server-side fallback, since older models reject effort and
+  some current ones (Claude Haiku 5.5) reject fallbacks.
 - Update `@anthropic-ai/sdk` to 1.10.0.
 
 ## [1.12.0] - 2026-11-18
