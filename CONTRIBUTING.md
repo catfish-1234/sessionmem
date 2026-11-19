@@ -20,11 +20,9 @@ installed version. The `.mcp.json` file is gitignored because it contains machin
 
 ## Development workflow
 
-Use Node 20.19+ or 22.13+ (Node 22 LTS recommended). Commander stays on 14
-because 15 requires Node 22.12+, while this project still tests Node 20.
-Likewise, better-sqlite3 13 and Vitest 5 require Node 22; those major upgrades
-are deferred until the Node support policy changes. Compatible dependency
-updates remain enabled.
+Use Node 22.13 or newer (Node 24 LTS recommended). Node 20 reached end of life
+on 2026-04-30 and is no longer supported; Commander 15, better-sqlite3 13 and
+Vitest 5 all require Node 22.
 
 ### Build
 
@@ -56,8 +54,8 @@ npm run build        # benchmarks import from dist/
 npm run benchmark    # regenerates docs/benchmark.md
 ```
 
-All four checks (build, test, lint, typecheck) run in CI on Node 20 and 22 for
-Ubuntu and macOS, and Node 22 for Windows. CI also installs the npm tarball and
+All four checks (build, test, lint, typecheck) run in CI on Node 22, 24 and 26
+for Ubuntu and macOS, and Node 24 for Windows. CI also installs the npm tarball and
 checks the installed CLI. Run `npm pack --dry-run` to review published files;
 only compiled runtime files, migrations, and user documentation belong there.
 

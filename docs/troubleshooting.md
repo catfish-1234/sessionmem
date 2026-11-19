@@ -122,9 +122,9 @@ If `npm install` fails compiling `better-sqlite3` with `node-gyp` errors, your t
 - **macOS**: install the Xcode Command Line Tools (`xcode-select --install`).
 - **Linux**: install `build-essential` (or your distro's equivalent: a C/C++ compiler, `make`, and `python3`).
 
-### ABI mismatch (Node 20 vs 22)
+### ABI mismatch after switching Node versions
 
-`better-sqlite3` is compiled against a specific Node ABI. If you switch Node versions (for example from Node 20 to Node 22), a prebuilt or previously compiled binary can fail to load with a module-version / ABI mismatch error. Rebuild the native module against your current Node by reinstalling, or run `npm rebuild better-sqlite3`. If you use a Node version manager, make sure you reinstall after switching versions.
+`better-sqlite3` is compiled against a specific Node ABI. If you switch Node versions (for example from Node 22 to Node 24), a prebuilt or previously compiled binary can fail to load with a module-version / ABI mismatch error. Rebuild the native module against your current Node by reinstalling, or run `npm rebuild better-sqlite3`. If you use a Node version manager, make sure you reinstall after switching versions.
 
 ### Confirming the build
 

@@ -41,7 +41,7 @@ By default, everything stays on your machine. You don't need an account or a clo
 
 ## Quickstart
 
-You need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org), version 20.19+ on the Node 20 line, or 22.13+. Node 22 LTS is recommended. No programming experience is required.
+You need a terminal (Command Prompt, Terminal, or PowerShell) and [Node.js](https://nodejs.org), version 22.13 or newer. Node 24 LTS is recommended. No programming experience is required.
 
 ### 1. Install sessionmem
 

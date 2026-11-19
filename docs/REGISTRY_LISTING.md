@@ -36,7 +36,7 @@ project context in local SQLite across sessions.
 
 ## Install and connect
 
-Requires Node.js `^20.19.0 || >=22.13.0`.
+Requires Node.js `>=22.13.0`.
 
 ```bash
 npm install -g sessionmem

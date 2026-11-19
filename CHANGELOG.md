@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Node 20, which reached end of life on 2026-04-30, is no longer supported.
+  sessionmem now needs Node 22.13 or newer (`engines.node` is `>=22.13.0`),
+  CI tests Node 22, 24 and 26, and the Docker image runs on Node 24.
+
 ### Changed
 
 - The cloud summarizer now defaults to Claude Sonnet 5.5 (`claude-sonnet-5-5`),
@@ -19,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `summarizerModel` you set yourself is sent as before, without an effort
   setting or server-side fallback, since older models reject effort and
   some current ones (Claude Haiku 5.5) reject fallbacks.
-- Update `@anthropic-ai/sdk` to 1.10.0.
+- Update `@anthropic-ai/sdk` to 1.10.0, better-sqlite3 to 13 (SQLite
+  3.54.1), and Commander to 15. Tests run on Vitest 5.
 
 ## [1.12.0] - 2026-11-18
 
