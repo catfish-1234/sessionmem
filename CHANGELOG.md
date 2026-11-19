@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-19
+
 ### Removed
 
 - Node 20, which reached end of life on 2026-04-30, is no longer supported.
