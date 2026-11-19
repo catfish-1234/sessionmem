@@ -25,14 +25,22 @@ Cloud summarization runs in two steps:
 
 ### Model Configuration
 
-The default model is `claude-sonnet-4-6`, defined as `DEFAULT_SUMMARIZER_MODEL` in
-`src/core/config/policyConfig.ts`. Callers can override the model via the `model` field
-in `CloudSummarizeInput`.
+The default model is `claude-sonnet-5-5`, defined as `DEFAULT_SUMMARIZER_MODEL` in
+`src/core/config/policyConfig.ts`, and runs at `low` effort, since compressing a
+prepared transcript is a simple transform. Callers can override the model via the `model`
+field in `CloudSummarizeInput`; a caller-chosen model keeps its own effort default, because
+older models reject the parameter.
+
+Requests enable the API's server-side fallback (`fallbacks: "default"`): if the model
+declines for policy reasons, the API retries on its default fallback model within the same
+call. If the request is still declined (`stop_reason: "refusal"`), the cloud step fails and
+the local summary is used, as for any other cloud error.
 
 ### Token Limits
 
-The API's `max_tokens` parameter is `Math.min(Math.floor((summaryTokenCap ?? 4000) * 1.5), 8192)`.
-The response is then trimmed to `summaryTokenCap`.
+Current models think before answering, and thinking counts against `max_tokens`, so the
+budget is `Math.min(Math.floor((summaryTokenCap ?? 4000) * 1.5) + 2048, 16000)`. Only the
+response's text blocks are used, and the result is trimmed to `summaryTokenCap`.
 
 ## Runtime Warning Signals
 

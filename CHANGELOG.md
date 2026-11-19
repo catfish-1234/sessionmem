@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The cloud summarizer now defaults to Claude Sonnet 5.5 (`claude-sonnet-5-5`),
+  run at low effort: compressing a summary is a short, well-defined task.
+  Its response budget leaves room for the model's thinking, and is capped
+  at 16,000 tokens.
+- A request the summarizer model declines is retried on a fallback model by
+  the API (`fallbacks: "default"`), and if it is still declined sessionmem
+  keeps the local summary instead of storing a refusal as memory. A
+  `summarizerModel` you set yourself is sent as before, without an effort
+  setting, since older models reject one.
+- Update `@anthropic-ai/sdk` to 1.10.0.
+
 ## [1.12.0] - 2026-11-18
 
 ### Added

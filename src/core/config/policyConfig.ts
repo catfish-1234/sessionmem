@@ -22,7 +22,7 @@ export const DEEP_MODE_RETRIEVAL_CAP = 100;
  * Default model for cloud summarization via the Anthropic API.
  * Consumed by {@link import("../summarize/cloudSummarizer.js").summarizeWithCloud}.
  */
-export const DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-4-6";
+export const DEFAULT_SUMMARIZER_MODEL = "claude-sonnet-5-5";
 
 /**
  * Built-in policy defaults. Used whenever the config file is missing, malformed,

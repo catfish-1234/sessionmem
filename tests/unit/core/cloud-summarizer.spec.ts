@@ -8,7 +8,7 @@ const constructorCalls: Array<Record<string, unknown>> = [];
 
 vi.mock("@anthropic-ai/sdk", () => {
   class MockAnthropic {
-    messages = { create: mockCreate };
+    beta = { messages: { create: mockCreate } };
     constructor(opts: Record<string, unknown>) {
       constructorCalls.push(opts);
     }
@@ -54,10 +54,14 @@ describe("summarizeWithCloud", () => {
     // Verify Anthropic client was constructed with the API key
     expect(constructorCalls).toContainEqual({ apiKey: "sk-test-key-123" });
 
-    // Verify messages.create was called with correct params
+    // The default model runs at low effort with room to think and the
+    // server-side refusal fallback enabled.
     expect(mockCreate).toHaveBeenCalledWith({
       model: DEFAULT_SUMMARIZER_MODEL,
-      max_tokens: 450, // min(floor(summaryTokenCap * 1.5), 8192)
+      max_tokens: 2498, // floor(summaryTokenCap * 1.5) + 2048 thinking room, capped at 16000
+      output_config: { effort: "low" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
       system: expect.stringContaining("memory compressor"),
       messages: [{ role: "user", content: "local preprocessed summary text" }],
     });
@@ -104,9 +108,11 @@ describe("summarizeWithCloud", () => {
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "claude-opus-4-20250514",
-        max_tokens: 300, // min(floor(summaryTokenCap * 1.5), 8192)
+        max_tokens: 2348, // floor(summaryTokenCap * 1.5) + 2048 thinking room
       }),
     );
+    // A caller-chosen model keeps its own defaults: older models reject effort.
+    expect(mockCreate.mock.calls.at(-1)![0]).not.toHaveProperty("output_config");
   });
 
   it("throws on empty anthropicApiKey", async () => {
@@ -154,5 +160,35 @@ describe("summarizeWithCloud", () => {
     });
 
     expect(result.warningCodes).toEqual(["redaction_applied"]);
+  });
+
+  it("defaults to the current Sonnet", () => {
+    expect(DEFAULT_SUMMARIZER_MODEL).toBe("claude-sonnet-5-5");
+  });
+
+  it("reads the summary from text blocks after thinking blocks", async () => {
+    mockCreate.mockResolvedValue({
+      stop_reason: "end_turn",
+      content: [{ type: "thinking", thinking: "", signature: "sig" }, { type: "text", text: "decisions: use pnpm" }],
+    });
+    const result = await summarizeWithCloud({
+      events: [], summaryTokenCap: 300, redactionEnabled: true, factMode: "summary-only", anthropicApiKey: "k",
+    });
+    expect(result.summary).toBe("decisions: use pnpm");
+  });
+
+  it("throws on a refusal so the local summary is used instead", async () => {
+    mockCreate.mockResolvedValue({ stop_reason: "refusal", content: [{ type: "text", text: "partial" }] });
+    await expect(summarizeWithCloud({
+      events: [], summaryTokenCap: 300, redactionEnabled: true, factMode: "summary-only", anthropicApiKey: "k",
+    })).rejects.toThrow("declined");
+  });
+
+  it("caps max_tokens for a very large summary cap", async () => {
+    mockCreate.mockResolvedValue({ content: [{ type: "text", text: "ok" }] });
+    await summarizeWithCloud({
+      events: [], summaryTokenCap: 100000, redactionEnabled: true, factMode: "summary-only", anthropicApiKey: "k",
+    });
+    expect(mockCreate.mock.calls.at(-1)![0].max_tokens).toBe(16000);
   });
 });
