@@ -15,6 +15,7 @@ import { scopesCommand } from "./commands/scopes.js";
 import { listCommand } from "./commands/list.js";
 import { showCommand } from "./commands/show.js";
 import { forgetCommand } from "./commands/forget.js";
+import { rememberCommand } from "./commands/remember.js";
 import { exportCommand } from "./commands/export.js";
 import { importCommand } from "./commands/import.js";
 import { statsCommand } from "./commands/stats.js";
@@ -197,6 +198,17 @@ program
   .command("show <id>")
   .description("Show memory details by ID (content capped at 2000 characters)")
   .action((id) => showCommand(id));
+
+program
+  .command("remember <text...>")
+  .description("Store a memory by hand for the current project (use - to read the text from stdin)")
+  .option("--kind <kind>", "decision, fact, warning, preference or summary (default: fact)")
+  .option("--importance <n>", "1-10 (default: 7)")
+  .option("--tag <tag>", "Tag the memory; repeat for more (up to 10)", (tag: string, tags: string[] = []) => [...tags, tag])
+  .option("--expires <when>", "Forget it after a duration (12h, 30d, 2w) or on a date (2026-12-31)")
+  .option("--scope <name>", "Context label (default: the working directory name)")
+  .option("--json", "Print the stored memory as JSON")
+  .action((text, options) => rememberCommand(text, options));
 
 program
   .command("forget <id>")

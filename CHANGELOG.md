@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `sessionmem remember <text>` stores a memory by hand for the current
+  project: a decision, preference or warning you want every future session to
+  know, without waiting for an agent to capture it. `--kind` (default `fact`),
+  `--importance` (1-10, default 7, above a routine capture), repeatable
+  `--tag`, `--expires` (`12h`, `30d`, `2w`, a date or a UTC timestamp; an
+  impossible date such as February 31 is rejected rather than rolled over),
+  `--scope`, and `--json`. `-` reads the text from stdin. It uses the same
+  write path as the MCP tools, so secrets (including your own
+  `redactionPatterns`) are redacted before anything is saved, and the command
+  says when that happened and prints the `forget` command that undoes it.
+
 ## [2.0.0] - 2026-11-19
 
 ### Removed
