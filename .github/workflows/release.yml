@@ -8,7 +8,8 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-*"
   workflow_dispatch:
     inputs:
       otp:
@@ -30,6 +31,9 @@ jobs:
       id-token: write # REQUIRED for OIDC trusted publishing + automatic provenance (scoped to this job only)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Every tag, so the publish step can tell whether this is the newest version.
+          fetch-depth: 0
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -64,15 +68,25 @@ jobs:
       # automatically, so no --provenance flag is needed. NODE_AUTH_TOKEN is a
       # documented fallback for when the npmjs.com trusted-publisher UI setup has
       # not been completed — set the NPM_TOKEN repo secret to use it.
+      #
+      # Only the newest version takes npm's `latest` dist-tag. An older tag (a backfilled release,
+      # or a run that finishes after a newer one) publishes under `legacy`, and a prerelease under
+      # `next`, so the order in which runs finish can never move `npm install sessionmem` back.
       - name: Publish to npm
         run: |
           NAME="$(node -p "require('./package.json').name")"
           VERSION="$(node -p "require('./package.json').version")"
           if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then
             echo "$NAME@$VERSION is already published on npm; skipping publish."
-          else
-            npm publish --access public ${NPM_OTP:+--otp="$NPM_OTP"}
+            exit 0
           fi
+          HIGHEST="$(git tag -l 'v*' | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          case "$VERSION" in
+            *-*) DIST_TAG=next ;;
+            "$HIGHEST") DIST_TAG=latest ;;
+            *) DIST_TAG=legacy; echo "v$VERSION is older than v$HIGHEST, so it does not take the latest dist-tag." ;;
+          esac
+          npm publish --access public --tag "$DIST_TAG" ${NPM_OTP:+--otp="$NPM_OTP"}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_OTP: ${{ github.event.inputs.otp }}
@@ -96,4 +110,11 @@ jobs:
             echo "No CHANGELOG.md section found for $GITHUB_REF_NAME" >&2
             exit 1
           }
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE" --verify-tag
+          # Only the newest version is marked as the repository's latest release.
+          HIGHEST="$(git tag -l 'v*' | sed 's/^v//' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)"
+          case "$VERSION" in
+            *-*) FLAGS="--prerelease --latest=false" ;;
+            "$HIGHEST") FLAGS="--latest" ;;
+            *) FLAGS="--latest=false" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file "$NOTES_FILE" --verify-tag $FLAGS

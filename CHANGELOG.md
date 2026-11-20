@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Update `@anthropic-ai/sdk` to 1.11.0.
+- Releasing is one command: `npm run release` checks that `main` is clean, pushed and green, then
+  tags the version and pushes it. `--backfill` also tags older versions that never got a tag,
+  oldest first, and holds the current version until their runs finish; `--dry-run` shows the plan.
+  See CONTRIBUTING.md.
+- The release workflow keeps npm's `latest` dist-tag and GitHub's latest release on the newest
+  version: an older tag publishes under `legacy` and a prerelease under `next`.
 
 ## [2.0.0] - 2026-11-19
 

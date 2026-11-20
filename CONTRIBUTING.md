@@ -123,6 +123,32 @@ Open an issue describing the use case. Explain the problem you're trying to solv
 
 If you find a security vulnerability, **do not open a public issue**. Use [GitHub private vulnerability reporting](https://github.com/catfish-1234/sessionmem/security/advisories/new). See the [security policy](SECURITY.md) for supported versions and response expectations, and the [security workflow](https://github.com/catfish-1234/sessionmem/blob/main/.github/workflows/security.yml) for automated scanning.
 
+## Releasing
+
+1. Add the version's section to `CHANGELOG.md` and run `npm version <x.y.z> --no-git-tag-version`,
+   which also updates `package/package.json`, `.claude-plugin/plugin.json`, `server.json` and the
+   Dockerfile pin.
+2. Commit and push to `main`, then:
+
+   ```bash
+   npm run release -- --dry-run   # see what would be tagged
+   npm run release                # tag the version and push it
+   ```
+
+`npm run release` refuses unless `main` is clean and identical to `origin/main`, and, with the
+GitHub CLI signed in, unless CI is green on the commit it tags. It tags the version at HEAD, or at
+the commit that introduced it while `CHANGELOG.md` still has unreleased entries. Pushing the tag
+runs `.github/workflows/release.yml`, which builds, tests, publishes to npm and creates the GitHub
+release with that version's CHANGELOG section as notes.
+
+`npm run release -- --backfill` also tags older CHANGELOG versions that never got a tag. A tag runs
+the release workflow of the commit it points at, and older workflows publish with npm's `latest`
+dist-tag, so the older tags are pushed first, one at a time, and the current version only after
+their runs finish. Without the GitHub CLI it pushes the older tags and stops; run `npm run release`
+again once those runs are done. The current workflow publishes an older version under `legacy`
+and marks only the newest version as the latest release, so that ordering only matters for
+commits from before this workflow.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
