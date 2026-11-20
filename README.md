@@ -239,11 +239,11 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem ui [--port N]` | Open the local read-only web viewer (default port 3777). |
 | `sessionmem serve --api [--port N]` | Start the local single-user REST API (default port 3778). |
 | `sessionmem ping` | Check the local version and database reachability. |
-| `sessionmem search <query> [--limit <n>] [--include-history]` | Search current memories by text query (limit 1–100, default 10). Include superseded facts with `--include-history`. |
-| `sessionmem list` | List up to 200 recent memories for the current project; warns when truncated. |
+| `sessionmem search <query> [--limit <n>] [--include-history] [--json]` | Search current memories by text query (limit 1–100, default 10). Include superseded facts with `--include-history`. |
+| `sessionmem list [--json]` | List up to 200 recent memories for the current project; warns when truncated. `--json` includes the project total. |
 | `sessionmem entities [--project <id>] [--json]` | List extracted entities, typed relations, and their source memory IDs. Defaults to the current project. |
 | `sessionmem history [--project <id>] [--json]` | List supersession chains with old/new values, source memory IDs, reasons, and timestamps. |
-| `sessionmem show <id>` | Show memory details (content capped at 2000 characters; use export for full content). |
+| `sessionmem show <id> [--json]` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem remember <text> [--kind <kind>] [--importance <n>] [--tag <tag>] [--expires <when>]` | Store a memory by hand, such as a decision or preference the agent should keep. Defaults to a `fact` at importance 7; `--expires` takes `12h`, `30d`, `2w` or a date. Secrets are redacted as on every write. Use `-` to read the text from stdin. |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). Use `-` for stdout. |

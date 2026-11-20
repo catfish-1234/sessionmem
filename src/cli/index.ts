@@ -166,12 +166,14 @@ program
   .description("Search memories by semantic query")
   .option("--limit <n>", "Maximum number of results (1-100)", "10")
   .option("--include-history", "Include superseded facts")
+  .option("--json", "Output matches as JSON")
   .action((query, options) => searchCommand(query, options));
 
 program
   .command("list")
   .description("List up to 200 recent memories for the current project")
-  .action(() => listCommand());
+  .option("--json", "Output the memories and the project total as JSON")
+  .action((options) => listCommand(undefined, options));
 
 program
   .command("scopes")
@@ -197,7 +199,8 @@ program
 program
   .command("show <id>")
   .description("Show memory details by ID (content capped at 2000 characters)")
-  .action((id) => showCommand(id));
+  .option("--json", "Output the memory as JSON")
+  .action((id, options) => showCommand(id, undefined, options));
 
 program
   .command("remember <text...>")

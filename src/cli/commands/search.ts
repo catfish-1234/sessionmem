@@ -8,6 +8,7 @@ export interface SearchOptions {
   includeHistory?: boolean;
   scope?: string;
   scopeMode?: "filter" | "boost";
+  json?: boolean;
 }
 
 const DEFAULT_LIMIT = 10;
@@ -42,6 +43,11 @@ export async function searchCommand(
   if (!result.ok) {
     console.error(result.error.message);
     process.exit(1);
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify({ query, memories: result.memories }, null, 2));
+    return;
   }
 
   console.log(formatTable(result.memories));

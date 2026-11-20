@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `redactionPatterns`) are redacted before anything is saved, and the command
   says when that happened and prints the `forget` command that undoes it.
 
+- `sessionmem search`, `list` and `show` take `--json`, for scripts: matches
+  with their query, the listed memories with the project total, or the one
+  memory. The table output stays the default.
+
 ### Changed
 
 - Update `@anthropic-ai/sdk` to 1.11.0.
