@@ -9,6 +9,12 @@ import { DEFAULT_SUMMARIZER_MODEL } from "../config/policyConfig.js";
 const THINKING_ROOM = 2048;
 /** Ceiling for one non-streaming response. */
 const MAX_RESPONSE_TOKENS = 16000;
+/**
+ * How long one cloud request may take. Summaries run inside the SessionEnd hook, which the host
+ * kills after a minute by default, so a stalled request must give up in time for the local
+ * fallback. The SDK's own retries are off: the session lifecycle retries, against a deadline.
+ */
+export const CLOUD_REQUEST_TIMEOUT_MS = 25_000;
 /** Request settings that only the default summarizer model is known to accept. */
 const DEFAULT_MODEL_TUNING = {
   output_config: { effort: "low" as const },
@@ -44,7 +50,7 @@ export async function summarizeWithCloud(
 
   // Step 2: Send preprocessed summary to Claude for compression
   const model = input.model ?? DEFAULT_SUMMARIZER_MODEL;
-  const client = new Anthropic({ apiKey: input.anthropicApiKey });
+  const client = new Anthropic({ apiKey: input.anthropicApiKey, timeout: CLOUD_REQUEST_TIMEOUT_MS, maxRetries: 0 });
 
   const response = await client.beta.messages.create({
     model,

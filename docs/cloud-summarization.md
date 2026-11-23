@@ -37,6 +37,15 @@ if the model declines for policy reasons, the API retries on its default fallbac
 within the same call. If the request is still declined (`stop_reason: "refusal"`), with any
 model, the cloud step fails and the local summary is used, as for any other cloud error.
 
+### Time Limits
+
+Cloud summarization runs inside the SessionEnd hook, which the host stops after a minute by
+default. One request may take 25 seconds; the SDK's own retries are off, and the session
+lifecycle retries a timeout, a dropped connection, a rate limit or a server error only while
+another attempt still fits in a 45-second budget. A bad request, an authentication failure, a
+refusal or a missing key is not retried. When the budget runs out the local summary is stored, so
+a slow API never leaves a session without one.
+
 ### Token Limits
 
 Current models think before answering, and thinking counts against `max_tokens`, so the

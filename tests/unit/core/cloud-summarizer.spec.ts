@@ -51,8 +51,9 @@ describe("summarizeWithCloud", () => {
       anthropicApiKey: "sk-test-key-123",
     });
 
-    // Verify Anthropic client was constructed with the API key
-    expect(constructorCalls).toContainEqual({ apiKey: "sk-test-key-123" });
+    // Verify Anthropic client was constructed with the API key, a per-request timeout that fits
+    // inside the SessionEnd hook, and no SDK retries (the session lifecycle owns retries).
+    expect(constructorCalls).toContainEqual({ apiKey: "sk-test-key-123", timeout: 25_000, maxRetries: 0 });
 
     // The default model runs at low effort with room to think and the
     // server-side refusal fallback enabled.

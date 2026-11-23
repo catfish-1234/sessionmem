@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with their query, the listed memories with the project total, or the one
   memory. The table output stays the default.
 
+### Fixed
+
+- A slow or unreachable Anthropic API could cost a session its summary when
+  cloud summarization is on. The request had the SDK's 10-minute timeout and
+  its own retries inside sessionmem's, so the SessionEnd hook could be stopped
+  by the host before the local fallback ran. A request now gives up after 25
+  seconds, retries happen only while they fit in a 45-second budget and only
+  for errors another attempt could fix (not a bad request, an auth failure or a
+  refusal), and the local summary is stored when the budget runs out.
+
 ### Changed
 
 - Update `@anthropic-ai/sdk` to 1.11.0.

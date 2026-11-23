@@ -17,7 +17,7 @@ import type {
   HandleSessionEndRequest,
   HandleSessionEndResponse,
 } from "./contracts.js";
-import { summarizeWithCloud, type CloudSummarizeInput } from "../summarize/cloudSummarizer.js";
+import { CLOUD_REQUEST_TIMEOUT_MS, summarizeWithCloud, type CloudSummarizeInput } from "../summarize/cloudSummarizer.js";
 import {
   summarizeLocalSessionEvents,
   type LocalSummarizeInput,
@@ -91,9 +91,30 @@ function toErrorJson(error: unknown): string {
   return JSON.stringify({ message: "Unknown error" });
 }
 
+/**
+ * The whole cloud step, retries included. It runs inside the SessionEnd hook, which the host
+ * stops after a minute by default; whatever is left after this is for the local fallback, so a
+ * slow API still leaves a summary behind instead of a killed hook and none.
+ */
+export const CLOUD_DEADLINE_MS = 45_000;
+
+/**
+ * Whether another attempt could succeed. A bad request, an auth failure, a refusal or a missing
+ * key fails the same way every time, so retrying only spends the deadline; a timeout, a dropped
+ * connection, a rate limit or a server error may not.
+ */
+export function isRetryableCloudError(error: unknown): boolean {
+  const status = (error as { status?: unknown } | null)?.status;
+  if (typeof status === "number") return status === 408 || status === 409 || status === 429 || status >= 500;
+  const message = error instanceof Error ? error.message : String(error);
+  return !/declined the request|Missing anthropicApiKey/.test(message);
+}
+
 async function retryCloud(
   fn: () => Promise<SummarizerResult>,
+  clock: () => number = Date.now,
 ): Promise<SummarizerResult> {
+  const start = clock();
   let attempt = 0;
   let lastError: unknown;
   while (attempt <= CLOUD_RETRY_CONFIG.retries) {
@@ -102,7 +123,8 @@ async function retryCloud(
     } catch (error) {
       lastError = error;
       attempt += 1;
-      if (attempt > CLOUD_RETRY_CONFIG.retries) {
+      const outOfTime = clock() - start + CLOUD_REQUEST_TIMEOUT_MS > CLOUD_DEADLINE_MS;
+      if (attempt > CLOUD_RETRY_CONFIG.retries || !isRetryableCloudError(error) || outOfTime) {
         break;
       }
     }
@@ -280,6 +302,7 @@ export function createSessionLifecycleService(deps: SessionLifecycleServiceDeps)
             ...baseInput,
             anthropicApiKey: request.config.anthropicApiKey ?? "",
           }),
+          () => now().getTime(),
         );
         storeSummaryMemory(deps.db, embeddingDimension, {
           memoryId,
