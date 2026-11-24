@@ -36,6 +36,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with Cursor installed, because Cursor keeps it under `%APPDATA%`, which the
   spec did not redirect along with `HOME` and `USERPROFILE`. It does now.
 
+### Changed
+
+- The optional local semantic model now pins `onnxruntime-node` 1.31.1 (was
+  1.30.0), and the install command in docs/local-semantic.md says the same, so
+  following the docs no longer installs a version the peer pin rejects.
+
 ## [2.1.0] - 2026-11-19
 
 ### Added

@@ -6,7 +6,7 @@ To add a learned semantic candidate pool,
 install the optional packages beside sessionmem and enable it:
 
 ```bash
-ONNXRUNTIME_NODE_INSTALL=skip npm install sessionmem @huggingface/tokenizers@0.2.0 onnxruntime-node@1.30.0 @xcidos/genesis-memory-model@0.1.0-alpha.1
+ONNXRUNTIME_NODE_INSTALL=skip npm install sessionmem @huggingface/tokenizers@0.2.0 onnxruntime-node@1.31.1 @xcidos/genesis-memory-model@0.1.0-alpha.1
 npx sessionmem config set semanticSearch true
 ```
 
