@@ -19,9 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- An OpenPGP private key block (`-----BEGIN PGP PRIVATE KEY BLOCK-----`) was
-  stored verbatim: the private-key rule required the marker to end in
-  `PRIVATE KEY-----`. It is now redacted like a PEM block.
+- An armored OpenPGP private key was stored verbatim: its markers end in
+  `KEY BLOCK` plus dashes, and the private-key rule required them to end in
+  `PRIVATE KEY` plus dashes. It is now redacted like a PEM block.
 - A private key cut off before its `-----END` line, such as a `head` of a key
   file or a tool result clipped at a size limit, kept its whole body, because
   the rule needed both markers. The armor headers and every base64 line after
