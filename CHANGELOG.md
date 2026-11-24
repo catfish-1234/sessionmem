@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and behaved as the Claude Code host. A vitest setup file now clears the
   host-detection variables before each spec file; specs about host detection
   set their own.
+- The Codex transcript spec read the real Cursor history on a Windows machine
+  with Cursor installed, because Cursor keeps it under `%APPDATA%`, which the
+  spec did not redirect along with `HOME` and `USERPROFILE`. It does now.
 
 ## [2.1.0] - 2026-11-19
 
