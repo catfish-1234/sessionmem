@@ -360,6 +360,10 @@ export const redactExistingResponseSchema = z.object({
   // operation erroring out and discarding prior updates/previews.
   skipped: z.number().int().nonnegative().default(0),
   previews: z.array(z.string()),
+  // Stored session events (raw tool and transcript payloads) whose text the current rules
+  // would redact, and how many of them were rewritten with --apply.
+  eventsMatched: z.number().int().nonnegative().default(0),
+  eventsUpdated: z.number().int().nonnegative().default(0),
 });
 
 export const resetAccessCountsRequestSchema = z.object({

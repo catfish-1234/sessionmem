@@ -42,6 +42,8 @@ import {
   countAllSessionEvents,
   insertSessionEvent,
   nextSessionEventIndex,
+  rewrittenSessionEventPayloads,
+  updateSessionEventPayload,
 } from "../storage/sessionEventsRepo.js";
 import type { MemoryRecord } from "../storage/types.js";
 import {
@@ -946,6 +948,26 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         }
       }
 
+      // Session events: the raw tool and transcript payloads summaries are built from, kept until
+      // retention prunes them. They are redacted when ingested, but only by the rules of the
+      // version that ingested them, so a format added later (a PGP key, a key cut off before its
+      // END line, a new token prefix) stays on disk until this scrub. A payload is rewritten only
+      // when it is still valid JSON afterwards, so the scrub can never corrupt an event.
+      const changedEvents = rewrittenSessionEventPayloads(db, parsed.projectId, (payload) => {
+        const redacted = applyRedaction(payload, { redactionEnabled: true }).text;
+        if (redacted === payload) return payload;
+        try { JSON.parse(payload); } catch { return redacted; }
+        try { JSON.parse(redacted); return redacted; } catch { return payload; }
+      });
+      let eventsUpdated = 0;
+      if (parsed.apply && changedEvents.length > 0) {
+        db.transaction(() => {
+          for (const event of changedEvents) {
+            eventsUpdated += updateSessionEventPayload(db, parsed.projectId, event.id, event.payload);
+          }
+        })();
+      }
+
       return {
         ok: true,
         scanned: memories.length,
@@ -953,6 +975,8 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
         updated,
         skipped,
         previews,
+        eventsMatched: changedEvents.length,
+        eventsUpdated,
       };
     },
 

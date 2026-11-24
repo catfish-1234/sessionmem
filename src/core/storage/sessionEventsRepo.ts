@@ -99,6 +99,32 @@ export function countAllSessionEvents(db: Database, projectId: string): number {
   return row.count;
 }
 
+/**
+ * The project's events whose payload `rewrite` changes, as `{ id, payload }` with the rewritten
+ * text. Rows are streamed rather than loaded at once, and only the ones that change are kept, so a
+ * scan of a large event table holds only what it will write back.
+ */
+export function rewrittenSessionEventPayloads(
+  db: Database,
+  projectId: string,
+  rewrite: (payload: string) => string,
+): Array<{ id: string; payload: string }> {
+  const changed: Array<{ id: string; payload: string }> = [];
+  const rows = db.prepare("SELECT id, payload_json FROM session_events WHERE project_id = ?")
+    .iterate(projectId) as IterableIterator<{ id: string; payload_json: string }>;
+  for (const row of rows) {
+    const payload = rewrite(row.payload_json);
+    if (payload !== row.payload_json) changed.push({ id: row.id, payload });
+  }
+  return changed;
+}
+
+/** Replace one event's payload in place; returns the number of rows changed (0 or 1). */
+export function updateSessionEventPayload(db: Database, projectId: string, id: string, payload: string): number {
+  return db.prepare("UPDATE session_events SET payload_json = ? WHERE project_id = ? AND id = ?")
+    .run(payload, projectId, id).changes;
+}
+
 export function listSessionEventsBySession(
   db: Database,
   projectId: string,

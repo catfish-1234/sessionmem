@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `sessionmem redact-scan` also scrubs stored session events, the raw tool and
+  transcript payloads summaries are built from. They were redacted when
+  ingested, but only by the rules of the version that ingested them, so a
+  format added later stayed on disk until retention pruned it. The scan counts
+  matching events (their payloads are raw tool output, so they are not
+  previewed), and `--apply` rewrites them, only ever to a payload that is still
+  valid JSON. Run `sessionmem redact-scan --apply` after upgrading to apply
+  this release's new formats to data you already have.
+
 - Redaction knows more token formats that coding sessions print: Google OAuth
   access tokens (`ya29.`, what `gcloud auth print-access-token` writes to the
   terminal), refresh tokens and OAuth client secrets (`GOCSPX-`); Stripe

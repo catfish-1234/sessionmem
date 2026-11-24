@@ -95,19 +95,19 @@ sessionmem retention prune --days 30
 
 ## One-time Redaction Scrub
 
-Normal memory writes do not recheck older memories. To check memories saved before redaction coverage was expanded, run `redact-scan`. It previews changes by default:
+Normal memory writes do not recheck older memories, and session events (the raw tool and transcript payloads summaries are built from, kept until retention prunes them) carry the redaction of the version that ingested them. To check both after redaction coverage was expanded, run `redact-scan`. It previews changes by default:
 
 ```bash
 sessionmem redact-scan
 ```
 
-The preview shows matching memories and a count. To redact and update them in place:
+The preview shows matching memories and a count, and a count of stored session events with secrets; event payloads are raw tool output, so they are counted rather than shown. To redact and update them in place:
 
 ```bash
 sessionmem redact-scan --apply
 ```
 
-`--apply` rewrites matching memories with `REDACTED` placeholders and prints a summary count.
+`--apply` rewrites matching memories and session events with `REDACTED` placeholders and prints a summary count. An event payload is rewritten only if it is still valid JSON afterwards, so the scrub cannot corrupt an event.
 
 ## Policy Config
 

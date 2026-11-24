@@ -36,6 +36,7 @@ export async function redactScanCommand(
     process.exit(1);
   }
 
+  const eventsMatched = result.eventsMatched ?? 0;
   if (apply) {
     if (result.skipped > 0) {
       console.log(
@@ -44,6 +45,7 @@ export async function redactScanCommand(
     } else {
       console.log(`Redacted ${result.updated} memories.`);
     }
+    if (eventsMatched > 0) console.log(`Redacted ${result.eventsUpdated ?? 0} stored session events.`);
     return;
   }
 
@@ -51,5 +53,9 @@ export async function redactScanCommand(
   console.log(`Found ${result.matched} memories with potential secrets`);
   for (const preview of result.previews) {
     console.log(`  ${preview}`);
+  }
+  // Event payloads are raw tool output, so they are counted rather than previewed.
+  if (eventsMatched > 0) {
+    console.log(`Found ${eventsMatched} stored session events with potential secrets (run with --apply to redact them)`);
   }
 }
