@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `batchStoreMemory` reported every refused row as `duplicate id`, including a
+  second `summary` for a session that already has one, so an agent went looking
+  for an ID collision that did not exist. That case now says the session
+  already has a summary and how to store another; a taken ID still says
+  `duplicate id`.
 - An armored OpenPGP private key was stored verbatim: its markers end in
   `KEY BLOCK` plus dashes, and the private-key rule required them to end in
   `PRIVATE KEY` plus dashes. It is now redacted like a PEM block.

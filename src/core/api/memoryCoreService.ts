@@ -1105,10 +1105,21 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
                 // transaction so we don't silently commit a corrupt partial batch.
                 throw err;
               }
+              // Two constraints can refuse a row, and they need different fixes: the ID is
+              // taken, or the session already has its one summary (the partial unique index
+              // on project, session and kind). Reporting both as "duplicate id" sent agents
+              // looking for an ID collision that did not exist.
+              const summaryTaken = item.kind === "summary"
+                && (/memories\.kind\b/.test(message) || code === "SQLITE_CONSTRAINT_UNIQUE");
+              const idTaken = code === "SQLITE_CONSTRAINT_PRIMARYKEY" || /memories\.id\b/.test(message);
               results.push({
                 memoryId: item.memoryId,
                 ok: false,
-                error: "duplicate id",
+                error: idTaken
+                  ? "duplicate id"
+                  : summaryTaken
+                    ? "this session already has a summary memory; store another summary under its own sessionId, or use a different kind"
+                    : "conflicts with an existing memory",
               });
               failed += 1;
             }
