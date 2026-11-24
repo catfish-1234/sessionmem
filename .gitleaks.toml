@@ -23,6 +23,8 @@ paths = [
   '''tests/unit/summarize/redaction-extra\.spec\.ts''',
   '''tests/unit/summarize/redaction-assignments\.spec\.ts''',
   '''tests/unit/summarize/redaction-provider-tokens\.spec\.ts''',
+  '''tests/unit/summarize/redaction-more-formats\.spec\.ts''',
+  '''tests/integration/core/redact-existing-events\.spec\.ts''',
   '''tests/integration/core/secret-leakage\.spec\.ts''',
   '''tests/integration/core/redaction-write-paths\.spec\.ts''',
   '''tests/integration/cli/redact-scan\.spec\.ts''',
