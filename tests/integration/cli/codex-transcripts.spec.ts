@@ -49,6 +49,8 @@ beforeEach(() => {
   vi.stubEnv("ANTHROPIC_API_KEY", "");
   vi.stubEnv("HOME", dir);
   vi.stubEnv("USERPROFILE", dir);
+  // Cursor's Windows history lives under %APPDATA%, which HOME and USERPROFILE do not move.
+  vi.stubEnv("APPDATA", dir);
   vi.spyOn(console, "log").mockImplementation(() => {});
   context = createCliContext({ dbPath });
   projectId = deriveProjectId(cwd);
