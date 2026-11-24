@@ -7,5 +7,7 @@ export default defineConfig({
     testTimeout: 20000,
     hookTimeout: 20000,
     exclude: ["**/node_modules/**", "**/.claude/worktrees/**"],
+    // Specs must not inherit the agent host the suite happens to be run from.
+    setupFiles: ["tests/setup/isolate-host-env.ts"],
   },
 });

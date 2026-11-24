@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Redaction knows more token formats that coding sessions print: Google OAuth
+  access tokens (`ya29.`, what `gcloud auth print-access-token` writes to the
+  terminal), refresh tokens and OAuth client secrets (`GOCSPX-`); Stripe
+  test-mode secret and restricted keys and webhook signing secrets (`whsec_`);
+  Groq, xAI, Replicate, Perplexity and Tavily API keys; Supabase access tokens
+  and secret keys; and age secret keys. Each is anchored to its published
+  prefix and length, so prose that only names a prefix is left alone.
+
+### Fixed
+
+- An OpenPGP private key block (`-----BEGIN PGP PRIVATE KEY BLOCK-----`) was
+  stored verbatim: the private-key rule required the marker to end in
+  `PRIVATE KEY-----`. It is now redacted like a PEM block.
+- A private key cut off before its `-----END` line, such as a `head` of a key
+  file or a tool result clipped at a size limit, kept its whole body, because
+  the rule needed both markers. The armor headers and every base64 line after
+  an unterminated `BEGIN ... PRIVATE KEY` marker are now redacted, in plain
+  text and inside JSON-escaped event payloads, which stay parseable.
+- `npm test` run from inside Claude Code failed 22 specs on a clean checkout.
+  Every CLI a spec spawned inherited the session's `CLAUDECODE` and session id
+  and behaved as the Claude Code host. A vitest setup file now clears the
+  host-detection variables before each spec file; specs about host detection
+  set their own.
+
 ## [2.1.0] - 2026-11-19
 
 ### Added

@@ -186,11 +186,24 @@ function createDefaultRules(): RedactionRule[] {
         /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
         "[REDACTED_EMAIL]",
       ),
-    // PEM private key block: ----BEGIN <type> PRIVATE KEY---- ... ----END ... ----.
-    // Run before per-token rules so the whole block collapses to one placeholder.
+    // PEM private key block: ----BEGIN <type> PRIVATE KEY---- ... ----END ... ----, and the
+    // OpenPGP armor form, whose markers end in `PRIVATE KEY BLOCK-----`. Run before per-token
+    // rules so the whole block collapses to one placeholder.
     (input) =>
       input.replace(
-        /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]{0,40}PRIVATE KEY-----/g,
+        /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?-----END [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----/g,
+        "[REDACTED_PRIVATE_KEY]",
+      ),
+    // A private key block cut off before its END line: a `head` of the key file, or a tool
+    // result clipped at a size limit. The rule above needs both markers, so the whole body of a
+    // truncated key used to survive. This consumes the armor headers (`Proc-Type: 4,ENCRYPTED`)
+    // and every base64 line of 16 or more characters, separated by real or JSON-escaped
+    // newlines. Prose rarely has a 16-character run of base64 letters, so the text after the key
+    // is left alone. Tokens and separators are disjoint character sets, so each repetition has
+    // one way to match and the rule stays linear.
+    (input) =>
+      input.replace(
+        /-----BEGIN [A-Z0-9 ]{0,40}PRIVATE KEY(?: BLOCK)?-----(?:(?:\s|\\r|\\n){1,8}(?:[A-Za-z0-9+/=]{16,128}|[A-Za-z][A-Za-z-]{0,39}: ?[^\n\\"]{0,200}))*/g,
         "[REDACTED_PRIVATE_KEY]",
       ),
     // JWT: three base64url segments separated by dots, header begins with "eyJ".
@@ -232,6 +245,36 @@ function createDefaultRules(): RedactionRule[] {
         /\b[srp]k_live_[A-Za-z0-9]{24,}\b/g,
         "[REDACTED_STRIPE_KEY]",
       ),
+    // Stripe test-mode secret and restricted keys, and webhook signing secrets. A test key
+    // reads and writes the account's test data, and a webhook secret lets anyone forge events
+    // the endpoint will trust. Test publishable keys (pk_test_) are public by design.
+    (input) =>
+      input
+        .replace(/\b[sr]k_test_[A-Za-z0-9]{24,}\b/g, "[REDACTED_STRIPE_KEY]")
+        .replace(/\bwhsec_[A-Za-z0-9]{24,}\b/g, "[REDACTED_STRIPE_KEY]"),
+    // Google OAuth: access tokens (ya29.), refresh tokens (1//0...) and OAuth client secrets
+    // (GOCSPX-). `gcloud auth print-access-token` prints the first straight into a terminal.
+    (input) =>
+      input
+        .replace(/\bya29\.[0-9A-Za-z_-]{20,2048}/g, "[REDACTED_GOOGLE_OAUTH_TOKEN]")
+        .replace(/(?<![\w/])1\/\/0[0-9A-Za-z_-]{30,512}/g, "[REDACTED_GOOGLE_OAUTH_TOKEN]")
+        .replace(/\bGOCSPX-[0-9A-Za-z_-]{28}\b/g, "[REDACTED_GOOGLE_CLIENT_SECRET]"),
+    // Model and search API keys a coding agent's session sees most: Groq, xAI, Replicate,
+    // Perplexity and Tavily, each anchored to its published prefix and body length.
+    (input) =>
+      input
+        .replace(/\bgsk_[A-Za-z0-9]{40,64}\b/g, "[REDACTED_GROQ_KEY]")
+        .replace(/\bxai-[A-Za-z0-9]{60,100}\b/g, "[REDACTED_XAI_KEY]")
+        .replace(/\br8_[A-Za-z0-9]{32,40}\b/g, "[REDACTED_REPLICATE_TOKEN]")
+        .replace(/\bpplx-[A-Za-z0-9]{32,64}\b/g, "[REDACTED_PERPLEXITY_KEY]")
+        .replace(/\btvly-(?:dev-|prod-)?[A-Za-z0-9]{24,64}\b/g, "[REDACTED_TAVILY_KEY]"),
+    // Supabase personal access tokens and secret API keys, and age (age-encryption.org)
+    // secret keys, whose Bech32 body is upper-case.
+    (input) =>
+      input
+        .replace(/\bsbp_[a-f0-9]{40}\b/g, "[REDACTED_SUPABASE_TOKEN]")
+        .replace(/\bsb_secret_[A-Za-z0-9_-]{20,64}/g, "[REDACTED_SUPABASE_TOKEN]")
+        .replace(/\bAGE-SECRET-KEY-1[0-9A-Z]{58}\b/g, "[REDACTED_AGE_KEY]"),
     // npm access tokens: npm_ + 36 alphanumerics.
     (input) =>
       input.replace(/\bnpm_[A-Za-z0-9]{36}\b/g, "[REDACTED_NPM_TOKEN]"),
