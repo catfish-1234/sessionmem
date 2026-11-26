@@ -45,6 +45,7 @@ trivial observations, full transcripts, secrets, or duplicate facts.
 - retrieveMemories: existing ranked retrieval and injection formatting
 - storeMemory and batchStoreMemory: durable facts and decisions
 - listMemories and stats: store inspection
+- updateMemory: correct a wrong or outdated memory in place, keeping its history
 - forgetMemory: remove an incorrect memory only when authorized
 `;
 

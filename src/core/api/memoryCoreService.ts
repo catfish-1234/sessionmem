@@ -26,6 +26,8 @@ import {
   listMemoriesByProject,
   resetAccessCounts,
   updateMemoryContent,
+  updateMemoryImportance,
+  updateMemoryMetadata,
   upsertImportedMemory,
   upsertPulledMemory,
   upsertSessionSummaryMemory,
@@ -67,6 +69,7 @@ import {
   statsRequestSchema,
   storeMemoryRequestSchema,
   summarizeSessionToMemoryRequestSchema,
+  updateMemoryRequestSchema,
   type ErrorResponseEnvelope,
   type MemoryCoreMethod,
   type MemoryCoreRequest,
@@ -655,6 +658,60 @@ export function createMemoryCoreService(deps: CreateMemoryCoreServiceDeps) {
       return {
         ok: true,
       };
+    },
+
+    async updateMemory(request) {
+      const parsed = parseRequest(updateMemoryRequestSchema, request);
+      const existing = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
+      if (!existing || (parsed.scope !== undefined && existing.scope !== parsed.scope)) {
+        throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
+      }
+
+      // New text is redacted and re-embedded exactly as a stored memory is, and
+      // re-indexed for entities and supersession, so an edit can neither carry a
+      // secret in nor leave search ranking against the old wording.
+      const warningCodes: string[] = [];
+      const content = parsed.content === undefined ? undefined : applyRedaction(parsed.content, {
+        redactionEnabled: resolveRedactionEnabled(parsed.redactionEnabled),
+      });
+      if (content) warningCodes.push(...content.warningCodes);
+
+      db.transaction(() => {
+        if (content && content.text !== existing.content) {
+          const embedding = deterministicEmbed(content.text, dimension);
+          updateMemoryContent(db, parsed.projectId, parsed.memoryId, content.text, embedding.normalizedText, {
+            vector: embedding.vector,
+            dimension: embedding.dimension,
+            embeddingVersion: embedding.embeddingVersion,
+          });
+        }
+        if (parsed.importance !== undefined && parsed.importance !== existing.importance) {
+          updateMemoryImportance(db, parsed.projectId, parsed.memoryId, parsed.importance);
+          // An explicit re-rating is the same feedback signal forgetMemory records for a deletion.
+          insertMemoryFeedbackEvent(db, {
+            memory_id: parsed.memoryId,
+            feedback_type: "manual",
+            previous_importance: existing.importance,
+            new_importance: parsed.importance,
+          });
+        }
+        if (parsed.kind !== undefined || parsed.tags !== undefined || parsed.expiresAt !== undefined) {
+          updateMemoryMetadata(db, parsed.projectId, parsed.memoryId, {
+            kind: parsed.kind,
+            tags: parsed.tags,
+            expiresAt: parsed.expiresAt,
+          });
+        }
+      })();
+
+      try {
+        const embedder = await semanticEmbedder();
+        if (embedder) await indexSemanticMemories(db, parsed.projectId, embedder, parsed.memoryId);
+      } catch { semanticWarning(); }
+
+      const updated = getMemoryRecordById(db, parsed.projectId, parsed.memoryId);
+      if (!updated) throw new DomainError("NOT_FOUND", `Memory not found: ${parsed.memoryId}`);
+      return { ok: true, memory: toExportMemoryDto(updated), warningCodes };
     },
 
     async exportMemories(request) {

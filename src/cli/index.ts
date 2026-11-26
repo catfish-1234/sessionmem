@@ -15,6 +15,7 @@ import { scopesCommand } from "./commands/scopes.js";
 import { listCommand } from "./commands/list.js";
 import { showCommand } from "./commands/show.js";
 import { forgetCommand } from "./commands/forget.js";
+import { editCommand } from "./commands/edit.js";
 import { rememberCommand } from "./commands/remember.js";
 import { exportCommand } from "./commands/export.js";
 import { importCommand } from "./commands/import.js";
@@ -212,6 +213,17 @@ program
   .option("--scope <name>", "Context label (default: the working directory name)")
   .option("--json", "Print the stored memory as JSON")
   .action((text, options) => rememberCommand(text, options));
+
+program
+  .command("edit <id> [text...]")
+  .description("Correct a memory in place: new text (or - for stdin), kind, importance, tags or expiry")
+  .option("--kind <kind>", "decision, fact, warning, preference or summary")
+  .option("--importance <n>", "1-10")
+  .option("--tag <tag>", "Replace its tags; repeat for more (up to 10)", (tag: string, tags: string[] = []) => [...tags, tag])
+  .option("--clear-tags", "Remove all its tags")
+  .option("--expires <when>", "Forget it after a duration (12h, 30d, 2w), on a date (2026-12-31), or never")
+  .option("--json", "Print the updated memory and the one it replaced as JSON")
+  .action((id, text, options) => editCommand(id, text ?? [], options));
 
 program
   .command("forget <id>")

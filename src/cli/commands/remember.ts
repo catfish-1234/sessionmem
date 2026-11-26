@@ -47,7 +47,7 @@ export function parseExpiry(value: string, now: Date = new Date()): string {
   return at.toISOString().replace(/\.000Z$/, "Z");
 }
 
-function parseImportance(value: string | undefined): number {
+export function parseImportance(value: string | undefined): number {
   if (value === undefined) return DEFAULT_REMEMBER_IMPORTANCE;
   const importance = Number(value);
   if (!Number.isInteger(importance) || importance < 1 || importance > 10) {
@@ -56,7 +56,7 @@ function parseImportance(value: string | undefined): number {
   return importance;
 }
 
-function parseKind(value: string | undefined): MemoryKind {
+export function parseKind(value: string | undefined): MemoryKind {
   const kind = value ?? "fact";
   if (!(MEMORY_KINDS as readonly string[]).includes(kind)) {
     throw new Error(`--kind must be one of ${MEMORY_KINDS.join(", ")}; got "${value}"`);
@@ -65,7 +65,7 @@ function parseKind(value: string | undefined): MemoryKind {
 }
 
 /** The memory text: the words given, or standard input for `-`. */
-function readContent(words: string[]): string {
+export function readContent(words: string[]): string {
   const text = words.length === 1 && words[0] === "-" ? readFileSync(0, "utf8") : words.join(" ");
   const content = text.replace(/^\uFEFF/, "").trim();
   if (!content) throw new Error("Nothing to remember: give the memory text, or - to read it from stdin");

@@ -45,6 +45,7 @@ once. This is what makes context survive across sessions and saves tokens later.
 ### Other tools
 - `listMemories`: browse all stored memories for this project
 - `getMemory`: fetch a specific memory by ID
+- `updateMemory`: correct a memory in place (text, kind, importance, tags, expiry); it keeps its ID and history
 - `forgetMemory`: delete an outdated or incorrect memory
 - `batchStoreMemory`: store multiple memories in one call (use at session end)
 - `stats`: check memory count and health

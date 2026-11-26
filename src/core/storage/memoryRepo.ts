@@ -21,6 +21,7 @@ interface MemoryRepoStatements {
   deleteOlderThan: Statement;
   updateImportance: Statement;
   updateContent: Statement;
+  updateMetadata: Statement;
   selectForRecordUse: Statement;
   incrementAccess: Statement;
   resetAccess: Statement;
@@ -201,6 +202,16 @@ function getStatements(db: Database): MemoryRepoStatements {
         embedding_version = COALESCE(?, embedding_version),
         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE project_id = ? AND id = ?
+    `),
+    // Each field is (changed?, value): a flag rather than COALESCE, so a field can be cleared to NULL.
+    updateMetadata: db.prepare(`
+      UPDATE memories
+      SET
+        kind = CASE WHEN @setKind = 1 THEN @kind ELSE kind END,
+        tags = CASE WHEN @setTags = 1 THEN @tags ELSE tags END,
+        expires_at = CASE WHEN @setExpiresAt = 1 THEN @expiresAt ELSE expires_at END,
+        updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE project_id = @projectId AND id = @memoryId
     `),
     selectForRecordUse: db.prepare(`
         SELECT id, importance
@@ -520,6 +531,29 @@ export function updateMemoryContent(
     indexMemoryKnowledge(db, memoryId, newContent);
     indexMemorySupersessions(db, memoryId, newContent);
   })();
+}
+
+/**
+ * Change a memory's kind, tags or expiry. A field left undefined keeps its value;
+ * `null` clears tags or expiry.
+ */
+export function updateMemoryMetadata(
+  db: Database,
+  projectId: string,
+  memoryId: string,
+  changes: { kind?: string; tags?: string[] | null; expiresAt?: string | null },
+): void {
+  const result = getStatements(db).updateMetadata.run({
+    projectId,
+    memoryId,
+    setKind: Number(changes.kind !== undefined),
+    kind: changes.kind ?? null,
+    setTags: Number(changes.tags !== undefined),
+    tags: changes.tags === undefined ? null : JSON.stringify(changes.tags),
+    setExpiresAt: Number(changes.expiresAt !== undefined),
+    expiresAt: changes.expiresAt ?? null,
+  });
+  if (result.changes === 0) throw new Error(`Memory not found: ${memoryId}`);
 }
 
 export function incrementAccessCounts(

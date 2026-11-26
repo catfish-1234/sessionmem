@@ -245,6 +245,7 @@ See [`docs/architecture.md`](docs/architecture.md) for the technical overview.
 | `sessionmem history [--project <id>] [--json]` | List supersession chains with old/new values, source memory IDs, reasons, and timestamps. |
 | `sessionmem show <id> [--json]` | Show memory details (content capped at 2000 characters; use export for full content). |
 | `sessionmem remember <text> [--kind <kind>] [--importance <n>] [--tag <tag>] [--expires <when>]` | Store a memory by hand, such as a decision or preference the agent should keep. Defaults to a `fact` at importance 7; `--expires` takes `12h`, `30d`, `2w` or a date. Secrets are redacted as on every write. Use `-` to read the text from stdin. |
+| `sessionmem edit <id> [text...] [--kind <k>] [--importance <n>] [--tag <t>] [--clear-tags] [--expires <when|never>] [--json]` | Correct a memory in place. Only what you give changes; it keeps its ID, history and access counts, and new text is redacted like any stored memory. Prints the text it replaced. |
 | `sessionmem forget <id> [--force]` | Delete a memory by ID. |
 | `sessionmem export [path]` | Export all current-project memories to JSON (default `~/.sessionmem/export-YYYY-MM-DD.json`). Use `-` for stdout. |
 | `sessionmem export --format markdown [path]` | Readable project memory: grouped by kind, most important first, with author, date, scope and tags. Inferred from a `.md` path. `--min-importance <n>` and `--include-expired` filter it. Not re-importable; use JSON for backups. |

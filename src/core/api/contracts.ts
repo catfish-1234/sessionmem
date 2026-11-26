@@ -248,6 +248,28 @@ export const forgetMemoryRequestSchema = z.object({
   memoryId: z.string().min(1).max(200),
 });
 
+/**
+ * Correct a memory in place: its id, author, session, history links and access
+ * counts stay, which forget-then-store would lose. Every field but the id is
+ * optional and only the fields given change; `null` clears tags or expiry.
+ */
+export const updateMemoryFieldsSchema = z.object({
+  scope: scopeSchema,
+  projectId: z.string().min(1),
+  memoryId: z.string().min(1).max(200),
+  content: z.string().min(1).max(MAX_CONTENT_LENGTH).optional(),
+  kind: memoryKindSchema.optional(),
+  importance: z.number().int().min(1).max(10).optional(),
+  tags: z.array(z.string().min(1).max(50)).max(10).nullable().optional(),
+  expiresAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/, "must be UTC ISO timestamp").nullable().optional(),
+  redactionEnabled: z.boolean().optional(),
+});
+
+export const updateMemoryRequestSchema = updateMemoryFieldsSchema.refine(
+  value => [value.content, value.kind, value.importance, value.tags, value.expiresAt].some(field => field !== undefined),
+  { message: "Provide at least one of content, kind, importance, tags or expiresAt to change" },
+);
+
 export const exportMemoriesRequestSchema = z.object({
   projectId: z.string().min(1),
 });
@@ -546,6 +568,7 @@ export type RetrieveMemoriesRequest = z.infer<typeof retrieveMemoriesRequestSche
 export type ListMemoriesRequest = z.infer<typeof listMemoriesRequestSchema>;
 export type GetMemoryRequest = z.infer<typeof getMemoryRequestSchema>;
 export type ForgetMemoryRequest = z.infer<typeof forgetMemoryRequestSchema>;
+export type UpdateMemoryRequest = z.infer<typeof updateMemoryRequestSchema>;
 export type ExportMemoriesRequest = z.infer<typeof exportMemoriesRequestSchema>;
 export type ImportMemoriesRequest = z.infer<typeof importMemoriesRequestSchema>;
 export type PullMemoriesRequest = z.infer<typeof pullMemoriesRequestSchema>;
@@ -564,6 +587,7 @@ export type HandleSessionEndResponse = z.infer<
   typeof handleSessionEndResponseSchema
 >;
 export type StoreMemoryResponse = z.infer<typeof storeMemoryResponseSchema>;
+export type UpdateMemoryResponse = z.infer<typeof storeMemoryResponseSchema>;
 export type RetrieveMemoriesResponse = z.infer<
   typeof retrieveMemoriesResponseSchema
 >;
@@ -595,6 +619,7 @@ export interface MemoryCoreRequestMap {
   listMemories: ListMemoriesRequest;
   getMemory: GetMemoryRequest;
   forgetMemory: ForgetMemoryRequest;
+  updateMemory: UpdateMemoryRequest;
   exportMemories: ExportMemoriesRequest;
   importMemories: ImportMemoriesRequest;
   pullMemories: PullMemoriesRequest;
@@ -616,6 +641,7 @@ export interface MemoryCoreResponseMap {
   listMemories: ListMemoriesResponse;
   getMemory: GetMemoryResponse;
   forgetMemory: ForgetMemoryResponse;
+  updateMemory: UpdateMemoryResponse;
   exportMemories: ExportMemoriesResponse;
   importMemories: ImportMemoriesResponse;
   pullMemories: PullMemoriesResponse;

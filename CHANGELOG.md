@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `updateMemory` MCP tool and `sessionmem edit <id> [text...]`: correct a memory
+  in place instead of forgetting it and storing a new one. Only the fields given
+  change (text, kind, importance, tags, expiry; `null` or `--clear-tags` /
+  `--expires never` clear tags or expiry), and the memory keeps its ID, session,
+  author, supersession links and access counts. New text is redacted, re-embedded
+  and re-indexed for entities, supersession and local semantic search exactly as
+  a stored memory is. A changed importance is recorded as manual feedback, as a
+  deletion already is. `edit` prints the text it replaced, so a mistaken edit can
+  be reversed with another. The tool is marked destructive and is not on Cline's
+  automatic-approval list.
+
 ## [2.2.0] - 2026-11-25
 
 ### Added

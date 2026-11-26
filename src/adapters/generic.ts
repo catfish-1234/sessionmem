@@ -19,6 +19,7 @@ import {
   statsRequestSchema,
   storeMemoryRequestSchema,
   summarizeSessionToMemoryRequestSchema,
+  updateMemoryRequestSchema,
   type MemoryCoreMethod,
   type MemoryCoreRequest,
 } from "../core/api/contracts.js";
@@ -221,6 +222,37 @@ const TOOL_DEFINITIONS: ToolDefinition<MemoryCoreMethod>[] = [
     inputShape: {
       memoryId: forgetMemoryRequestSchema.shape.memoryId.describe(
         "Exact UUID of the memory to permanently delete. Obtain from a prior listMemories or retrieveMemories call. Deletion is immediate and irreversible."
+      ),
+    },
+  },
+  {
+    method: "updateMemory",
+    description:
+      "Correct an existing memory in place by ID. Only the fields you pass change; the memory keeps its ID, session, author, history links and access counts, which forgetting it and storing a new one would lose. New content is redacted and re-indexed exactly as storeMemory's is.\n\n" +
+      "WHEN TO CALL: When a stored memory is partly wrong or out of date and you know the correct version: a decision that was revised, a fact with a wrong detail, an importance that no longer fits, or a temporary workaround that now needs an expiry.\n\n" +
+      "WHEN NOT TO CALL: To record something new — use storeMemory. When a fact simply changed over time (\"switched from X to Y\"), storing the new fact keeps the history and supersedes the old one automatically.",
+    annotations: { destructiveHint: true, idempotentHint: true },
+    inputShape: {
+      memoryId: updateMemoryRequestSchema.shape.memoryId.describe(
+        "Exact ID of the memory to change, from searchMemoryIndex, retrieveMemories, listMemories or getMemory."
+      ),
+      content: updateMemoryRequestSchema.shape.content.describe(
+        "Replacement text, self-contained like storeMemory content. Omit to keep the current text."
+      ),
+      kind: updateMemoryRequestSchema.shape.kind.describe(
+        "New category: 'decision', 'fact', 'warning', 'preference' or 'summary'. Omit to keep it."
+      ),
+      importance: updateMemoryRequestSchema.shape.importance.describe(
+        "New importance 1-10. Omit to keep it."
+      ),
+      tags: updateMemoryRequestSchema.shape.tags.describe(
+        "Replacement tag list (max 10), or null to remove all tags. Omit to keep them."
+      ),
+      expiresAt: updateMemoryRequestSchema.shape.expiresAt.describe(
+        "UTC ISO timestamp after which the memory is no longer retrieved, or null to make it permanent. Omit to keep it."
+      ),
+      redactionEnabled: updateMemoryRequestSchema.shape.redactionEnabled.describe(
+        "Override redaction for the new content. Omit to use the project setting."
       ),
     },
   },
