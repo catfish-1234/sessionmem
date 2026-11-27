@@ -6,7 +6,12 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/sessionmem"><img src="https://img.shields.io/npm/v/sessionmem.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/sessionmem"><img src="https://img.shields.io/npm/dm/sessionmem.svg" alt="npm downloads"></a>
   <a href="https://github.com/catfish-1234/sessionmem/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
+
+<p align="center">
+  <a href="https://glama.ai/mcp/servers/catfish-1234/sessionmem"><img width="380" height="200" src="https://glama.ai/mcp/servers/catfish-1234/sessionmem/badge" alt="sessionmem MCP server on Glama"></a>
 </p>
 
 **Project memory between sessions, stored on your machine.**

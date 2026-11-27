@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Releases are listed in the official MCP Registry (registry.modelcontextprotocol.io),
+  which MCP clients and server directories read, as io.github.catfish-1234/sessionmem.
+  The release workflow publishes server.json after npm, authenticated with the job's
+  GitHub OIDC token, using a pinned, signature-verified mcp-publisher.
+- npm keywords, so `npm search` finds sessionmem under mcp, memory, claude-code,
+  cursor, codex and the other hosts it supports.
+
 ## [2.3.0] - 2026-11-25
 
 ### Added
