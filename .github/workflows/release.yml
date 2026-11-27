@@ -132,6 +132,22 @@ jobs:
           MCP_PUBLISHER_VERSION: v1.8.16
         run: |
           set -euo pipefail
+          # The registry checks the npm version it lists, and npm holds a version it has just
+          # accepted for an automated review ("Your package is being processed"; the versions page
+          # shows "Validating") before serving it: v2.3.1's listing ran five seconds after its
+          # publish and was rejected. So wait for npm to serve it, up to 20 minutes.
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          for attempt in $(seq 1 80); do
+            if curl --fail --silent --output /dev/null "https://registry.npmjs.org/$name/$version"; then
+              break
+            fi
+            if [ "$attempt" -eq 80 ]; then
+              echo "::error::npm still does not serve $name@$version after 20 minutes; run this workflow again from the Actions tab once it does."
+              exit 1
+            fi
+            sleep 15
+          done
           os="$(uname -s | tr '[:upper:]' '[:lower:]')"
           arch="$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
           archive="mcp-publisher_${os}_${arch}.tar.gz"
@@ -146,11 +162,18 @@ jobs:
           tar xzf "$archive" mcp-publisher
           rm -f "$archive" "$archive.sigstore.json"
           ./mcp-publisher login github-oidc
-          # A version the registry already lists is not a failure of this release.
-          if ! ./mcp-publisher publish 2>&1 | tee "$RUNNER_TEMP/mcp-publish.log"; then
+          # A version the registry already lists is not a failure of this release. One it cannot
+          # see on npm yet (its own view of npm can lag the one checked above) is retried.
+          for attempt in 1 2 3 4 5; do
+            if ./mcp-publisher publish 2>&1 | tee "$RUNNER_TEMP/mcp-publish.log"; then
+              exit 0
+            fi
             if grep -qiE "already exists|duplicate|already published" "$RUNNER_TEMP/mcp-publish.log"; then
               echo "This version is already in the MCP Registry."
               exit 0
             fi
-            exit 1
-          fi
+            if [ "$attempt" -eq 5 ] || ! grep -qi "was not found" "$RUNNER_TEMP/mcp-publish.log"; then
+              exit 1
+            fi
+            sleep 60
+          done
